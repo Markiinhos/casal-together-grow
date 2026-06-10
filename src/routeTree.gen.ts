@@ -15,6 +15,7 @@ import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as ConviteCodeRouteImport } from './routes/convite.$code'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AppTarefasRouteImport } from './routes/app/tarefas'
 import { Route as AppParceiroRouteImport } from './routes/app/parceiro'
 import { Route as AppMetasRouteImport } from './routes/app/metas'
@@ -58,6 +59,11 @@ const ConviteCodeRoute = ConviteCodeRouteImport.update({
   id: '/convite/$code',
   path: '/convite/$code',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => AuthRoute,
 } as any)
 const AppTarefasRoute = AppTarefasRouteImport.update({
   id: '/tarefas',
@@ -128,7 +134,7 @@ const AppMaisConfiguracoesRoute = AppMaisConfiguracoesRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/app/mais': typeof AppMaisRouteRouteWithChildren
   '/app/adicionar': typeof AppAdicionarRoute
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
   '/app/tarefas': typeof AppTarefasRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app/': typeof AppIndexRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
@@ -148,7 +155,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
@@ -159,6 +166,7 @@ export interface FileRoutesByTo {
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
   '/app/tarefas': typeof AppTarefasRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app': typeof AppIndexRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
@@ -169,7 +177,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/app/mais': typeof AppMaisRouteRouteWithChildren
   '/app/adicionar': typeof AppAdicionarRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
   '/app/tarefas': typeof AppTarefasRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app/': typeof AppIndexRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/app/metas'
     | '/app/parceiro'
     | '/app/tarefas'
+    | '/auth/callback'
     | '/convite/$code'
     | '/app/'
     | '/app/mais/configuracoes'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/app/metas'
     | '/app/parceiro'
     | '/app/tarefas'
+    | '/auth/callback'
     | '/convite/$code'
     | '/app'
     | '/app/mais/configuracoes'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/app/metas'
     | '/app/parceiro'
     | '/app/tarefas'
+    | '/auth/callback'
     | '/convite/$code'
     | '/app/'
     | '/app/mais/configuracoes'
@@ -254,7 +266,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRouteRoute: typeof AppRouteRouteWithChildren
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   ConviteCodeRoute: typeof ConviteCodeRoute
 }
@@ -302,6 +314,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/convite/$code'
       preLoaderRoute: typeof ConviteCodeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/app/tarefas': {
       id: '/app/tarefas'
@@ -445,10 +464,20 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
   AppRouteRouteChildren,
 )
 
+interface AuthRouteChildren {
+  AuthCallbackRoute: typeof AuthCallbackRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthCallbackRoute: AuthCallbackRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRouteRoute: AppRouteRouteWithChildren,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   ConviteCodeRoute: ConviteCodeRoute,
 }

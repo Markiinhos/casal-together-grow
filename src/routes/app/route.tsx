@@ -10,6 +10,10 @@ export const Route = createFileRoute("/app")({
   beforeLoad: async () => {
     const { data } = await supabase.auth.getSession();
     if (!data.session) throw redirect({ to: "/auth" });
+    if (!data.session.user.email_confirmed_at) {
+      await supabase.auth.signOut();
+      throw redirect({ to: "/auth" });
+    }
   },
   component: AppLayout,
 });
