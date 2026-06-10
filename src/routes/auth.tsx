@@ -32,18 +32,39 @@ function AuthPage() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  function translateError(msg: string) {
+    const m = msg.toLowerCase();
+    if (m.includes("invalid login")) return "E-mail ou senha incorretos.";
+    if (m.includes("email not confirmed")) return "Confirme seu e-mail antes de entrar.";
+    if (m.includes("already registered") || m.includes("user already")) return "E-mail já cadastrado. Faça login.";
+    if (m.includes("invalid email") || m.includes("invalid format")) return "E-mail inválido.";
+    if (m.includes("weak") || m.includes("pwned")) return "Senha muito fraca ou vazada. Escolha outra.";
+    if (m.includes("password") && m.includes("6")) return "A senha precisa ter pelo menos 6 caracteres.";
+    if (m.includes("network") || m.includes("failed to fetch")) return "Falha de conexão. Tente novamente.";
+    if (m.includes("rate")) return "Muitas tentativas. Aguarde alguns instantes.";
+    return msg;
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    console.log("[auth] signIn", email);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) toast.error(error.message);
+    if (error) {
+      console.error("[auth] signIn error", error);
+      toast.error(translateError(error.message));
+      return;
+    }
+    console.log("[auth] signIn ok", data.user?.id);
+    navigate({ to: "/app" });
   }
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    console.log("[auth] signUp", email);
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -52,8 +73,18 @@ function AuthPage() {
       },
     });
     setLoading(false);
-    if (error) toast.error(error.message);
-    else toast.success("Conta criada! Verifique seu e-mail para confirmar.");
+    if (error) {
+      console.error("[auth] signUp error", error);
+      toast.error(translateError(error.message));
+      return;
+    }
+    console.log("[auth] signUp ok", data.user?.id, "session?", !!data.session);
+    if (data.session) {
+      toast.success("Conta criada!");
+      navigate({ to: "/app" });
+    } else {
+      toast.success("Conta criada! Verifique seu e-mail para confirmar.");
+    }
   }
 
   async function handleReset() {
@@ -61,7 +92,7 @@ function AuthPage() {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(translateError(error.message));
     else toast.success("E-mail de recuperação enviado!");
   }
 
