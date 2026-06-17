@@ -3,7 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { useProfile } from "@/lib/hooks";
+import { useProfile, usePartner } from "@/lib/hooks";
+import { notifyPartnerMention } from "@/lib/mentions";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -164,23 +165,31 @@ function TaskFormDialog({ onDone }: { onDone: () => void }) {
   const [dueDate, setDueDate] = useState("");
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: partner } = usePartner();
   const qc = useQueryClient();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
-    const { error } = await supabase.from("house_tasks").insert({
+    const { data, error } = await supabase.from("house_tasks").insert({
       user_id: user.id, couple_id: profile?.couple_id ?? null,
       name, description, responsible, priority, frequency, due_date: dueDate || null,
+    }).select().single();
+    if (error) { toast.error(error.message); return; }
+    await notifyPartnerMention({
+      text: `${name} ${description ?? ""}`,
+      partnerId: partner?.id ?? null,
+      fromName: profile?.full_name ?? null,
+      context: "uma tarefa",
+      link: "/app/tarefas",
     });
-    if (error) toast.error(error.message);
-    else { toast.success("Criada!"); qc.invalidateQueries(); onDone(); }
+    toast.success("Criada!"); qc.invalidateQueries(); onDone();
   }
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <div><Label>Nome</Label><Input required value={name} onChange={(e) => setName(e.target.value)} /></div>
-      <div><Label>Descrição</Label><Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+      <div><Label>Nome</Label><Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Lavar louça — @parceiro" /></div>
+      <div><Label>Descrição</Label><Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Use @parceiro para notificar" /></div>
       <div className="grid grid-cols-2 gap-3">
         <div><Label>Responsável</Label>
           <Select value={responsible} onValueChange={setResponsible}>
