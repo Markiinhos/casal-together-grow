@@ -176,6 +176,7 @@ function MemForm({ onDone }: { onDone: () => void }) {
   const [date, setDate] = useState("");
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: partner } = usePartner();
   const qc = useQueryClient();
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -184,13 +185,22 @@ function MemForm({ onDone }: { onDone: () => void }) {
       user_id: user.id, couple_id: profile?.couple_id ?? null,
       title, description, memory_date: date || null,
     });
-    if (error) toast.error(error.message); else { toast.success("Salvo!"); qc.invalidateQueries(); onDone(); }
+    if (error) { toast.error(error.message); return; }
+    const { notifyPartnerMention } = await import("@/lib/mentions");
+    await notifyPartnerMention({
+      text: `${title} ${description ?? ""}`,
+      partnerId: partner?.id ?? null,
+      fromName: profile?.full_name ?? null,
+      context: "uma memória",
+      link: "/app/casal",
+    });
+    toast.success("Salvo!"); qc.invalidateQueries(); onDone();
   }
   return (
     <form onSubmit={submit} className="space-y-3">
-      <div><Label>Título</Label><Input required value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+      <div><Label>Título</Label><Input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Viagem para a praia" /></div>
       <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-      <div><Label>Descrição</Label><Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+      <div><Label>Descrição</Label><Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Use @parceiro para marcar" /></div>
       <Button type="submit" className="w-full rounded-xl gradient-coral text-white border-0 h-11">Salvar</Button>
     </form>
   );
