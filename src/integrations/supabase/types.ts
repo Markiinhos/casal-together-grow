@@ -188,6 +188,7 @@ export type Database = {
           id: string
           invite_code: string
           name: string | null
+          photo_url: string | null
           start_date: string | null
           updated_at: string
         }
@@ -197,6 +198,7 @@ export type Database = {
           id?: string
           invite_code?: string
           name?: string | null
+          photo_url?: string | null
           start_date?: string | null
           updated_at?: string
         }
@@ -206,6 +208,7 @@ export type Database = {
           id?: string
           invite_code?: string
           name?: string | null
+          photo_url?: string | null
           start_date?: string | null
           updated_at?: string
         }

@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/EmptyState";
 import { Heart, Plus, Trash2, Sparkles, Trophy } from "lucide-react";
+import { CoupleAvatar } from "@/components/CouplePhotoUploader";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/casal")({
@@ -65,19 +66,22 @@ function CasalPage() {
     <>
       <AppHeader title="Espaço do Casal" subtitle={partner ? `Você + ${partner.full_name?.split(" ")[0] ?? "parceiro"}` : "Memórias e sonhos"} />
       <div className="px-4 py-4 space-y-4">
-        <Card className="rounded-3xl p-5 gradient-coral text-white border-0 shadow-soft">
-          <div className="flex items-center gap-3 mb-2">
-            <Heart className="size-6" fill="currentColor" />
-            <div className="flex-1">
-              <div className="font-bold text-lg">{couple?.name ?? "Nosso casal"}</div>
-              {couple?.start_date && (
-                <div className="text-xs text-white/85">
-                  Juntos desde {new Date(couple.start_date).toLocaleDateString("pt-BR")}
-                </div>
-              )}
+        {couple && (
+          <Card className="rounded-3xl p-5 gradient-coral text-white border-0 shadow-soft">
+            <div className="flex items-center gap-4">
+              <CoupleAvatar coupleId={couple.id} photoPath={(couple as any).photo_url ?? null} size={72} editable />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-lg truncate">{couple.name ?? "Nosso casal"}</div>
+                {couple.start_date && (
+                  <div className="text-xs text-white/85">
+                    Juntos desde {new Date(couple.start_date).toLocaleDateString("pt-BR")}
+                  </div>
+                )}
+                {partner && <div className="text-xs text-white/85 mt-0.5">Você + {partner.full_name?.split(" ")[0]}</div>}
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         <Tabs defaultValue="memories">
           <TabsList className="grid grid-cols-3 w-full">
@@ -172,6 +176,7 @@ function MemForm({ onDone }: { onDone: () => void }) {
   const [date, setDate] = useState("");
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: partner } = usePartner();
   const qc = useQueryClient();
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -180,13 +185,22 @@ function MemForm({ onDone }: { onDone: () => void }) {
       user_id: user.id, couple_id: profile?.couple_id ?? null,
       title, description, memory_date: date || null,
     });
-    if (error) toast.error(error.message); else { toast.success("Salvo!"); qc.invalidateQueries(); onDone(); }
+    if (error) { toast.error(error.message); return; }
+    const { notifyPartnerMention } = await import("@/lib/mentions");
+    await notifyPartnerMention({
+      text: `${title} ${description ?? ""}`,
+      partnerId: partner?.id ?? null,
+      fromName: profile?.full_name ?? null,
+      context: "uma memória",
+      link: "/app/casal",
+    });
+    toast.success("Salvo!"); qc.invalidateQueries(); onDone();
   }
   return (
     <form onSubmit={submit} className="space-y-3">
-      <div><Label>Título</Label><Input required value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+      <div><Label>Título</Label><Input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Viagem para a praia" /></div>
       <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-      <div><Label>Descrição</Label><Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+      <div><Label>Descrição</Label><Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Use @parceiro para marcar" /></div>
       <Button type="submit" className="w-full rounded-xl gradient-coral text-white border-0 h-11">Salvar</Button>
     </form>
   );

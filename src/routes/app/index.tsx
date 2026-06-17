@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
+import { CoupleAvatar } from "@/components/CouplePhotoUploader";
 import { TrendingUp, TrendingDown, Target, CheckSquare, CalendarDays, Heart, UserPlus } from "lucide-react";
 
 export const Route = createFileRoute("/app/")({
@@ -84,9 +85,14 @@ function HomePage() {
     <>
       <AppHeader title={couple?.name || "Casal"} subtitle={partner ? `Você + ${partner.full_name?.split(" ")[0] ?? "parceiro"}` : "Convide seu parceiro"} />
       <div className="px-4 py-4 space-y-5">
-        <div>
-          <p className="text-sm text-muted-foreground">{greeting},</p>
-          <h2 className="text-2xl font-bold">{firstName} 💛</h2>
+        <div className="flex items-center gap-3">
+          {couple && (
+            <CoupleAvatar coupleId={couple.id} photoPath={(couple as any).photo_url ?? null} size={56} />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-muted-foreground">{greeting},</p>
+            <h2 className="text-2xl font-bold truncate">{firstName} 💛</h2>
+          </div>
         </div>
 
         {!coupleId && (

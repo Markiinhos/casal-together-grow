@@ -12,15 +12,25 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { EmptyState } from "@/components/EmptyState";
-import { Tag, Plus, Trash2 } from "lucide-react";
+import { Tag, Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/categorias")({
   component: CatPage,
 });
 
-const PALETTE = ["#FF6B57", "#7B61FF", "#34D399", "#FBBF24", "#60A5FA", "#F472B6", "#A78BFA"];
-const ICONS = ["tag", "shopping-cart", "utensils", "home", "car", "heart", "gift", "music", "plane", "book"];
+const PALETTE = ["#FF6B57", "#7B61FF", "#34D399", "#FBBF24", "#60A5FA", "#F472B6", "#A78BFA", "#F87171", "#10B981"];
+const ICONS = ["tag", "shopping-cart", "utensils", "home", "car", "heart", "gift", "music", "plane", "book", "coffee", "dumbbell"];
+
+interface Cat {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  icon: string;
+  user_id: string;
+  couple_id: string | null;
+}
 
 function CatPage() {
   const { user } = useAuth();
@@ -28,13 +38,15 @@ function CatPage() {
   const coupleId = profile?.couple_id ?? null;
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Cat | null>(null);
 
   const { data: cats = [] } = useQuery({
     queryKey: ["cats", coupleId, user?.id],
     queryFn: async () => {
       const q = supabase.from("categories").select("*").order("name");
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
-      return data ?? [];
+      const { data, error } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
+      if (error) console.error("[cats] load", error);
+      return (data ?? []) as Cat[];
     },
     enabled: !!user,
   });
@@ -42,22 +54,30 @@ function CatPage() {
   async function del(id: string) {
     if (!confirm("Excluir categoria?")) return;
     const { error } = await supabase.from("categories").delete().eq("id", id);
-    if (error) toast.error(error.message); else qc.invalidateQueries();
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Excluída");
+      qc.invalidateQueries({ queryKey: ["cats"] });
+    }
   }
 
   return (
     <>
       <AppHeader title="Categorias" subtitle="Personalize cores e ícones" />
       <div className="px-4 py-4 space-y-4">
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open || !!editing} onOpenChange={(o) => { if (!o) { setOpen(false); setEditing(null); } }}>
           <DialogTrigger asChild>
-            <Button className="w-full rounded-xl gradient-coral text-white border-0 h-11">
+            <Button onClick={() => { setEditing(null); setOpen(true); }} className="w-full rounded-xl gradient-coral text-white border-0 h-11">
               <Plus className="size-4 mr-1" /> Nova categoria
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-3xl">
-            <DialogHeader><DialogTitle>Nova categoria</DialogTitle></DialogHeader>
-            <CatForm onDone={() => setOpen(false)} />
+            <DialogHeader><DialogTitle>{editing ? "Editar categoria" : "Nova categoria"}</DialogTitle></DialogHeader>
+            <CatForm
+              key={editing?.id ?? "new"}
+              editing={editing}
+              onDone={() => { setOpen(false); setEditing(null); }}
+            />
           </DialogContent>
         </Dialog>
 
@@ -67,7 +87,7 @@ function CatPage() {
           </Card>
         ) : (
           <Card className="rounded-3xl divide-y divide-border shadow-card overflow-hidden">
-            {(cats as any[]).map((c) => (
+            {cats.map((c) => (
               <div key={c.id} className="px-4 py-3 flex items-center gap-3">
                 <div className="size-10 rounded-xl flex items-center justify-center" style={{ background: c.color + "22", color: c.color }}>
                   <Tag className="size-4" />
@@ -76,6 +96,9 @@ function CatPage() {
                   <div className="font-medium text-sm truncate">{c.name}</div>
                   <div className="text-xs text-muted-foreground capitalize">{c.type}</div>
                 </div>
+                <button onClick={() => setEditing(c)} className="size-8 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground">
+                  <Pencil className="size-3.5" />
+                </button>
                 <button onClick={() => del(c.id)} className="size-8 rounded-lg hover:bg-destructive/10 text-destructive flex items-center justify-center">
                   <Trash2 className="size-3.5" />
                 </button>
@@ -88,11 +111,12 @@ function CatPage() {
   );
 }
 
-function CatForm({ onDone }: { onDone: () => void }) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState("expense");
-  const [color, setColor] = useState(PALETTE[0]);
-  const [icon, setIcon] = useState(ICONS[0]);
+function CatForm({ editing, onDone }: { editing: Cat | null; onDone: () => void }) {
+  const [name, setName] = useState(editing?.name ?? "");
+  const [type, setType] = useState(editing?.type ?? "expense");
+  const [color, setColor] = useState(editing?.color ?? PALETTE[0]);
+  const [icon, setIcon] = useState(editing?.icon ?? ICONS[0]);
+  const [saving, setSaving] = useState(false);
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const qc = useQueryClient();
@@ -100,11 +124,27 @@ function CatForm({ onDone }: { onDone: () => void }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
-    const { error } = await supabase.from("categories").insert({
-      user_id: user.id, couple_id: profile?.couple_id ?? null, name, type, color, icon,
-    });
-    if (error) toast.error(error.message);
-    else { toast.success("Criada!"); qc.invalidateQueries(); onDone(); }
+    setSaving(true);
+    const payload = { name, type, color, icon };
+    let error;
+    if (editing) {
+      ({ error } = await supabase.from("categories").update(payload).eq("id", editing.id));
+    } else {
+      ({ error } = await supabase.from("categories").insert({
+        ...payload,
+        user_id: user.id,
+        couple_id: profile?.couple_id ?? null,
+      }));
+    }
+    setSaving(false);
+    if (error) {
+      console.error("[cats] save", error);
+      toast.error(error.message);
+    } else {
+      toast.success(editing ? "Atualizada!" : "Criada!");
+      qc.invalidateQueries({ queryKey: ["cats"] });
+      onDone();
+    }
   }
 
   return (
@@ -128,7 +168,7 @@ function CatForm({ onDone }: { onDone: () => void }) {
         <div className="flex flex-wrap gap-2 mt-1.5">
           {PALETTE.map((c) => (
             <button key={c} type="button" onClick={() => setColor(c)}
-              className={`size-8 rounded-full border-2 ${color === c ? "border-foreground scale-110" : "border-transparent"}`}
+              className={`size-8 rounded-full border-2 transition ${color === c ? "border-foreground scale-110" : "border-transparent"}`}
               style={{ background: c }} />
           ))}
         </div>
@@ -142,7 +182,9 @@ function CatForm({ onDone }: { onDone: () => void }) {
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" className="w-full rounded-xl gradient-coral text-white border-0 h-11">Salvar</Button>
+      <Button type="submit" disabled={saving} className="w-full rounded-xl gradient-coral text-white border-0 h-11">
+        {saving ? "Salvando..." : editing ? "Atualizar" : "Salvar"}
+      </Button>
     </form>
   );
 }
