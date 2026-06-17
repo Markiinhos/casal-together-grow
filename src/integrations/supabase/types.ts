@@ -1018,6 +1018,7 @@ export type Database = {
       }
       current_couple_id: { Args: never; Returns: string }
       is_couple_member: { Args: { _couple_id: string }; Returns: boolean }
+      join_couple_by_code: { Args: { _code: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
