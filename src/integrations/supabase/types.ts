@@ -52,6 +52,56 @@ export type Database = {
           },
         ]
       }
+      bank_connections: {
+        Row: {
+          access_token: string | null
+          couple_id: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          metadata: Json | null
+          provider: string
+          refresh_token: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          couple_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          provider: string
+          refresh_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          couple_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          provider?: string
+          refresh_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_connections_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           color: string
@@ -214,6 +264,56 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_cards: {
+        Row: {
+          bank: string | null
+          closing_day: number
+          color: string
+          couple_id: string | null
+          created_at: string
+          due_day: number
+          id: string
+          limit_amount: number
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bank?: string | null
+          closing_day?: number
+          color?: string
+          couple_id?: string | null
+          created_at?: string
+          due_day?: number
+          id?: string
+          limit_amount?: number
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bank?: string | null
+          closing_day?: number
+          color?: string
+          couple_id?: string | null
+          created_at?: string
+          due_day?: number
+          id?: string
+          limit_amount?: number
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_cards_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_widgets: {
         Row: {
           config: Json | null
@@ -243,6 +343,59 @@ export type Database = {
           widget_key?: string
         }
         Relationships: []
+      }
+      dates: {
+        Row: {
+          couple_id: string | null
+          cover_photo: string | null
+          created_at: string
+          date_at: string | null
+          id: string
+          location: string | null
+          notes: string | null
+          planned_amount: number | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          couple_id?: string | null
+          cover_photo?: string | null
+          created_at?: string
+          date_at?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          planned_amount?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          couple_id?: string | null
+          cover_photo?: string | null
+          created_at?: string
+          date_at?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          planned_amount?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dates_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       events: {
         Row: {
@@ -302,6 +455,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "events_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      future_bills: {
+        Row: {
+          amount: number
+          category: string | null
+          couple_id: string | null
+          created_at: string
+          due_date: string
+          id: string
+          notes: string | null
+          paid: boolean
+          recurrence: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          category?: string | null
+          couple_id?: string | null
+          created_at?: string
+          due_date: string
+          id?: string
+          notes?: string | null
+          paid?: boolean
+          recurrence?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          couple_id?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          notes?: string | null
+          paid?: boolean
+          recurrence?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "future_bills_couple_id_fkey"
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
@@ -400,6 +606,97 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "goals_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_meals: {
+        Row: {
+          calories: number | null
+          couple_id: string | null
+          created_at: string
+          date: string
+          description: string
+          id: string
+          meal_type: string
+          notes: string | null
+          photo_path: string | null
+          user_id: string
+        }
+        Insert: {
+          calories?: number | null
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          description: string
+          id?: string
+          meal_type: string
+          notes?: string | null
+          photo_path?: string | null
+          user_id: string
+        }
+        Update: {
+          calories?: number | null
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          meal_type?: string
+          notes?: string | null
+          photo_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_meals_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_metrics: {
+        Row: {
+          couple_id: string | null
+          created_at: string
+          date: string
+          height: number | null
+          id: string
+          notes: string | null
+          target_weight: number | null
+          user_id: string
+          weight: number | null
+        }
+        Insert: {
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          height?: number | null
+          id?: string
+          notes?: string | null
+          target_weight?: number | null
+          user_id: string
+          weight?: number | null
+        }
+        Update: {
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          height?: number | null
+          id?: string
+          notes?: string | null
+          target_weight?: number | null
+          user_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_metrics_couple_id_fkey"
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
@@ -546,40 +843,192 @@ export type Database = {
           },
         ]
       }
+      installments: {
+        Row: {
+          amount: number
+          couple_id: string | null
+          created_at: string
+          due_date: string
+          id: string
+          installment_number: number
+          paid: boolean
+          total_installments: number
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          couple_id?: string | null
+          created_at?: string
+          due_date: string
+          id?: string
+          installment_number: number
+          paid?: boolean
+          total_installments: number
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          couple_id?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          installment_number?: number
+          paid?: boolean
+          total_installments?: number
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installments_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "installments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plans: {
+        Row: {
+          couple_id: string | null
+          created_at: string
+          day_of_week: number
+          favorite: boolean
+          id: string
+          meal_type: string
+          notes: string | null
+          title: string
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          couple_id?: string | null
+          created_at?: string
+          day_of_week: number
+          favorite?: boolean
+          id?: string
+          meal_type: string
+          notes?: string | null
+          title: string
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          couple_id?: string | null
+          created_at?: string
+          day_of_week?: number
+          favorite?: boolean
+          id?: string
+          meal_type?: string
+          notes?: string | null
+          title?: string
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plans_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memories: {
         Row: {
+          album_id: string | null
           couple_id: string | null
           created_at: string
           description: string | null
           id: string
           image_url: string | null
+          location: string | null
           memory_date: string | null
+          photo_path: string | null
           title: string
           user_id: string
         }
         Insert: {
+          album_id?: string | null
           couple_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
+          location?: string | null
           memory_date?: string | null
+          photo_path?: string | null
           title: string
           user_id: string
         }
         Update: {
+          album_id?: string | null
           couple_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
+          location?: string | null
           memory_date?: string | null
+          photo_path?: string | null
           title?: string
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "memories_album_id_fkey"
+            columns: ["album_id"]
+            isOneToOne: false
+            referencedRelation: "memory_albums"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "memories_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memory_albums: {
+        Row: {
+          couple_id: string | null
+          cover: string | null
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          couple_id?: string | null
+          cover?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          couple_id?: string | null
+          cover?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memory_albums_couple_id_fkey"
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
@@ -729,6 +1178,57 @@ export type Database = {
         }
         Relationships: []
       }
+      shopping_items: {
+        Row: {
+          category: string
+          checked: boolean
+          couple_id: string | null
+          created_at: string
+          id: string
+          meal_plan_id: string | null
+          name: string
+          quantity: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          checked?: boolean
+          couple_id?: string | null
+          created_at?: string
+          id?: string
+          meal_plan_id?: string | null
+          name: string
+          quantity?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          checked?: boolean
+          couple_id?: string | null
+          created_at?: string
+          id?: string
+          meal_plan_id?: string | null
+          name?: string
+          quantity?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_items_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_items_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -736,12 +1236,14 @@ export type Database = {
           category_id: string | null
           couple_id: string | null
           created_at: string
+          credit_card_id: string | null
           date: string
           description: string | null
           id: string
           note: string | null
           responsible_user_id: string | null
           source: string | null
+          total_installments: number | null
           type: string
           updated_at: string
           user_id: string
@@ -752,12 +1254,14 @@ export type Database = {
           category_id?: string | null
           couple_id?: string | null
           created_at?: string
+          credit_card_id?: string | null
           date?: string
           description?: string | null
           id?: string
           note?: string | null
           responsible_user_id?: string | null
           source?: string | null
+          total_installments?: number | null
           type: string
           updated_at?: string
           user_id: string
@@ -768,12 +1272,14 @@ export type Database = {
           category_id?: string | null
           couple_id?: string | null
           created_at?: string
+          credit_card_id?: string | null
           date?: string
           description?: string | null
           id?: string
           note?: string | null
           responsible_user_id?: string | null
           source?: string | null
+          total_installments?: number | null
           type?: string
           updated_at?: string
           user_id?: string
@@ -791,6 +1297,13 @@ export type Database = {
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_credit_card_id_fkey"
+            columns: ["credit_card_id"]
+            isOneToOne: false
+            referencedRelation: "credit_cards"
             referencedColumns: ["id"]
           },
         ]
@@ -829,6 +1342,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "user_points_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      water_intake: {
+        Row: {
+          couple_id: string | null
+          created_at: string
+          date: string
+          id: string
+          ml: number
+          user_id: string
+        }
+        Insert: {
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          ml?: number
+          user_id: string
+        }
+        Update: {
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          ml?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "water_intake_couple_id_fkey"
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
@@ -921,6 +1469,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "wishes_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workouts: {
+        Row: {
+          calories: number | null
+          couple_id: string | null
+          created_at: string
+          date: string
+          duration_min: number
+          id: string
+          notes: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          calories?: number | null
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          duration_min?: number
+          id?: string
+          notes?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          calories?: number | null
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          duration_min?: number
+          id?: string
+          notes?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workouts_couple_id_fkey"
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
