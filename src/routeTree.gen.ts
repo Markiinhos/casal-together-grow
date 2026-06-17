@@ -17,12 +17,19 @@ import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as ConviteCodeRouteImport } from './routes/convite.$code'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AppTarefasRouteImport } from './routes/app/tarefas'
+import { Route as AppSaudeRouteImport } from './routes/app/saude'
 import { Route as AppParceiroRouteImport } from './routes/app/parceiro'
 import { Route as AppMetasRouteImport } from './routes/app/metas'
+import { Route as AppIntegracoesRouteImport } from './routes/app/integracoes'
 import { Route as AppFinancasRouteImport } from './routes/app/financas'
 import { Route as AppDesafiosRouteImport } from './routes/app/desafios'
+import { Route as AppDatesRouteImport } from './routes/app/dates'
+import { Route as AppContasRouteImport } from './routes/app/contas'
+import { Route as AppComprasRouteImport } from './routes/app/compras'
 import { Route as AppCategoriasRouteImport } from './routes/app/categorias'
 import { Route as AppCasalRouteImport } from './routes/app/casal'
+import { Route as AppCartoesRouteImport } from './routes/app/cartoes'
+import { Route as AppCardapioRouteImport } from './routes/app/cardapio'
 import { Route as AppAgendaRouteImport } from './routes/app/agenda'
 import { Route as AppAdicionarRouteImport } from './routes/app/adicionar'
 import { Route as AppMaisRouteRouteImport } from './routes/app/mais/route'
@@ -70,6 +77,11 @@ const AppTarefasRoute = AppTarefasRouteImport.update({
   path: '/tarefas',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppSaudeRoute = AppSaudeRouteImport.update({
+  id: '/saude',
+  path: '/saude',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppParceiroRoute = AppParceiroRouteImport.update({
   id: '/parceiro',
   path: '/parceiro',
@@ -78,6 +90,11 @@ const AppParceiroRoute = AppParceiroRouteImport.update({
 const AppMetasRoute = AppMetasRouteImport.update({
   id: '/metas',
   path: '/metas',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppIntegracoesRoute = AppIntegracoesRouteImport.update({
+  id: '/integracoes',
+  path: '/integracoes',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppFinancasRoute = AppFinancasRouteImport.update({
@@ -90,6 +107,21 @@ const AppDesafiosRoute = AppDesafiosRouteImport.update({
   path: '/desafios',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppDatesRoute = AppDatesRouteImport.update({
+  id: '/dates',
+  path: '/dates',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppContasRoute = AppContasRouteImport.update({
+  id: '/contas',
+  path: '/contas',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppComprasRoute = AppComprasRouteImport.update({
+  id: '/compras',
+  path: '/compras',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppCategoriasRoute = AppCategoriasRouteImport.update({
   id: '/categorias',
   path: '/categorias',
@@ -98,6 +130,16 @@ const AppCategoriasRoute = AppCategoriasRouteImport.update({
 const AppCasalRoute = AppCasalRouteImport.update({
   id: '/casal',
   path: '/casal',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppCartoesRoute = AppCartoesRouteImport.update({
+  id: '/cartoes',
+  path: '/cartoes',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppCardapioRoute = AppCardapioRouteImport.update({
+  id: '/cardapio',
+  path: '/cardapio',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppAgendaRoute = AppAgendaRouteImport.update({
@@ -139,12 +181,19 @@ export interface FileRoutesByFullPath {
   '/app/mais': typeof AppMaisRouteRouteWithChildren
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
+  '/app/cardapio': typeof AppCardapioRoute
+  '/app/cartoes': typeof AppCartoesRoute
   '/app/casal': typeof AppCasalRoute
   '/app/categorias': typeof AppCategoriasRoute
+  '/app/compras': typeof AppComprasRoute
+  '/app/contas': typeof AppContasRoute
+  '/app/dates': typeof AppDatesRoute
   '/app/desafios': typeof AppDesafiosRoute
   '/app/financas': typeof AppFinancasRoute
+  '/app/integracoes': typeof AppIntegracoesRoute
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
+  '/app/saude': typeof AppSaudeRoute
   '/app/tarefas': typeof AppTarefasRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
@@ -159,12 +208,19 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
+  '/app/cardapio': typeof AppCardapioRoute
+  '/app/cartoes': typeof AppCartoesRoute
   '/app/casal': typeof AppCasalRoute
   '/app/categorias': typeof AppCategoriasRoute
+  '/app/compras': typeof AppComprasRoute
+  '/app/contas': typeof AppContasRoute
+  '/app/dates': typeof AppDatesRoute
   '/app/desafios': typeof AppDesafiosRoute
   '/app/financas': typeof AppFinancasRoute
+  '/app/integracoes': typeof AppIntegracoesRoute
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
+  '/app/saude': typeof AppSaudeRoute
   '/app/tarefas': typeof AppTarefasRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
@@ -182,12 +238,19 @@ export interface FileRoutesById {
   '/app/mais': typeof AppMaisRouteRouteWithChildren
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
+  '/app/cardapio': typeof AppCardapioRoute
+  '/app/cartoes': typeof AppCartoesRoute
   '/app/casal': typeof AppCasalRoute
   '/app/categorias': typeof AppCategoriasRoute
+  '/app/compras': typeof AppComprasRoute
+  '/app/contas': typeof AppContasRoute
+  '/app/dates': typeof AppDatesRoute
   '/app/desafios': typeof AppDesafiosRoute
   '/app/financas': typeof AppFinancasRoute
+  '/app/integracoes': typeof AppIntegracoesRoute
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
+  '/app/saude': typeof AppSaudeRoute
   '/app/tarefas': typeof AppTarefasRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
@@ -206,12 +269,19 @@ export interface FileRouteTypes {
     | '/app/mais'
     | '/app/adicionar'
     | '/app/agenda'
+    | '/app/cardapio'
+    | '/app/cartoes'
     | '/app/casal'
     | '/app/categorias'
+    | '/app/compras'
+    | '/app/contas'
+    | '/app/dates'
     | '/app/desafios'
     | '/app/financas'
+    | '/app/integracoes'
     | '/app/metas'
     | '/app/parceiro'
+    | '/app/saude'
     | '/app/tarefas'
     | '/auth/callback'
     | '/convite/$code'
@@ -226,12 +296,19 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/app/adicionar'
     | '/app/agenda'
+    | '/app/cardapio'
+    | '/app/cartoes'
     | '/app/casal'
     | '/app/categorias'
+    | '/app/compras'
+    | '/app/contas'
+    | '/app/dates'
     | '/app/desafios'
     | '/app/financas'
+    | '/app/integracoes'
     | '/app/metas'
     | '/app/parceiro'
+    | '/app/saude'
     | '/app/tarefas'
     | '/auth/callback'
     | '/convite/$code'
@@ -248,12 +325,19 @@ export interface FileRouteTypes {
     | '/app/mais'
     | '/app/adicionar'
     | '/app/agenda'
+    | '/app/cardapio'
+    | '/app/cartoes'
     | '/app/casal'
     | '/app/categorias'
+    | '/app/compras'
+    | '/app/contas'
+    | '/app/dates'
     | '/app/desafios'
     | '/app/financas'
+    | '/app/integracoes'
     | '/app/metas'
     | '/app/parceiro'
+    | '/app/saude'
     | '/app/tarefas'
     | '/auth/callback'
     | '/convite/$code'
@@ -329,6 +413,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTarefasRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/saude': {
+      id: '/app/saude'
+      path: '/saude'
+      fullPath: '/app/saude'
+      preLoaderRoute: typeof AppSaudeRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/parceiro': {
       id: '/app/parceiro'
       path: '/parceiro'
@@ -341,6 +432,13 @@ declare module '@tanstack/react-router' {
       path: '/metas'
       fullPath: '/app/metas'
       preLoaderRoute: typeof AppMetasRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/integracoes': {
+      id: '/app/integracoes'
+      path: '/integracoes'
+      fullPath: '/app/integracoes'
+      preLoaderRoute: typeof AppIntegracoesRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/financas': {
@@ -357,6 +455,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDesafiosRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/dates': {
+      id: '/app/dates'
+      path: '/dates'
+      fullPath: '/app/dates'
+      preLoaderRoute: typeof AppDatesRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/contas': {
+      id: '/app/contas'
+      path: '/contas'
+      fullPath: '/app/contas'
+      preLoaderRoute: typeof AppContasRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/compras': {
+      id: '/app/compras'
+      path: '/compras'
+      fullPath: '/app/compras'
+      preLoaderRoute: typeof AppComprasRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/categorias': {
       id: '/app/categorias'
       path: '/categorias'
@@ -369,6 +488,20 @@ declare module '@tanstack/react-router' {
       path: '/casal'
       fullPath: '/app/casal'
       preLoaderRoute: typeof AppCasalRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/cartoes': {
+      id: '/app/cartoes'
+      path: '/cartoes'
+      fullPath: '/app/cartoes'
+      preLoaderRoute: typeof AppCartoesRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/cardapio': {
+      id: '/app/cardapio'
+      path: '/cardapio'
+      fullPath: '/app/cardapio'
+      preLoaderRoute: typeof AppCardapioRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/agenda': {
@@ -436,12 +569,19 @@ interface AppRouteRouteChildren {
   AppMaisRouteRoute: typeof AppMaisRouteRouteWithChildren
   AppAdicionarRoute: typeof AppAdicionarRoute
   AppAgendaRoute: typeof AppAgendaRoute
+  AppCardapioRoute: typeof AppCardapioRoute
+  AppCartoesRoute: typeof AppCartoesRoute
   AppCasalRoute: typeof AppCasalRoute
   AppCategoriasRoute: typeof AppCategoriasRoute
+  AppComprasRoute: typeof AppComprasRoute
+  AppContasRoute: typeof AppContasRoute
+  AppDatesRoute: typeof AppDatesRoute
   AppDesafiosRoute: typeof AppDesafiosRoute
   AppFinancasRoute: typeof AppFinancasRoute
+  AppIntegracoesRoute: typeof AppIntegracoesRoute
   AppMetasRoute: typeof AppMetasRoute
   AppParceiroRoute: typeof AppParceiroRoute
+  AppSaudeRoute: typeof AppSaudeRoute
   AppTarefasRoute: typeof AppTarefasRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -450,12 +590,19 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppMaisRouteRoute: AppMaisRouteRouteWithChildren,
   AppAdicionarRoute: AppAdicionarRoute,
   AppAgendaRoute: AppAgendaRoute,
+  AppCardapioRoute: AppCardapioRoute,
+  AppCartoesRoute: AppCartoesRoute,
   AppCasalRoute: AppCasalRoute,
   AppCategoriasRoute: AppCategoriasRoute,
+  AppComprasRoute: AppComprasRoute,
+  AppContasRoute: AppContasRoute,
+  AppDatesRoute: AppDatesRoute,
   AppDesafiosRoute: AppDesafiosRoute,
   AppFinancasRoute: AppFinancasRoute,
+  AppIntegracoesRoute: AppIntegracoesRoute,
   AppMetasRoute: AppMetasRoute,
   AppParceiroRoute: AppParceiroRoute,
+  AppSaudeRoute: AppSaudeRoute,
   AppTarefasRoute: AppTarefasRoute,
   AppIndexRoute: AppIndexRoute,
 }
