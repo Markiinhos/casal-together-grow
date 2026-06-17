@@ -37,7 +37,7 @@ function NotifPage() {
       await supabase.from("notifications").update({ read: true }).eq("id", n.id);
       qc.invalidateQueries({ queryKey: ["notif-unread"] });
     }
-    if (n.link) navigate({ to: n.link });
+    if (n.link) navigate({ to: n.link as any });
   }
 
   return (
