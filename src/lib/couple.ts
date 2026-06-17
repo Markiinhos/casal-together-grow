@@ -47,15 +47,21 @@ export async function createCouple(name: string | null, userId: string): Promise
   return data as Couple;
 }
 
-export async function joinCoupleByCode(code: string, userId: string): Promise<Couple> {
+export async function joinCoupleByCode(code: string, _userId: string): Promise<Couple> {
+  const normalized = code.trim().toLowerCase();
+  console.log("[invite] accepting code", normalized);
+  const { data: coupleId, error: rpcError } = await supabase.rpc("join_couple_by_code", { _code: normalized });
+  if (rpcError) {
+    console.error("[invite] rpc error", rpcError);
+    throw new Error(rpcError.message || "Não foi possível aceitar o convite");
+  }
+  console.log("[invite] joined couple", coupleId);
   const { data: couple, error } = await supabase
     .from("couples")
     .select("*")
-    .eq("invite_code", code.trim().toLowerCase())
+    .eq("id", coupleId as unknown as string)
     .maybeSingle();
-  if (error) throw error;
-  if (!couple) throw new Error("Código de convite inválido");
-  await supabase.from("profiles").update({ couple_id: couple.id }).eq("id", userId);
+  if (error || !couple) throw new Error("Vínculo criado, mas não foi possível carregar o casal");
   return couple as Couple;
 }
 
