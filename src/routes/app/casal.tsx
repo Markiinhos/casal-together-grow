@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/EmptyState";
 import { Heart, Plus, Trash2, Sparkles, Trophy } from "lucide-react";
+import { CoupleAvatar } from "@/components/CouplePhotoUploader";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/casal")({
@@ -65,19 +66,22 @@ function CasalPage() {
     <>
       <AppHeader title="Espaço do Casal" subtitle={partner ? `Você + ${partner.full_name?.split(" ")[0] ?? "parceiro"}` : "Memórias e sonhos"} />
       <div className="px-4 py-4 space-y-4">
-        <Card className="rounded-3xl p-5 gradient-coral text-white border-0 shadow-soft">
-          <div className="flex items-center gap-3 mb-2">
-            <Heart className="size-6" fill="currentColor" />
-            <div className="flex-1">
-              <div className="font-bold text-lg">{couple?.name ?? "Nosso casal"}</div>
-              {couple?.start_date && (
-                <div className="text-xs text-white/85">
-                  Juntos desde {new Date(couple.start_date).toLocaleDateString("pt-BR")}
-                </div>
-              )}
+        {couple && (
+          <Card className="rounded-3xl p-5 gradient-coral text-white border-0 shadow-soft">
+            <div className="flex items-center gap-4">
+              <CoupleAvatar coupleId={couple.id} photoPath={(couple as any).photo_url ?? null} size={72} editable />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-lg truncate">{couple.name ?? "Nosso casal"}</div>
+                {couple.start_date && (
+                  <div className="text-xs text-white/85">
+                    Juntos desde {new Date(couple.start_date).toLocaleDateString("pt-BR")}
+                  </div>
+                )}
+                {partner && <div className="text-xs text-white/85 mt-0.5">Você + {partner.full_name?.split(" ")[0]}</div>}
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        )}
 
         <Tabs defaultValue="memories">
           <TabsList className="grid grid-cols-3 w-full">
