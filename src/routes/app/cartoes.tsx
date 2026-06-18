@@ -115,11 +115,52 @@ function CardsPage() {
           })
         )}
 
+        <SyncedCardsList />
         <InstallmentsList />
       </div>
     </>
   );
 }
+
+function SyncedCardsList() {
+  const { data: rows = [] } = useQuery({
+    queryKey: ["synced-cards"],
+    queryFn: async () => {
+      const { data } = await supabase.from("synced_cards").select("*").order("created_at", { ascending: false });
+      return (data ?? []) as any[];
+    },
+  });
+  if (rows.length === 0) return null;
+  return (
+    <Card className="rounded-3xl shadow-card overflow-hidden">
+      <div className="px-4 py-3 border-b border-border font-semibold text-sm flex items-center gap-2">
+        <CreditCard className="size-4 text-primary" /> Cartões sincronizados (Open Finance)
+      </div>
+      <div className="divide-y divide-border">
+        {rows.map((c) => {
+          const used = Math.max(0, Number(c.limit_amount || 0) - Number(c.available_limit || 0));
+          const pct = c.limit_amount ? Math.min(100, (used / Number(c.limit_amount)) * 100) : 0;
+          return (
+            <div key={c.id} className="px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="font-medium text-sm">{c.card_name || "Cartão"} {c.card_brand && <span className="text-xs text-muted-foreground">· {c.card_brand}</span>}</div>
+                <div className="text-xs text-muted-foreground">Vence dia {c.due_day ?? "—"}</div>
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {formatBRL(used)} usado de {formatBRL(Number(c.limit_amount || 0))}
+              </div>
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden mt-1.5">
+                <div className="h-full gradient-coral" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+
 
 function InstallmentsList() {
   const { user } = useAuth();

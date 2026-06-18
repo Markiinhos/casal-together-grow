@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, Plus, RefreshCw, Trash2, ShieldCheck } from "lucide-react";
+import { Landmark, Plus, RefreshCw, Trash2, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { PluggyConnect } from "react-pluggy-connect";
@@ -25,13 +25,16 @@ type Conn = {
   status: string | null;
   last_synced_at: string | null;
 };
+type Acc = { id: string; name: string | null; type: string | null; balance: number; hidden: boolean; user_id: string };
 
 function IntegrationsPage() {
   const [connections, setConnections] = useState<Conn[]>([]);
+  const [accounts, setAccounts] = useState<Acc[]>([]);
+  const [scope, setScope] = useState<"all" | "mine">("all");
   const [token, setToken] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [totals, setTotals] = useState({ balance: 0, accounts: 0, cards: 0 });
+  const [me, setMe] = useState<string | null>(null);
 
   const createToken = useServerFn(createPluggyConnectToken);
   const saveItem = useServerFn(savePluggyItem);
@@ -39,6 +42,9 @@ function IntegrationsPage() {
   const deleteConn = useServerFn(deletePluggyConnection);
 
   async function load() {
+    const { data: u } = await supabase.auth.getUser();
+    setMe(u.user?.id ?? null);
+
     const { data: conns } = await supabase
       .from("bank_connections")
       .select("id, institution_name, institution_logo, status, last_synced_at")
@@ -48,13 +54,24 @@ function IntegrationsPage() {
 
     const { data: accts } = await supabase
       .from("bank_accounts")
-      .select("balance, type, hidden")
-      .eq("hidden", false);
-    const balance = (accts ?? []).reduce((s, a: any) => s + Number(a.balance || 0), 0);
-    const accounts = (accts ?? []).filter((a: any) => a.type !== "CREDIT").length;
-    const cards = (accts ?? []).filter((a: any) => a.type === "CREDIT").length;
-    setTotals({ balance, accounts, cards });
+      .select("id, name, type, balance, hidden, user_id")
+      .order("created_at");
+    setAccounts((accts ?? []) as any);
   }
+
+  async function toggleHidden(id: string, hidden: boolean) {
+    await supabase.from("bank_accounts").update({ hidden: !hidden }).eq("id", id);
+    await load();
+  }
+
+  const visibleAccounts = accounts
+    .filter((a) => !a.hidden)
+    .filter((a) => (scope === "mine" ? a.user_id === me : true));
+  const totals = {
+    balance: visibleAccounts.reduce((s, a) => s + Number(a.balance || 0), 0),
+    accounts: visibleAccounts.filter((a) => a.type !== "CREDIT").length,
+    cards: visibleAccounts.filter((a) => a.type === "CREDIT").length,
+  };
 
   useEffect(() => {
     load();
@@ -108,7 +125,13 @@ function IntegrationsPage() {
       <AppHeader title="Open Finance" subtitle="Conecte seus bancos" />
       <div className="px-4 py-4 space-y-4">
         <Card className="rounded-3xl p-4 bg-gradient-to-br from-primary/10 to-accent-purple/10 border-primary/20">
-          <div className="text-xs text-muted-foreground">Saldo consolidado</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs text-muted-foreground">Saldo consolidado</div>
+            <div className="flex bg-background/60 rounded-full p-0.5">
+              <button onClick={() => setScope("all")} className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${scope === "all" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Casal</button>
+              <button onClick={() => setScope("mine")} className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${scope === "mine" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Eu</button>
+            </div>
+          </div>
           <div className="text-3xl font-bold mt-1">
             {totals.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </div>
@@ -116,6 +139,26 @@ function IntegrationsPage() {
             {totals.accounts} conta(s) · {totals.cards} cartão(ões)
           </div>
         </Card>
+
+        {accounts.length > 0 && (
+          <Card className="rounded-3xl shadow-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-border font-semibold text-sm">Contas</div>
+            <div className="divide-y divide-border">
+              {accounts.map((a) => (
+                <div key={a.id} className={`px-4 py-3 flex items-center gap-3 ${a.hidden ? "opacity-50" : ""}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{a.name || "Conta"}</div>
+                    <div className="text-[11px] text-muted-foreground">{a.type === "CREDIT" ? "Cartão" : "Conta corrente"}</div>
+                  </div>
+                  <div className="text-sm font-semibold">{Number(a.balance).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                  <button onClick={() => toggleHidden(a.id, a.hidden)} className="size-8 rounded-lg hover:bg-accent flex items-center justify-center" title={a.hidden ? "Mostrar" : "Ocultar"}>
+                    {a.hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         <Button onClick={handleConnect} disabled={loading} className="w-full rounded-2xl h-12 gap-2">
           <Plus className="size-4" /> Conectar banco

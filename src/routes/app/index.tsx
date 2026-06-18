@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { CoupleAvatar } from "@/components/CouplePhotoUploader";
+import { FinanceInsights } from "@/components/FinanceInsights";
 import { TrendingUp, TrendingDown, Target, CheckSquare, CalendarDays, Heart, UserPlus } from "lucide-react";
 
 export const Route = createFileRoute("/app/")({
@@ -137,6 +138,8 @@ function HomePage() {
             </div>
           </div>
         </Card>
+
+        <FinanceInsights />
 
         {/* Goals */}
         <section>
