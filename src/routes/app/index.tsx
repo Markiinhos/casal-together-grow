@@ -139,6 +139,8 @@ function HomePage() {
           </div>
         </Card>
 
+        <FinanceInsights />
+
         {/* Goals */}
         <section>
           <div className="flex items-center justify-between mb-3">
