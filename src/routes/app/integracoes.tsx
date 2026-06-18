@@ -25,6 +25,7 @@ type Conn = {
   status: string | null;
   last_synced_at: string | null;
 };
+type Acc = { id: string; name: string | null; type: string | null; balance: number; hidden: boolean; user_id: string };
 
 function IntegrationsPage() {
   const [connections, setConnections] = useState<Conn[]>([]);
