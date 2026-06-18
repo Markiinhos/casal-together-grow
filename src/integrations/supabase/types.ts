@@ -753,6 +753,104 @@ export type Database = {
           },
         ]
       }
+      habit_logs: {
+        Row: {
+          couple_id: string | null
+          created_at: string
+          date: string
+          habit_id: string
+          id: string
+          note: string | null
+          user_id: string
+        }
+        Insert: {
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          habit_id: string
+          id?: string
+          note?: string | null
+          user_id: string
+        }
+        Update: {
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          habit_id?: string
+          id?: string
+          note?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_logs_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "habit_logs_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habits: {
+        Row: {
+          active: boolean | null
+          color: string | null
+          couple_id: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          period: string | null
+          scope: string | null
+          target_per_week: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          color?: string | null
+          couple_id?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          period?: string | null
+          scope?: string | null
+          target_per_week?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          color?: string | null
+          couple_id?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          period?: string | null
+          scope?: string | null
+          target_per_week?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habits_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       health_meals: {
         Row: {
           calories: number | null
@@ -1209,6 +1307,59 @@ export type Database = {
         }
         Relationships: []
       }
+      period_goals: {
+        Row: {
+          couple_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          period_start: string
+          period_type: string
+          priority: string | null
+          scope: string | null
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          couple_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          period_start: string
+          period_type: string
+          priority?: string | null
+          scope?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          couple_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          period_start?: string
+          period_type?: string
+          priority?: string | null
+          scope?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "period_goals_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       photos: {
         Row: {
           caption: string | null
@@ -1275,6 +1426,130 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routine_completions: {
+        Row: {
+          couple_id: string | null
+          created_at: string
+          date: string
+          id: string
+          routine_item_id: string
+          user_id: string
+        }
+        Insert: {
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          routine_item_id: string
+          user_id: string
+        }
+        Update: {
+          couple_id?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          routine_item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_completions_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_completions_routine_item_id_fkey"
+            columns: ["routine_item_id"]
+            isOneToOne: false
+            referencedRelation: "routine_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routine_items: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          position: number | null
+          routine_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          position?: number | null
+          routine_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          position?: number | null
+          routine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_items_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routines: {
+        Row: {
+          active: boolean | null
+          couple_id: string | null
+          created_at: string
+          id: string
+          period: string
+          position: number | null
+          scope: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          weekdays: number[] | null
+        }
+        Insert: {
+          active?: boolean | null
+          couple_id?: string | null
+          created_at?: string
+          id?: string
+          period?: string
+          position?: number | null
+          scope?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          weekdays?: number[] | null
+        }
+        Update: {
+          active?: boolean | null
+          couple_id?: string | null
+          created_at?: string
+          id?: string
+          period?: string
+          position?: number | null
+          scope?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          weekdays?: number[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routines_couple_id_fkey"
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
