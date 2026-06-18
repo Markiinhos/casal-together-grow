@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
-import { Wallet, ListChecks, Target, Tag, Heart, CreditCard, Calendar as CalIcon, Utensils, ShoppingBasket, HeartPulse, Landmark, Bell, Settings as SettingsIcon, LogOut, Trophy } from "lucide-react";
+import { Wallet, ListChecks, Target, Tag, Heart, CreditCard, Calendar as CalIcon, Utensils, ShoppingBasket, HeartPulse, Landmark, Bell, Settings as SettingsIcon, LogOut, Trophy, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/app/mais")({
