@@ -52,6 +52,65 @@ export type Database = {
           },
         ]
       }
+      bank_accounts: {
+        Row: {
+          account_number: string | null
+          balance: number | null
+          connection_id: string
+          couple_id: string | null
+          created_at: string
+          currency: string | null
+          hidden: boolean
+          id: string
+          name: string | null
+          pluggy_account_id: string
+          subtype: string | null
+          type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_number?: string | null
+          balance?: number | null
+          connection_id: string
+          couple_id?: string | null
+          created_at?: string
+          currency?: string | null
+          hidden?: boolean
+          id?: string
+          name?: string | null
+          pluggy_account_id: string
+          subtype?: string | null
+          type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_number?: string | null
+          balance?: number | null
+          connection_id?: string
+          couple_id?: string | null
+          created_at?: string
+          currency?: string | null
+          hidden?: boolean
+          id?: string
+          name?: string | null
+          pluggy_account_id?: string
+          subtype?: string | null
+          type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_accounts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "bank_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_connections: {
         Row: {
           access_token: string | null
@@ -59,7 +118,12 @@ export type Database = {
           created_at: string
           expires_at: string | null
           id: string
+          institution_id: string | null
+          institution_logo: string | null
+          institution_name: string | null
+          last_synced_at: string | null
           metadata: Json | null
+          pluggy_item_id: string | null
           provider: string
           refresh_token: string | null
           status: string
@@ -72,7 +136,12 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          institution_id?: string | null
+          institution_logo?: string | null
+          institution_name?: string | null
+          last_synced_at?: string | null
           metadata?: Json | null
+          pluggy_item_id?: string | null
           provider: string
           refresh_token?: string | null
           status?: string
@@ -85,7 +154,12 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           id?: string
+          institution_id?: string | null
+          institution_logo?: string | null
+          institution_name?: string | null
+          last_synced_at?: string | null
           metadata?: Json | null
+          pluggy_item_id?: string | null
           provider?: string
           refresh_token?: string | null
           status?: string
@@ -98,6 +172,72 @@ export type Database = {
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bank_transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          category: string | null
+          couple_id: string | null
+          created_at: string
+          currency: string | null
+          date: string
+          description: string | null
+          id: string
+          imported_tx_id: string | null
+          pluggy_category: string | null
+          pluggy_transaction_id: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          category?: string | null
+          couple_id?: string | null
+          created_at?: string
+          currency?: string | null
+          date: string
+          description?: string | null
+          id?: string
+          imported_tx_id?: string | null
+          pluggy_category?: string | null
+          pluggy_transaction_id: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          category?: string | null
+          couple_id?: string | null
+          created_at?: string
+          currency?: string | null
+          date?: string
+          description?: string | null
+          id?: string
+          imported_tx_id?: string | null
+          pluggy_category?: string | null
+          pluggy_transaction_id?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_transactions_imported_tx_id_fkey"
+            columns: ["imported_tx_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -1229,6 +1369,78 @@ export type Database = {
           },
         ]
       }
+      synced_cards: {
+        Row: {
+          account_id: string | null
+          available_limit: number | null
+          card_brand: string | null
+          card_last_digits: string | null
+          card_name: string | null
+          closing_day: number | null
+          connection_id: string
+          couple_id: string | null
+          created_at: string
+          current_bill: number | null
+          due_day: number | null
+          id: string
+          limit_amount: number | null
+          pluggy_card_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          available_limit?: number | null
+          card_brand?: string | null
+          card_last_digits?: string | null
+          card_name?: string | null
+          closing_day?: number | null
+          connection_id: string
+          couple_id?: string | null
+          created_at?: string
+          current_bill?: number | null
+          due_day?: number | null
+          id?: string
+          limit_amount?: number | null
+          pluggy_card_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          available_limit?: number | null
+          card_brand?: string | null
+          card_last_digits?: string | null
+          card_name?: string | null
+          closing_day?: number | null
+          connection_id?: string
+          couple_id?: string | null
+          created_at?: string
+          current_bill?: number | null
+          due_day?: number | null
+          id?: string
+          limit_amount?: number | null
+          pluggy_card_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "synced_cards_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "synced_cards_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "bank_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -1240,7 +1452,9 @@ export type Database = {
           date: string
           description: string | null
           id: string
+          imported_from: string | null
           note: string | null
+          pluggy_transaction_id: string | null
           responsible_user_id: string | null
           source: string | null
           total_installments: number | null
@@ -1258,7 +1472,9 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
+          imported_from?: string | null
           note?: string | null
+          pluggy_transaction_id?: string | null
           responsible_user_id?: string | null
           source?: string | null
           total_installments?: number | null
@@ -1276,7 +1492,9 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
+          imported_from?: string | null
           note?: string | null
+          pluggy_transaction_id?: string | null
           responsible_user_id?: string | null
           source?: string | null
           total_installments?: number | null
