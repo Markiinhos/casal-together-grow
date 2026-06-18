@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
-import { Wallet, ListChecks, Target, Tag, Heart, CreditCard, Calendar as CalIcon, Utensils, ShoppingBasket, HeartPulse, Landmark, Bell, Settings as SettingsIcon, LogOut, Trophy } from "lucide-react";
+import { Wallet, ListChecks, Target, Tag, Heart, CreditCard, Calendar as CalIcon, Utensils, ShoppingBasket, HeartPulse, Landmark, Bell, Settings as SettingsIcon, LogOut, Trophy, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/app/mais")({
@@ -9,6 +9,7 @@ export const Route = createFileRoute("/app/mais")({
 });
 
 const items = [
+  { to: "/app/rotina", icon: Sun, label: "Rotina", color: "text-warning-foreground", bg: "bg-warning/10" },
   { to: "/app/financas", icon: Wallet, label: "Finanças", color: "text-primary", bg: "bg-primary/10" },
   { to: "/app/cartoes", icon: CreditCard, label: "Cartões", color: "text-accent-purple", bg: "bg-accent-purple/10" },
   { to: "/app/contas", icon: CalIcon, label: "Contas futuras", color: "text-warning-foreground", bg: "bg-warning/10" },
