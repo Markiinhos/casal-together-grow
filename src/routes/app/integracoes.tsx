@@ -29,10 +29,12 @@ type Acc = { id: string; name: string | null; type: string | null; balance: numb
 
 function IntegrationsPage() {
   const [connections, setConnections] = useState<Conn[]>([]);
+  const [accounts, setAccounts] = useState<Acc[]>([]);
+  const [scope, setScope] = useState<"all" | "mine">("all");
   const [token, setToken] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [totals, setTotals] = useState({ balance: 0, accounts: 0, cards: 0 });
+  const [me, setMe] = useState<string | null>(null);
 
   const createToken = useServerFn(createPluggyConnectToken);
   const saveItem = useServerFn(savePluggyItem);
@@ -40,6 +42,9 @@ function IntegrationsPage() {
   const deleteConn = useServerFn(deletePluggyConnection);
 
   async function load() {
+    const { data: u } = await supabase.auth.getUser();
+    setMe(u.user?.id ?? null);
+
     const { data: conns } = await supabase
       .from("bank_connections")
       .select("id, institution_name, institution_logo, status, last_synced_at")
@@ -49,13 +54,24 @@ function IntegrationsPage() {
 
     const { data: accts } = await supabase
       .from("bank_accounts")
-      .select("balance, type, hidden")
-      .eq("hidden", false);
-    const balance = (accts ?? []).reduce((s, a: any) => s + Number(a.balance || 0), 0);
-    const accounts = (accts ?? []).filter((a: any) => a.type !== "CREDIT").length;
-    const cards = (accts ?? []).filter((a: any) => a.type === "CREDIT").length;
-    setTotals({ balance, accounts, cards });
+      .select("id, name, type, balance, hidden, user_id")
+      .order("created_at");
+    setAccounts((accts ?? []) as any);
   }
+
+  async function toggleHidden(id: string, hidden: boolean) {
+    await supabase.from("bank_accounts").update({ hidden: !hidden }).eq("id", id);
+    await load();
+  }
+
+  const visibleAccounts = accounts
+    .filter((a) => !a.hidden)
+    .filter((a) => (scope === "mine" ? a.user_id === me : true));
+  const totals = {
+    balance: visibleAccounts.reduce((s, a) => s + Number(a.balance || 0), 0),
+    accounts: visibleAccounts.filter((a) => a.type !== "CREDIT").length,
+    cards: visibleAccounts.filter((a) => a.type === "CREDIT").length,
+  };
 
   useEffect(() => {
     load();
