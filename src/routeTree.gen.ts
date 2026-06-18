@@ -18,6 +18,7 @@ import { Route as ConviteCodeRouteImport } from './routes/convite.$code'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AppTarefasRouteImport } from './routes/app/tarefas'
 import { Route as AppSaudeRouteImport } from './routes/app/saude'
+import { Route as AppRotinaRouteImport } from './routes/app/rotina'
 import { Route as AppParceiroRouteImport } from './routes/app/parceiro'
 import { Route as AppMetasRouteImport } from './routes/app/metas'
 import { Route as AppIntegracoesRouteImport } from './routes/app/integracoes'
@@ -80,6 +81,11 @@ const AppTarefasRoute = AppTarefasRouteImport.update({
 const AppSaudeRoute = AppSaudeRouteImport.update({
   id: '/saude',
   path: '/saude',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppRotinaRoute = AppRotinaRouteImport.update({
+  id: '/rotina',
+  path: '/rotina',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppParceiroRoute = AppParceiroRouteImport.update({
@@ -193,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/app/integracoes': typeof AppIntegracoesRoute
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
+  '/app/rotina': typeof AppRotinaRoute
   '/app/saude': typeof AppSaudeRoute
   '/app/tarefas': typeof AppTarefasRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -220,6 +227,7 @@ export interface FileRoutesByTo {
   '/app/integracoes': typeof AppIntegracoesRoute
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
+  '/app/rotina': typeof AppRotinaRoute
   '/app/saude': typeof AppSaudeRoute
   '/app/tarefas': typeof AppTarefasRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/app/integracoes': typeof AppIntegracoesRoute
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
+  '/app/rotina': typeof AppRotinaRoute
   '/app/saude': typeof AppSaudeRoute
   '/app/tarefas': typeof AppTarefasRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/app/integracoes'
     | '/app/metas'
     | '/app/parceiro'
+    | '/app/rotina'
     | '/app/saude'
     | '/app/tarefas'
     | '/auth/callback'
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/app/integracoes'
     | '/app/metas'
     | '/app/parceiro'
+    | '/app/rotina'
     | '/app/saude'
     | '/app/tarefas'
     | '/auth/callback'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/app/integracoes'
     | '/app/metas'
     | '/app/parceiro'
+    | '/app/rotina'
     | '/app/saude'
     | '/app/tarefas'
     | '/auth/callback'
@@ -418,6 +430,13 @@ declare module '@tanstack/react-router' {
       path: '/saude'
       fullPath: '/app/saude'
       preLoaderRoute: typeof AppSaudeRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/rotina': {
+      id: '/app/rotina'
+      path: '/rotina'
+      fullPath: '/app/rotina'
+      preLoaderRoute: typeof AppRotinaRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/parceiro': {
@@ -581,6 +600,7 @@ interface AppRouteRouteChildren {
   AppIntegracoesRoute: typeof AppIntegracoesRoute
   AppMetasRoute: typeof AppMetasRoute
   AppParceiroRoute: typeof AppParceiroRoute
+  AppRotinaRoute: typeof AppRotinaRoute
   AppSaudeRoute: typeof AppSaudeRoute
   AppTarefasRoute: typeof AppTarefasRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -602,6 +622,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppIntegracoesRoute: AppIntegracoesRoute,
   AppMetasRoute: AppMetasRoute,
   AppParceiroRoute: AppParceiroRoute,
+  AppRotinaRoute: AppRotinaRoute,
   AppSaudeRoute: AppSaudeRoute,
   AppTarefasRoute: AppTarefasRoute,
   AppIndexRoute: AppIndexRoute,

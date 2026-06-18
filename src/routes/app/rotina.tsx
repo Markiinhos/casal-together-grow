@@ -135,7 +135,7 @@ function TodayTab() {
       </div>
 
       {habits.length === 0 ? (
-        <EmptyState title="Sem hábitos" description="Crie hábitos na aba Hábitos para acompanhá-los aqui." />
+        <EmptyState icon={Sparkles} title="Sem hábitos" description="Crie hábitos na aba Hábitos para acompanhá-los aqui." />
       ) : (
         <>
           {PERIODS.map(p => {
@@ -257,7 +257,7 @@ function HabitsTab() {
       </Dialog>
 
       {habits.length === 0 ? (
-        <EmptyState title="Nenhum hábito" description="Comece criando o primeiro hábito."/>
+        <EmptyState icon={Sparkles} title="Nenhum hábito" description="Comece criando o primeiro hábito."/>
       ) : (
         <div className="space-y-2">
           {habits.map((h: any) => (
@@ -371,7 +371,7 @@ function RoutinesTab() {
       </Dialog>
 
       {routines.length === 0 ? (
-        <EmptyState title="Sem rotinas" description="Crie rotinas de manhã, tarde e noite com checklists."/>
+        <EmptyState icon={Sun} title="Sem rotinas" description="Crie rotinas de manhã, tarde e noite com checklists."/>
       ) : routines.map((r: any) => {
         const p = PERIODS.find(x=>x.value===r.period);
         return (
