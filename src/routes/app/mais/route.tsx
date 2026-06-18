@@ -9,6 +9,7 @@ export const Route = createFileRoute("/app/mais")({
 });
 
 const items = [
+  { to: "/app/rotina", icon: Sun, label: "Rotina", color: "text-warning-foreground", bg: "bg-warning/10" },
   { to: "/app/financas", icon: Wallet, label: "Finanças", color: "text-primary", bg: "bg-primary/10" },
   { to: "/app/cartoes", icon: CreditCard, label: "Cartões", color: "text-accent-purple", bg: "bg-accent-purple/10" },
   { to: "/app/contas", icon: CalIcon, label: "Contas futuras", color: "text-warning-foreground", bg: "bg-warning/10" },
