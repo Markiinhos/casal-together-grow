@@ -1144,6 +1144,8 @@ export type Database = {
           id: string
           meal_type: string
           notes: string | null
+          recipe_id: string | null
+          servings: number | null
           title: string
           user_id: string
           week_start: string
@@ -1156,6 +1158,8 @@ export type Database = {
           id?: string
           meal_type: string
           notes?: string | null
+          recipe_id?: string | null
+          servings?: number | null
           title: string
           user_id: string
           week_start: string
@@ -1168,6 +1172,8 @@ export type Database = {
           id?: string
           meal_type?: string
           notes?: string | null
+          recipe_id?: string | null
+          servings?: number | null
           title?: string
           user_id?: string
           week_start?: string
@@ -1178,6 +1184,13 @@ export type Database = {
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plans_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
             referencedColumns: ["id"]
           },
         ]
@@ -1426,6 +1439,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          couple_id: string | null
+          created_at: string
+          description: string | null
+          favorite: boolean | null
+          id: string
+          image_url: string | null
+          ingredients: Json
+          instructions: string | null
+          name: string
+          prep_minutes: number | null
+          servings: number | null
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          couple_id?: string | null
+          created_at?: string
+          description?: string | null
+          favorite?: boolean | null
+          id?: string
+          image_url?: string | null
+          ingredients?: Json
+          instructions?: string | null
+          name: string
+          prep_minutes?: number | null
+          servings?: number | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          couple_id?: string | null
+          created_at?: string
+          description?: string | null
+          favorite?: boolean | null
+          id?: string
+          image_url?: string | null
+          ingredients?: Json
+          instructions?: string | null
+          name?: string
+          prep_minutes?: number | null
+          servings?: number | null
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_couple_id_fkey"
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
