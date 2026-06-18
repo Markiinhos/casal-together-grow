@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, Plus, RefreshCw, Trash2, ShieldCheck } from "lucide-react";
+import { Landmark, Plus, RefreshCw, Trash2, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { PluggyConnect } from "react-pluggy-connect";
