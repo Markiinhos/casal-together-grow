@@ -125,7 +125,13 @@ function IntegrationsPage() {
       <AppHeader title="Open Finance" subtitle="Conecte seus bancos" />
       <div className="px-4 py-4 space-y-4">
         <Card className="rounded-3xl p-4 bg-gradient-to-br from-primary/10 to-accent-purple/10 border-primary/20">
-          <div className="text-xs text-muted-foreground">Saldo consolidado</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs text-muted-foreground">Saldo consolidado</div>
+            <div className="flex bg-background/60 rounded-full p-0.5">
+              <button onClick={() => setScope("all")} className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${scope === "all" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Casal</button>
+              <button onClick={() => setScope("mine")} className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${scope === "mine" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Eu</button>
+            </div>
+          </div>
           <div className="text-3xl font-bold mt-1">
             {totals.balance.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
           </div>
@@ -133,6 +139,26 @@ function IntegrationsPage() {
             {totals.accounts} conta(s) · {totals.cards} cartão(ões)
           </div>
         </Card>
+
+        {accounts.length > 0 && (
+          <Card className="rounded-3xl shadow-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-border font-semibold text-sm">Contas</div>
+            <div className="divide-y divide-border">
+              {accounts.map((a) => (
+                <div key={a.id} className={`px-4 py-3 flex items-center gap-3 ${a.hidden ? "opacity-50" : ""}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{a.name || "Conta"}</div>
+                    <div className="text-[11px] text-muted-foreground">{a.type === "CREDIT" ? "Cartão" : "Conta corrente"}</div>
+                  </div>
+                  <div className="text-sm font-semibold">{Number(a.balance).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
+                  <button onClick={() => toggleHidden(a.id, a.hidden)} className="size-8 rounded-lg hover:bg-accent flex items-center justify-center" title={a.hidden ? "Mostrar" : "Ocultar"}>
+                    {a.hidden ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         <Button onClick={handleConnect} disabled={loading} className="w-full rounded-2xl h-12 gap-2">
           <Plus className="size-4" /> Conectar banco
