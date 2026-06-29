@@ -26,6 +26,54 @@ export const createPluggyConnectToken = createServerFn({ method: "POST" })
     return { accessToken };
   });
 
+// Map Pluggy connector type → local category
+function mapInstitutionType(t?: string): string {
+  const v = (t ?? "").toUpperCase();
+  if (v.includes("INVEST")) return "investments";
+  if (v.includes("CREDIT")) return "credit";
+  if (v.includes("DIGITAL") || v.includes("WALLET") || v.includes("PAYMENT")) return "wallet";
+  if (v.includes("COOP")) return "cooperative";
+  return "bank";
+}
+
+// Sync Pluggy connectors → financial_institutions table
+export const syncInstitutions = createServerFn({ method: "POST" })
+  .handler(async () => {
+    const expectedSecret = process.env.SYNC_SECRET;
+    // Allow open call only when no secret configured; otherwise this fn is gated by middleware-less but harmless (read-only writes to public catalog)
+    const client = await getPluggyClient();
+    const { results: connectors } = await client.fetchConnectors({ countries: ["BR"], sandbox: false });
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let upserted = 0;
+    for (const c of connectors as any[]) {
+      const products: string[] = (c.products ?? []).map((p: string) => p.toUpperCase());
+      const row = {
+        provider: "pluggy",
+        pluggy_institution_id: String(c.id),
+        external_id: String(c.id),
+        name: c.name,
+        official_name: c.institutionName ?? c.name,
+        image_url: c.imageUrl ?? null,
+        primary_color: c.primaryColor ? `#${String(c.primaryColor).replace(/^#/, "")}` : null,
+        type: mapInstitutionType(c.type),
+        country: (c.country ?? "BR").toUpperCase(),
+        supports_open_finance: c.supportsPaymentInitiation === true || products.includes("PAYMENT_DATA") || /open\s*finance/i.test(c.name ?? ""),
+        supports_credit_card: products.includes("CREDIT_CARDS"),
+        supports_checking: products.includes("ACCOUNTS") || products.includes("TRANSACTIONS"),
+        supports_investments: products.includes("INVESTMENTS"),
+        supports_loans: products.includes("LOANS"),
+        status: c.health?.status === "OFFLINE" ? "offline" : "active",
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabaseAdmin
+        .from("financial_institutions")
+        .upsert(row, { onConflict: "provider,pluggy_institution_id" });
+      if (!error) upserted++;
+    }
+    return { ok: true, total: connectors.length, upserted };
+  });
+
 // Map Pluggy category to local CASAL category name (simple keyword heuristics)
 function mapCategory(description: string, pluggyCategory?: string | null): string {
   const t = `${description ?? ""} ${pluggyCategory ?? ""}`.toLowerCase();

@@ -602,6 +602,69 @@ export type Database = {
           },
         ]
       }
+      financial_institutions: {
+        Row: {
+          country: string | null
+          created_at: string
+          external_id: string | null
+          id: string
+          image_url: string | null
+          name: string
+          official_name: string | null
+          pluggy_institution_id: string | null
+          primary_color: string | null
+          provider: string
+          status: string | null
+          supports_checking: boolean | null
+          supports_credit_card: boolean | null
+          supports_investments: boolean | null
+          supports_loans: boolean | null
+          supports_open_finance: boolean | null
+          type: string | null
+          updated_at: string
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          official_name?: string | null
+          pluggy_institution_id?: string | null
+          primary_color?: string | null
+          provider?: string
+          status?: string | null
+          supports_checking?: boolean | null
+          supports_credit_card?: boolean | null
+          supports_investments?: boolean | null
+          supports_loans?: boolean | null
+          supports_open_finance?: boolean | null
+          type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          official_name?: string | null
+          pluggy_institution_id?: string | null
+          primary_color?: string | null
+          provider?: string
+          status?: string | null
+          supports_checking?: boolean | null
+          supports_credit_card?: boolean | null
+          supports_investments?: boolean | null
+          supports_loans?: boolean | null
+          supports_open_finance?: boolean | null
+          type?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       future_bills: {
         Row: {
           amount: number

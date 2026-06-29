@@ -3,8 +3,9 @@ import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, Plus, RefreshCw, Trash2, ShieldCheck, Eye, EyeOff } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Landmark, Plus, RefreshCw, Trash2, ShieldCheck, Eye, EyeOff, Search, ArrowLeft } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { PluggyConnect } from "react-pluggy-connect";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,7 @@ import {
   savePluggyItem,
   syncPluggyConnection,
   deletePluggyConnection,
+  syncInstitutions,
 } from "@/lib/pluggy.functions";
 
 export const Route = createFileRoute("/app/integracoes")({ component: IntegrationsPage });
@@ -26,12 +28,34 @@ type Conn = {
   last_synced_at: string | null;
 };
 type Acc = { id: string; name: string | null; type: string | null; balance: number; hidden: boolean; user_id: string };
+type Inst = {
+  id: string;
+  pluggy_institution_id: string | null;
+  name: string;
+  image_url: string | null;
+  primary_color: string | null;
+  type: string | null;
+};
+
+const CATEGORIES: { key: string; label: string }[] = [
+  { key: "all", label: "Todos" },
+  { key: "bank", label: "Bancos" },
+  { key: "wallet", label: "Carteiras" },
+  { key: "investments", label: "Investimentos" },
+  { key: "cooperative", label: "Cooperativas" },
+  { key: "credit", label: "Crédito" },
+];
 
 function IntegrationsPage() {
   const [connections, setConnections] = useState<Conn[]>([]);
   const [accounts, setAccounts] = useState<Acc[]>([]);
+  const [institutions, setInstitutions] = useState<Inst[]>([]);
   const [scope, setScope] = useState<"all" | "mine">("all");
+  const [picking, setPicking] = useState(false);
+  const [query, setQuery] = useState("");
+  const [cat, setCat] = useState("all");
   const [token, setToken] = useState<string | null>(null);
+  const [selectedConnector, setSelectedConnector] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [me, setMe] = useState<string | null>(null);
@@ -40,23 +64,45 @@ function IntegrationsPage() {
   const saveItem = useServerFn(savePluggyItem);
   const syncConn = useServerFn(syncPluggyConnection);
   const deleteConn = useServerFn(deletePluggyConnection);
+  const syncInst = useServerFn(syncInstitutions);
 
   async function load() {
     const { data: u } = await supabase.auth.getUser();
     setMe(u.user?.id ?? null);
 
-    const { data: conns } = await supabase
-      .from("bank_connections")
-      .select("id, institution_name, institution_logo, status, last_synced_at")
-      .eq("provider", "pluggy")
-      .order("created_at", { ascending: false });
+    const [{ data: conns }, { data: accts }, { data: insts }] = await Promise.all([
+      supabase
+        .from("bank_connections")
+        .select("id, institution_name, institution_logo, status, last_synced_at")
+        .eq("provider", "pluggy")
+        .order("created_at", { ascending: false }),
+      supabase.from("bank_accounts").select("id, name, type, balance, hidden, user_id").order("created_at"),
+      (supabase as any)
+        .from("financial_institutions")
+        .select("id, pluggy_institution_id, name, image_url, primary_color, type")
+        .eq("provider", "pluggy")
+        .eq("status", "active")
+        .order("name"),
+    ]);
     setConnections((conns ?? []) as any);
-
-    const { data: accts } = await supabase
-      .from("bank_accounts")
-      .select("id, name, type, balance, hidden, user_id")
-      .order("created_at");
     setAccounts((accts ?? []) as any);
+    setInstitutions((insts ?? []) as any);
+
+    // Auto-seed catalog on first run
+    if (!insts || insts.length === 0) {
+      try {
+        await syncInst({ data: undefined } as any);
+        const { data: again } = await (supabase as any)
+          .from("financial_institutions")
+          .select("id, pluggy_institution_id, name, image_url, primary_color, type")
+          .eq("provider", "pluggy")
+          .eq("status", "active")
+          .order("name");
+        setInstitutions((again ?? []) as any);
+      } catch (e) {
+        console.error("syncInstitutions failed", e);
+      }
+    }
   }
 
   async function toggleHidden(id: string, hidden: boolean) {
@@ -73,16 +119,26 @@ function IntegrationsPage() {
     cards: visibleAccounts.filter((a) => a.type === "CREDIT").length,
   };
 
+  const filteredInst = useMemo(() => {
+    return institutions.filter((i) => {
+      if (cat !== "all" && i.type !== cat) return false;
+      if (query && !i.name.toLowerCase().includes(query.toLowerCase())) return false;
+      return true;
+    });
+  }, [institutions, cat, query]);
+
   useEffect(() => {
     load();
   }, []);
 
-  async function handleConnect() {
+  async function openConnect(inst?: Inst) {
     try {
       setLoading(true);
-      const { accessToken } = await createToken({ data: {} });
+      const { accessToken } = await createToken({ data: {} } as any);
       setToken(accessToken);
+      setSelectedConnector(inst?.pluggy_institution_id ? Number(inst.pluggy_institution_id) : null);
       setOpen(true);
+      setPicking(false);
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao iniciar conexão");
     } finally {
@@ -118,6 +174,80 @@ function IntegrationsPage() {
     await deleteConn({ data: { connectionId: id } });
     toast.success("Conexão removida");
     await load();
+  }
+
+  if (picking) {
+    return (
+      <>
+        <AppHeader title="Conectar banco" subtitle="Escolha sua instituição" />
+        <div className="px-4 py-4 space-y-3">
+          <Button variant="ghost" size="sm" onClick={() => setPicking(false)} className="gap-1 -ml-2">
+            <ArrowLeft className="size-4" /> Voltar
+          </Button>
+          <div className="relative">
+            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar banco..."
+              className="pl-9 rounded-2xl h-11"
+            />
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.key}
+                onClick={() => setCat(c.key)}
+                className={`shrink-0 text-xs px-3 py-1.5 rounded-full font-medium border transition ${
+                  cat === c.key ? "bg-primary text-primary-foreground border-primary" : "bg-background border-border text-muted-foreground"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          {filteredInst.length === 0 ? (
+            <div className="text-center py-12 text-sm text-muted-foreground">
+              Nenhuma instituição encontrada.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {filteredInst.map((i) => (
+                <button
+                  key={i.id}
+                  onClick={() => openConnect(i)}
+                  className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-border hover:bg-accent transition"
+                  style={i.primary_color ? { borderColor: `${i.primary_color}33` } : {}}
+                >
+                  {i.image_url ? (
+                    <img src={i.image_url} alt={i.name} className="size-12 rounded-xl object-contain bg-white p-1" />
+                  ) : (
+                    <div className="size-12 rounded-xl bg-accent flex items-center justify-center">
+                      <Landmark className="size-5" />
+                    </div>
+                  )}
+                  <div className="text-xs font-medium text-center line-clamp-2">{i.name}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {open && token && (
+          <PluggyConnect
+            connectToken={token}
+            includeSandbox={false}
+            connectorIds={selectedConnector ? [selectedConnector] : undefined}
+            onSuccess={onSuccess}
+            onError={(err) => {
+              console.error("Pluggy error", err);
+              toast.error("Erro na conexão");
+              setOpen(false);
+            }}
+            onClose={() => setOpen(false)}
+          />
+        )}
+      </>
+    );
   }
 
   return (
@@ -160,7 +290,7 @@ function IntegrationsPage() {
           </Card>
         )}
 
-        <Button onClick={handleConnect} disabled={loading} className="w-full rounded-2xl h-12 gap-2">
+        <Button onClick={() => setPicking(true)} disabled={loading} className="w-full rounded-2xl h-12 gap-2">
           <Plus className="size-4" /> Conectar banco
         </Button>
 
@@ -207,20 +337,6 @@ function IntegrationsPage() {
               </Card>
             ))}
           </div>
-        )}
-
-        {open && token && (
-          <PluggyConnect
-            connectToken={token}
-            includeSandbox={false}
-            onSuccess={onSuccess}
-            onError={(err) => {
-              console.error("Pluggy error", err);
-              toast.error("Erro na conexão");
-              setOpen(false);
-            }}
-            onClose={() => setOpen(false)}
-          />
         )}
       </div>
     </>
