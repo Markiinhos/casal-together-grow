@@ -33,6 +33,8 @@ import { Route as AppCartoesRouteImport } from './routes/app/cartoes'
 import { Route as AppCardapioRouteImport } from './routes/app/cardapio'
 import { Route as AppAgendaRouteImport } from './routes/app/agenda'
 import { Route as AppAdicionarRouteImport } from './routes/app/adicionar'
+import { Route as AppNossoRouteRouteImport } from './routes/app/nosso/route'
+import { Route as AppMeuRouteRouteImport } from './routes/app/meu/route'
 import { Route as AppMaisRouteRouteImport } from './routes/app/mais/route'
 import { Route as AppMaisIndexRouteImport } from './routes/app/mais/index'
 import { Route as AppMaisNotificacoesRouteImport } from './routes/app/mais/notificacoes'
@@ -159,6 +161,16 @@ const AppAdicionarRoute = AppAdicionarRouteImport.update({
   path: '/adicionar',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppNossoRouteRoute = AppNossoRouteRouteImport.update({
+  id: '/nosso',
+  path: '/nosso',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppMeuRouteRoute = AppMeuRouteRouteImport.update({
+  id: '/meu',
+  path: '/meu',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppMaisRouteRoute = AppMaisRouteRouteImport.update({
   id: '/mais',
   path: '/mais',
@@ -192,6 +204,8 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/app/mais': typeof AppMaisRouteRouteWithChildren
+  '/app/meu': typeof AppMeuRouteRoute
+  '/app/nosso': typeof AppNossoRouteRoute
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/cardapio': typeof AppCardapioRoute
@@ -221,6 +235,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/app/meu': typeof AppMeuRouteRoute
+  '/app/nosso': typeof AppNossoRouteRoute
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/cardapio': typeof AppCardapioRoute
@@ -253,6 +269,8 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/app/mais': typeof AppMaisRouteRouteWithChildren
+  '/app/meu': typeof AppMeuRouteRoute
+  '/app/nosso': typeof AppNossoRouteRoute
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/cardapio': typeof AppCardapioRoute
@@ -286,6 +304,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/app/mais'
+    | '/app/meu'
+    | '/app/nosso'
     | '/app/adicionar'
     | '/app/agenda'
     | '/app/cardapio'
@@ -315,6 +335,8 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/app/meu'
+    | '/app/nosso'
     | '/app/adicionar'
     | '/app/agenda'
     | '/app/cardapio'
@@ -346,6 +368,8 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/app/mais'
+    | '/app/meu'
+    | '/app/nosso'
     | '/app/adicionar'
     | '/app/agenda'
     | '/app/cardapio'
@@ -551,6 +575,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdicionarRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/nosso': {
+      id: '/app/nosso'
+      path: '/nosso'
+      fullPath: '/app/nosso'
+      preLoaderRoute: typeof AppNossoRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/meu': {
+      id: '/app/meu'
+      path: '/meu'
+      fullPath: '/app/meu'
+      preLoaderRoute: typeof AppMeuRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/mais': {
       id: '/app/mais'
       path: '/mais'
@@ -607,6 +645,8 @@ const AppMaisRouteRouteWithChildren = AppMaisRouteRoute._addFileChildren(
 
 interface AppRouteRouteChildren {
   AppMaisRouteRoute: typeof AppMaisRouteRouteWithChildren
+  AppMeuRouteRoute: typeof AppMeuRouteRoute
+  AppNossoRouteRoute: typeof AppNossoRouteRoute
   AppAdicionarRoute: typeof AppAdicionarRoute
   AppAgendaRoute: typeof AppAgendaRoute
   AppCardapioRoute: typeof AppCardapioRoute
@@ -629,6 +669,8 @@ interface AppRouteRouteChildren {
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppMaisRouteRoute: AppMaisRouteRouteWithChildren,
+  AppMeuRouteRoute: AppMeuRouteRoute,
+  AppNossoRouteRoute: AppNossoRouteRoute,
   AppAdicionarRoute: AppAdicionarRoute,
   AppAgendaRoute: AppAgendaRoute,
   AppCardapioRoute: AppCardapioRoute,

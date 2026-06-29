@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile, useCouple, usePartner } from "@/lib/hooks";
+import { useSpace, applySpaceFilter } from "@/lib/space";
 import { formatBRL } from "@/lib/couple";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
@@ -10,7 +11,17 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { CoupleAvatar } from "@/components/CouplePhotoUploader";
 import { FinanceInsights } from "@/components/FinanceInsights";
-import { TrendingUp, TrendingDown, Target, CheckSquare, CalendarDays, Heart, UserPlus } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Target,
+  CheckSquare,
+  CalendarDays,
+  Heart,
+  UserPlus,
+  Activity,
+  Droplet,
+} from "lucide-react";
 
 export const Route = createFileRoute("/app/")({
   component: HomePage,
@@ -21,18 +32,21 @@ function HomePage() {
   const { data: profile } = useProfile();
   const { data: couple } = useCouple();
   const { data: partner } = usePartner();
+  const { space } = useSpace();
   const coupleId = profile?.couple_id ?? null;
 
-  // Current month finance summary
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+
   const { data: txSummary } = useQuery({
-    queryKey: ["home-tx", coupleId, user?.id, monthStart],
+    queryKey: ["home-tx", space, coupleId, user?.id, monthStart],
     queryFn: async () => {
-      const q = supabase.from("transactions").select("type,amount").gte("date", monthStart);
-      const { data } = coupleId
-        ? await q.eq("couple_id", coupleId)
-        : await q.eq("user_id", user!.id);
-      let income = 0, expense = 0;
+      let q: any = supabase.from("transactions").select("type,amount").gte("date", monthStart);
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
+      let income = 0,
+        expense = 0;
       (data ?? []).forEach((t: any) => {
         if (t.type === "income") income += Number(t.amount);
         if (t.type === "expense") expense += Number(t.amount);
@@ -43,34 +57,95 @@ function HomePage() {
   });
 
   const { data: goals } = useQuery({
-    queryKey: ["home-goals", coupleId, user?.id],
+    queryKey: ["home-goals", space, coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("goals").select("*").eq("status", "active").order("created_at", { ascending: false }).limit(3);
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
+      let q: any = supabase
+        .from("goals")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(3);
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return data ?? [];
     },
     enabled: !!user,
   });
 
   const { data: upcomingEvents } = useQuery({
-    queryKey: ["home-events", coupleId, user?.id],
+    queryKey: ["home-events", space, coupleId, user?.id],
     queryFn: async () => {
       const today = new Date().toISOString().slice(0, 10);
-      const q = supabase.from("events").select("*").gte("event_date", today).order("event_date").limit(3);
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
+      let q: any = supabase
+        .from("events")
+        .select("*")
+        .gte("event_date", today)
+        .order("event_date")
+        .limit(3);
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return data ?? [];
     },
     enabled: !!user,
   });
 
   const { data: pendingTasks } = useQuery({
-    queryKey: ["home-tasks", coupleId, user?.id],
+    queryKey: ["home-tasks", space, coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("house_tasks").select("*").eq("completed", false).order("due_date", { nullsFirst: false }).limit(5);
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
+      let q: any = supabase
+        .from("house_tasks")
+        .select("*")
+        .eq("completed", false)
+        .order("due_date", { nullsFirst: false })
+        .limit(5);
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return data ?? [];
     },
     enabled: !!user,
+  });
+
+  // Private-only widgets
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: waterToday } = useQuery({
+    queryKey: ["home-water", user?.id, today],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("water_intake")
+        .select("ml")
+        .eq("user_id", user!.id)
+        .eq("date", today);
+      return (data ?? []).reduce((s: number, r: any) => s + Number(r.ml ?? 0), 0);
+    },
+    enabled: !!user && space === "private",
+  });
+
+  const { data: lastWeight } = useQuery({
+    queryKey: ["home-weight", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("health_metrics")
+        .select("weight,date")
+        .eq("user_id", user!.id)
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user && space === "private",
+  });
+
+  const { data: habitsToday } = useQuery({
+    queryKey: ["home-habits", user?.id, today],
+    queryFn: async () => {
+      const [habits, logs] = await Promise.all([
+        supabase.from("habits").select("id,name,icon").eq("user_id", user!.id).eq("active", true),
+        supabase.from("habit_logs").select("habit_id").eq("user_id", user!.id).eq("date", today),
+      ]);
+      const done = new Set((logs.data ?? []).map((l: any) => l.habit_id));
+      return (habits.data ?? []).map((h: any) => ({ ...h, done: done.has(h.id) })).slice(0, 4);
+    },
+    enabled: !!user && space === "private",
   });
 
   const greeting = (() => {
@@ -79,24 +154,39 @@ function HomePage() {
     if (h < 18) return "Boa tarde";
     return "Boa noite";
   })();
-
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
+  const isPrivate = space === "private";
 
   return (
     <>
-      <AppHeader title={couple?.name || "Casal"} subtitle={partner ? `Você + ${partner.full_name?.split(" ")[0] ?? "parceiro"}` : "Convide seu parceiro"} />
+      <AppHeader
+        title={isPrivate ? "Meu Espaço" : couple?.name || "Nosso Espaço"}
+        subtitle={
+          isPrivate
+            ? "Apenas você vê estes dados"
+            : partner
+              ? `Você + ${partner.full_name?.split(" ")[0] ?? "parceiro"}`
+              : "Convide seu parceiro"
+        }
+      />
       <div className="px-4 py-4 space-y-5">
         <div className="flex items-center gap-3">
-          {couple && (
-            <CoupleAvatar coupleId={couple.id} photoPath={(couple as any).photo_url ?? null} size={56} />
+          {!isPrivate && couple && (
+            <CoupleAvatar
+              coupleId={couple.id}
+              photoPath={(couple as any).photo_url ?? null}
+              size={56}
+            />
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm text-muted-foreground">{greeting},</p>
-            <h2 className="text-2xl font-bold truncate">{firstName} 💛</h2>
+            <h2 className="text-2xl font-bold truncate">
+              {firstName} {isPrivate ? "👤" : "💛"}
+            </h2>
           </div>
         </div>
 
-        {!coupleId && (
+        {!isPrivate && !coupleId && (
           <Card className="rounded-3xl p-5 gradient-coral text-white border-0 shadow-soft">
             <div className="flex items-start gap-3">
               <div className="size-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
@@ -104,7 +194,9 @@ function HomePage() {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold mb-0.5">Conecte seu parceiro</h3>
-                <p className="text-sm text-white/85 mb-3">Compartilhem finanças, agenda e metas em tempo real.</p>
+                <p className="text-sm text-white/85 mb-3">
+                  Compartilhem finanças, agenda e metas em tempo real.
+                </p>
                 <Link to="/app/parceiro">
                   <Button size="sm" className="bg-white text-primary hover:bg-white/90 rounded-xl">
                     Convidar
@@ -115,42 +207,101 @@ function HomePage() {
           </Card>
         )}
 
-        {/* Finance summary */}
         <Card className="rounded-3xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Resumo do mês</h3>
-            <Link to="/app/financas" className="text-xs text-primary font-medium">Ver tudo</Link>
+            <h3 className="font-semibold">{isPrivate ? "Minhas finanças do mês" : "Resumo do mês"}</h3>
+            <Link to="/app/financas" className="text-xs text-primary font-medium">
+              Ver tudo
+            </Link>
           </div>
           <div className="text-3xl font-bold mb-1">{formatBRL(txSummary?.balance ?? 0)}</div>
           <p className="text-xs text-muted-foreground mb-4">Saldo atual</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-success/10 p-3">
               <div className="flex items-center gap-1.5 text-success mb-1">
-                <TrendingUp className="size-4" /><span className="text-xs font-medium">Receitas</span>
+                <TrendingUp className="size-4" />
+                <span className="text-xs font-medium">Receitas</span>
               </div>
               <div className="font-semibold text-sm">{formatBRL(txSummary?.income ?? 0)}</div>
             </div>
             <div className="rounded-2xl bg-destructive/10 p-3">
               <div className="flex items-center gap-1.5 text-destructive mb-1">
-                <TrendingDown className="size-4" /><span className="text-xs font-medium">Despesas</span>
+                <TrendingDown className="size-4" />
+                <span className="text-xs font-medium">Despesas</span>
               </div>
               <div className="font-semibold text-sm">{formatBRL(txSummary?.expense ?? 0)}</div>
             </div>
           </div>
         </Card>
 
-        <FinanceInsights />
+        {!isPrivate && <FinanceInsights />}
 
-        {/* Goals */}
+        {isPrivate && (
+          <section>
+            <h3 className="font-semibold mb-3">Saúde de hoje</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Card className="rounded-2xl p-4 shadow-card">
+                <div className="flex items-center gap-2 text-primary mb-2">
+                  <Droplet className="size-4" />
+                  <span className="text-xs font-medium">Água</span>
+                </div>
+                <div className="text-xl font-bold">{((waterToday ?? 0) / 1000).toFixed(1)} L</div>
+                <Link to="/app/saude" className="text-xs text-primary mt-1 inline-block">
+                  Registrar
+                </Link>
+              </Card>
+              <Card className="rounded-2xl p-4 shadow-card">
+                <div className="flex items-center gap-2 text-destructive mb-2">
+                  <Activity className="size-4" />
+                  <span className="text-xs font-medium">Peso</span>
+                </div>
+                <div className="text-xl font-bold">
+                  {lastWeight?.weight ? `${Number(lastWeight.weight).toFixed(1)} kg` : "—"}
+                </div>
+                <Link to="/app/saude" className="text-xs text-primary mt-1 inline-block">
+                  Atualizar
+                </Link>
+              </Card>
+            </div>
+          </section>
+        )}
+
+        {isPrivate && habitsToday && habitsToday.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">Hábitos de hoje</h3>
+              <Link to="/app/rotina" className="text-xs text-primary font-medium">
+                Ver tudo
+              </Link>
+            </div>
+            <Card className="rounded-2xl divide-y divide-border shadow-card overflow-hidden">
+              {habitsToday.map((h: any) => (
+                <div key={h.id} className="px-4 py-3 flex items-center gap-3">
+                  <div
+                    className={`size-5 rounded-full border-2 ${h.done ? "bg-primary border-primary" : "border-muted-foreground"}`}
+                  />
+                  <div className="flex-1 text-sm font-medium">{h.name}</div>
+                  {h.done && <span className="text-xs text-success">✓</span>}
+                </div>
+              ))}
+            </Card>
+          </section>
+        )}
+
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold">Metas ativas</h3>
-            <Link to="/app/metas" className="text-xs text-primary font-medium">Ver tudo</Link>
+            <h3 className="font-semibold">{isPrivate ? "Minhas metas" : "Metas ativas"}</h3>
+            <Link to="/app/metas" className="text-xs text-primary font-medium">
+              Ver tudo
+            </Link>
           </div>
           {goals && goals.length > 0 ? (
             <div className="space-y-2">
               {goals.map((g: any) => {
-                const pct = g.target_amount > 0 ? Math.min(100, (Number(g.current_amount) / Number(g.target_amount)) * 100) : 0;
+                const pct =
+                  g.target_amount > 0
+                    ? Math.min(100, (Number(g.current_amount) / Number(g.target_amount)) * 100)
+                    : 0;
                 return (
                   <Card key={g.id} className="rounded-2xl p-4 shadow-card">
                     <div className="flex items-center gap-3 mb-2">
@@ -159,7 +310,9 @@ function HomePage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm truncate">{g.name}</div>
-                        <div className="text-xs text-muted-foreground">{formatBRL(Number(g.current_amount))} de {formatBRL(Number(g.target_amount))}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatBRL(Number(g.current_amount))} de {formatBRL(Number(g.target_amount))}
+                        </div>
                       </div>
                       <div className="text-sm font-semibold text-primary">{Math.round(pct)}%</div>
                     </div>
@@ -172,46 +325,52 @@ function HomePage() {
             </div>
           ) : (
             <Card className="rounded-2xl p-4 shadow-card">
-              <EmptyState icon={Target} title="Sem metas" description="Crie sua primeira meta a dois" action={
-                <Link to="/app/metas"><Button size="sm" className="rounded-xl">Criar meta</Button></Link>
-              } />
+              <EmptyState icon={Target} title="Sem metas" description="Crie sua primeira meta" />
             </Card>
           )}
         </section>
 
-        {/* Upcoming events */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">Próximos compromissos</h3>
-            <Link to="/app/agenda" className="text-xs text-primary font-medium">Ver tudo</Link>
+            <Link to="/app/agenda" className="text-xs text-primary font-medium">
+              Ver tudo
+            </Link>
           </div>
           {upcomingEvents && upcomingEvents.length > 0 ? (
             <div className="space-y-2">
               {upcomingEvents.map((e: any) => (
                 <Card key={e.id} className="rounded-2xl p-3 shadow-card flex items-center gap-3">
                   <div className="size-10 rounded-xl bg-accent-purple/10 flex flex-col items-center justify-center shrink-0">
-                    <span className="text-[10px] uppercase font-semibold text-accent-purple">{new Date(e.event_date).toLocaleDateString("pt-BR", { month: "short" }).slice(0, 3)}</span>
-                    <span className="text-sm font-bold text-accent-purple leading-none">{new Date(e.event_date).getDate()}</span>
+                    <span className="text-[10px] uppercase font-semibold text-accent-purple">
+                      {new Date(e.event_date).toLocaleDateString("pt-BR", { month: "short" }).slice(0, 3)}
+                    </span>
+                    <span className="text-sm font-bold text-accent-purple leading-none">
+                      {new Date(e.event_date).getDate()}
+                    </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm truncate">{e.title}</div>
-                    <div className="text-xs text-muted-foreground">{e.event_time?.slice(0, 5) ?? "Dia todo"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {e.event_time?.slice(0, 5) ?? "Dia todo"}
+                    </div>
                   </div>
                 </Card>
               ))}
             </div>
           ) : (
             <Card className="rounded-2xl p-4 shadow-card">
-              <EmptyState icon={CalendarDays} title="Nenhum compromisso" description="Adicione eventos para vocês dois" />
+              <EmptyState icon={CalendarDays} title="Nenhum compromisso" description="Adicione eventos" />
             </Card>
           )}
         </section>
 
-        {/* Tasks */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">Tarefas pendentes</h3>
-            <Link to="/app/tarefas" className="text-xs text-primary font-medium">Ver tudo</Link>
+            <Link to="/app/tarefas" className="text-xs text-primary font-medium">
+              Ver tudo
+            </Link>
           </div>
           {pendingTasks && pendingTasks.length > 0 ? (
             <Card className="rounded-2xl divide-y divide-border shadow-card overflow-hidden">
@@ -220,19 +379,29 @@ function HomePage() {
                   <CheckSquare className="size-4 text-muted-foreground shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{t.name}</div>
-                    {t.due_date && <div className="text-xs text-muted-foreground">{new Date(t.due_date).toLocaleDateString("pt-BR")}</div>}
+                    {t.due_date && (
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(t.due_date).toLocaleDateString("pt-BR")}
+                      </div>
+                    )}
                   </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    t.priority === "high" ? "bg-destructive/10 text-destructive" :
-                    t.priority === "medium" ? "bg-warning/10 text-warning-foreground" :
-                    "bg-muted text-muted-foreground"
-                  }`}>{t.priority === "high" ? "Alta" : t.priority === "medium" ? "Média" : "Baixa"}</span>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                      t.priority === "high"
+                        ? "bg-destructive/10 text-destructive"
+                        : t.priority === "medium"
+                          ? "bg-warning/10 text-warning-foreground"
+                          : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {t.priority === "high" ? "Alta" : t.priority === "medium" ? "Média" : "Baixa"}
+                  </span>
                 </div>
               ))}
             </Card>
           ) : (
             <Card className="rounded-2xl p-4 shadow-card">
-              <EmptyState icon={Heart} title="Tudo em dia ✨" description="Sem tarefas pendentes no momento" />
+              <EmptyState icon={Heart} title="Tudo em dia ✨" description="Sem tarefas pendentes" />
             </Card>
           )}
         </section>
