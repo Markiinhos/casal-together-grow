@@ -1090,6 +1090,7 @@ export type Database = {
           id: string
           installment_number: number
           paid: boolean
+          paid_at: string | null
           total_installments: number
           transaction_id: string
           user_id: string
@@ -1102,6 +1103,7 @@ export type Database = {
           id?: string
           installment_number: number
           paid?: boolean
+          paid_at?: string | null
           total_installments: number
           transaction_id: string
           user_id: string
@@ -1114,6 +1116,7 @@ export type Database = {
           id?: string
           installment_number?: number
           paid?: boolean
+          paid_at?: string | null
           total_installments?: number
           transaction_id?: string
           user_id?: string
