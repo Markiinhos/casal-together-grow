@@ -3,9 +3,10 @@ import { Bell, Settings as SettingsIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { SpaceToggle } from "@/components/SpaceToggle";
 import logoAsset from "@/assets/casal-logo.png.asset.json";
 
-export function AppHeader({ title, subtitle }: { title?: string; subtitle?: string }) {
+export function AppHeader({ title, subtitle, showSpaceToggle = true }: { title?: string; subtitle?: string; showSpaceToggle?: boolean }) {
   const { user } = useAuth();
   const { data: unread = 0 } = useQuery({
     queryKey: ["notif-unread", user?.id],
@@ -41,6 +42,11 @@ export function AppHeader({ title, subtitle }: { title?: string; subtitle?: stri
           <SettingsIcon className="size-5 text-muted-foreground" />
         </Link>
       </div>
+      {showSpaceToggle && (
+        <div className="max-w-md mx-auto px-4 pb-3 flex justify-center">
+          <SpaceToggle />
+        </div>
+      )}
     </header>
   );
 }
