@@ -68,6 +68,7 @@ export type Database = {
           type: string | null
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           account_number?: string | null
@@ -84,6 +85,7 @@ export type Database = {
           type?: string | null
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           account_number?: string | null
@@ -100,6 +102,7 @@ export type Database = {
           type?: string | null
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -129,6 +132,7 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           access_token?: string | null
@@ -147,6 +151,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           access_token?: string | null
@@ -165,6 +170,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -253,6 +259,7 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           color?: string
@@ -264,6 +271,7 @@ export type Database = {
           type: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           color?: string
@@ -275,6 +283,7 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -417,6 +426,7 @@ export type Database = {
           name: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           bank?: string | null
@@ -430,6 +440,7 @@ export type Database = {
           name: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           bank?: string | null
@@ -443,6 +454,7 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -498,6 +510,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           couple_id?: string | null
@@ -512,6 +525,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           couple_id?: string | null
@@ -526,6 +540,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -555,6 +570,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           category?: string | null
@@ -573,6 +589,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           category?: string | null
@@ -591,6 +608,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -679,6 +697,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           amount?: number
@@ -693,6 +712,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           amount?: number
@@ -707,6 +727,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -777,6 +798,7 @@ export type Database = {
           target_amount: number
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           couple_id?: string | null
@@ -791,6 +813,7 @@ export type Database = {
           target_amount?: number
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           couple_id?: string | null
@@ -805,6 +828,7 @@ export type Database = {
           target_amount?: number
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -825,6 +849,7 @@ export type Database = {
           id: string
           note: string | null
           user_id: string
+          visibility: string
         }
         Insert: {
           couple_id?: string | null
@@ -834,6 +859,7 @@ export type Database = {
           id?: string
           note?: string | null
           user_id: string
+          visibility?: string
         }
         Update: {
           couple_id?: string | null
@@ -843,6 +869,7 @@ export type Database = {
           id?: string
           note?: string | null
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -875,6 +902,7 @@ export type Database = {
           target_per_week: number | null
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           active?: boolean | null
@@ -889,6 +917,7 @@ export type Database = {
           target_per_week?: number | null
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           active?: boolean | null
@@ -903,6 +932,7 @@ export type Database = {
           target_per_week?: number | null
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -926,6 +956,7 @@ export type Database = {
           notes: string | null
           photo_path: string | null
           user_id: string
+          visibility: string
         }
         Insert: {
           calories?: number | null
@@ -938,6 +969,7 @@ export type Database = {
           notes?: string | null
           photo_path?: string | null
           user_id: string
+          visibility?: string
         }
         Update: {
           calories?: number | null
@@ -950,6 +982,7 @@ export type Database = {
           notes?: string | null
           photo_path?: string | null
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -971,6 +1004,7 @@ export type Database = {
           notes: string | null
           target_weight: number | null
           user_id: string
+          visibility: string
           weight: number | null
         }
         Insert: {
@@ -982,6 +1016,7 @@ export type Database = {
           notes?: string | null
           target_weight?: number | null
           user_id: string
+          visibility?: string
           weight?: number | null
         }
         Update: {
@@ -993,6 +1028,7 @@ export type Database = {
           notes?: string | null
           target_weight?: number | null
           user_id?: string
+          visibility?: string
           weight?: number | null
         }
         Relationships: [
@@ -1090,6 +1126,7 @@ export type Database = {
           responsible_user_id: string | null
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           category_id?: string | null
@@ -1108,6 +1145,7 @@ export type Database = {
           responsible_user_id?: string | null
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           category_id?: string | null
@@ -1126,6 +1164,7 @@ export type Database = {
           responsible_user_id?: string | null
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -1157,6 +1196,7 @@ export type Database = {
           total_installments: number
           transaction_id: string
           user_id: string
+          visibility: string
         }
         Insert: {
           amount: number
@@ -1170,6 +1210,7 @@ export type Database = {
           total_installments: number
           transaction_id: string
           user_id: string
+          visibility?: string
         }
         Update: {
           amount?: number
@@ -1183,6 +1224,7 @@ export type Database = {
           total_installments?: number
           transaction_id?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -1214,6 +1256,7 @@ export type Database = {
           servings: number | null
           title: string
           user_id: string
+          visibility: string
           week_start: string
         }
         Insert: {
@@ -1228,6 +1271,7 @@ export type Database = {
           servings?: number | null
           title: string
           user_id: string
+          visibility?: string
           week_start: string
         }
         Update: {
@@ -1242,6 +1286,7 @@ export type Database = {
           servings?: number | null
           title?: string
           user_id?: string
+          visibility?: string
           week_start?: string
         }
         Relationships: [
@@ -1274,6 +1319,7 @@ export type Database = {
           photo_path: string | null
           title: string
           user_id: string
+          visibility: string
         }
         Insert: {
           album_id?: string | null
@@ -1287,6 +1333,7 @@ export type Database = {
           photo_path?: string | null
           title: string
           user_id: string
+          visibility?: string
         }
         Update: {
           album_id?: string | null
@@ -1300,6 +1347,7 @@ export type Database = {
           photo_path?: string | null
           title?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -1400,6 +1448,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           couple_id?: string | null
@@ -1414,6 +1463,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           couple_id?: string | null
@@ -1428,6 +1478,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -1528,6 +1579,7 @@ export type Database = {
           tags: string[] | null
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           couple_id?: string | null
@@ -1544,6 +1596,7 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           couple_id?: string | null
@@ -1560,6 +1613,7 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -1657,6 +1711,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          visibility: string
           weekdays: number[] | null
         }
         Insert: {
@@ -1670,6 +1725,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          visibility?: string
           weekdays?: number[] | null
         }
         Update: {
@@ -1683,6 +1739,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
           weekdays?: number[] | null
         }
         Relationships: [
@@ -1742,6 +1799,7 @@ export type Database = {
           name: string
           quantity: string | null
           user_id: string
+          visibility: string
         }
         Insert: {
           category?: string
@@ -1753,6 +1811,7 @@ export type Database = {
           name: string
           quantity?: string | null
           user_id: string
+          visibility?: string
         }
         Update: {
           category?: string
@@ -1764,6 +1823,7 @@ export type Database = {
           name?: string
           quantity?: string | null
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -1874,6 +1934,7 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           amount: number
@@ -1894,6 +1955,7 @@ export type Database = {
           type: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           amount?: number
@@ -1914,6 +1976,7 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -1988,6 +2051,7 @@ export type Database = {
           id: string
           ml: number
           user_id: string
+          visibility: string
         }
         Insert: {
           couple_id?: string | null
@@ -1996,6 +2060,7 @@ export type Database = {
           id?: string
           ml?: number
           user_id: string
+          visibility?: string
         }
         Update: {
           couple_id?: string | null
@@ -2004,6 +2069,7 @@ export type Database = {
           id?: string
           ml?: number
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -2074,6 +2140,7 @@ export type Database = {
           title: string
           type: string
           user_id: string
+          visibility: string
         }
         Insert: {
           achieved?: boolean
@@ -2085,6 +2152,7 @@ export type Database = {
           title: string
           type?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           achieved?: boolean
@@ -2096,6 +2164,7 @@ export type Database = {
           title?: string
           type?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -2118,6 +2187,7 @@ export type Database = {
           notes: string | null
           type: string
           user_id: string
+          visibility: string
         }
         Insert: {
           calories?: number | null
@@ -2129,6 +2199,7 @@ export type Database = {
           notes?: string | null
           type: string
           user_id: string
+          visibility?: string
         }
         Update: {
           calories?: number | null
@@ -2140,6 +2211,7 @@ export type Database = {
           notes?: string | null
           type?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
