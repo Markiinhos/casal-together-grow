@@ -37,6 +37,7 @@ import { Route as AppMaisRouteRouteImport } from './routes/app/mais/route'
 import { Route as AppMaisIndexRouteImport } from './routes/app/mais/index'
 import { Route as AppMaisNotificacoesRouteImport } from './routes/app/mais/notificacoes'
 import { Route as AppMaisConfiguracoesRouteImport } from './routes/app/mais/configuracoes'
+import { Route as ApiPublicHooksSyncInstitutionsRouteImport } from './routes/api/public/hooks/sync-institutions'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -178,6 +179,12 @@ const AppMaisConfiguracoesRoute = AppMaisConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => AppMaisRouteRoute,
 } as any)
+const ApiPublicHooksSyncInstitutionsRoute =
+  ApiPublicHooksSyncInstitutionsRouteImport.update({
+    id: '/api/public/hooks/sync-institutions',
+    path: '/api/public/hooks/sync-institutions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
   '/app/mais/': typeof AppMaisIndexRoute
+  '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -236,6 +244,7 @@ export interface FileRoutesByTo {
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
   '/app/mais': typeof AppMaisIndexRoute
+  '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -267,6 +276,7 @@ export interface FileRoutesById {
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
   '/app/mais/': typeof AppMaisIndexRoute
+  '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
     | '/app/mais/'
+    | '/api/public/hooks/sync-institutions'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -327,6 +338,7 @@ export interface FileRouteTypes {
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
     | '/app/mais'
+    | '/api/public/hooks/sync-institutions'
   id:
     | '__root__'
     | '/'
@@ -357,6 +369,7 @@ export interface FileRouteTypes {
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
     | '/app/mais/'
+    | '/api/public/hooks/sync-institutions'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -365,6 +378,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   ConviteCodeRoute: typeof ConviteCodeRoute
+  ApiPublicHooksSyncInstitutionsRoute: typeof ApiPublicHooksSyncInstitutionsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -565,6 +579,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMaisConfiguracoesRouteImport
       parentRoute: typeof AppMaisRouteRoute
     }
+    '/api/public/hooks/sync-institutions': {
+      id: '/api/public/hooks/sync-institutions'
+      path: '/api/public/hooks/sync-institutions'
+      fullPath: '/api/public/hooks/sync-institutions'
+      preLoaderRoute: typeof ApiPublicHooksSyncInstitutionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -648,6 +669,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   ConviteCodeRoute: ConviteCodeRoute,
+  ApiPublicHooksSyncInstitutionsRoute: ApiPublicHooksSyncInstitutionsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
