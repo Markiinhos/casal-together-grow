@@ -1,112 +1,111 @@
-# CASAL V3 — Expansão Completa
 
-Pedido enorme. Vou entregar em **5 fases incrementais** para você validar progresso e evitar uma única entrega gigante difícil de revisar. Cada fase fica funcional ao final, com tabelas, RLS, realtime e telas.
+# Reestruturação CASAL — Meu Espaço × Nosso Espaço
 
-A identidade visual atual (tokens em `src/styles.css`, AppShell, AppHeader) será mantida em todas as telas.
+Vamos transformar o app em duas experiências integradas, com privacidade real garantida no banco e troca de contexto fluida na UI.
 
----
+## 1. Modelo de dados
 
-## Estado atual (o que já existe e será reaproveitado)
+Adicionar em todas as tabelas relevantes a coluna:
 
-- Finanças básicas, cartões/parcelamentos, Open Finance (Pluggy), insights
-- Tarefas da casa (`house_tasks`, categorias, histórico)
-- Saúde básica (`health_metrics`, `health_meals`, `water_intake`, `workouts`)
-- Cardápio básico (`meal_plans`, `shopping_items`)
-- Metas (`goals`), Dates, Memórias, Notificações
-- Gamificação parcial: `user_points`, `achievements`, `challenges`, `challenge_progress`, função `award_points`
+```
+visibility text not null default 'shared'  -- 'private' | 'shared'
+```
 
-Vou **estender** essas tabelas em vez de duplicá-las.
+Tabelas afetadas (já existem todas):
+- `transactions`, `credit_cards`, `bank_accounts`, `bank_connections`, `installments`, `future_bills`
+- `house_tasks`, `goals`, `events`, `memories`, `wishes`, `dates`
+- `habits`, `habit_logs`, `routines`, `routine_items`, `period_goals`
+- `health_metrics`, `water_intake`, `workouts`, `health_meals`
+- `meal_plans`, `shopping_items`, `recipes`, `categories`
 
----
+### Regra de migração dos dados existentes
 
-## Fase 1 — Módulo Rotina (novo)
+| Módulo | Decisão |
+|---|---|
+| Finanças (transações, cartões, contas, parcelas, contas futuras) | `shared` (histórico do casal continua visível) |
+| Tarefas da casa, metas, eventos, cardápio, lista de compras, receitas, categorias, memórias, wishes, dates | `shared` |
+| Hábitos, logs, rotinas, metas de período | `private` do criador |
+| Saúde (peso, água, treinos, refeições saúde) | `private` do criador |
 
-**Tabelas novas:**
-- `habits` (nome, ícone, frequência, período manhã/tarde/noite, target_per_week, scope individual/casal)
-- `habit_logs` (habit_id, date, completed_by)
-- `routines` (título, período do dia, ordem, dias da semana, scope)
-- `routine_items` (routine_id, label, ordem)
-- `routine_completions` (routine_id, date, user_id)
-- `weekly_goals` / `monthly_goals` (título, status, week_start/month)
+### RLS (padrão para todas as tabelas)
 
-Tudo com RLS via `is_couple_member`, GRANTs, realtime.
+```sql
+-- SELECT
+using (
+  (visibility = 'private' and user_id = auth.uid())
+  or (visibility = 'shared' and couple_id is not null and is_couple_member(couple_id))
+  or (visibility = 'shared' and couple_id is null and user_id = auth.uid())
+)
+-- INSERT/UPDATE/DELETE: dono sempre pode; parceiro só em 'shared'
+```
 
-**Telas:**
-- `/app/rotina` — abas: Hoje | Semana | Mês | Hábitos | Metas
-- Dashboard de hábitos: sequência (streak), produtividade, pendências
-- Rotinas manhã/tarde/noite com checklist
-- Calendário/agenda reaproveita `events`
+## 2. Navegação
 
-## Fase 2 — Cardápio Completo
+- **AppHeader**: novo toggle global `👤 Meu / ❤️ Nosso` (salvo em `localStorage` + Context `SpaceProvider`). Visível em todas as telas do app.
+- **BottomNav** reorganizada:
+  - Início (dashboard contextual ao espaço ativo)
+  - 👤 Meu Espaço (hub)
+  - ➕ Adicionar (já respeita o espaço ativo no formulário)
+  - ❤️ Nosso Espaço (hub atual de Casal)
+  - Mais
+- **Hub Meu Espaço** (`/app/meu`): grid com Minhas Tarefas, Minha Agenda, Minhas Metas, Minhas Finanças, Meus Hábitos, Minha Saúde.
+- **Hub Nosso Espaço** (`/app/nosso`): Finanças do Casal, Agenda, Metas, Cardápio, Compras, Casa (tarefas), Dates, Memórias.
+- Menu "Mais" reagrupado em duas seções (Pessoal / Casal / Sistema).
 
-**Tabelas novas:**
-- `recipes` (nome, ingredientes jsonb, modo de preparo, favorito, tags, tempo)
-- `meal_plan_items` estende `meal_plans` com slot (café/almoço/jantar/lanche), recipe_id, porções
-- Geração automática de itens em `shopping_items` a partir dos ingredientes da semana
+## 3. Filtros nas telas existentes
 
-**Telas:**
-- `/app/cardapio` reformulado: planner semanal/mensal estilo grade, biblioteca de receitas, favoritos, sugestões, botão "Gerar lista de compras"
+Todas as queries passam por um helper `applySpaceFilter(query, space, userId, coupleId)`:
+- `private` → `.eq('visibility','private').eq('user_id', userId)`
+- `shared` → `.eq('visibility','shared').eq('couple_id', coupleId)`
 
-## Fase 3 — Saúde + Check-in Academia
+Telas atualizadas: financas, cartoes, contas, tarefas, metas, agenda, cardapio, compras, dates, casal (memórias/wishes), rotina, saude, categorias.
 
-**Tabelas novas:**
-- `body_measurements` (peso, altura, IMC calculado, cintura, quadril, braço, perna)
-- `sleep_logs` (data, horas, qualidade)
-- `mood_logs` (data, humor 1-5, nota)
-- `medications` (nome, dose, horários, ativa)
-- `medication_logs`
-- `appointments` (consultas, exames — data, tipo, médico, status, anexo)
-- `gym_checkins` (data, treino, duração, calorias, observações)
-- View/aggregates para streak
+Formulários de criação setam `visibility` automaticamente baseado no espaço ativo, com possibilidade de override (toggle "Privado / Compartilhado" no form).
 
-**Telas:**
-- `/app/saude` reformulado: gráficos (recharts) peso, água, exercícios
-- `/app/saude/academia` (check-in, streak, recordes, ranking do casal, medalhas)
-- IMC automático
+## 4. Dashboards
 
-## Fase 4 — Casa + Financeiro Premium
+`/app/index.tsx` vira contextual:
 
-**Casa — extender:**
-- `house_tasks` ganha `room` (cozinha/banheiro/quarto/sala/lavanderia/escritório), `frequency`
-- `home_inventory` (item, ambiente, quantidade, mínimo, validade)
-- `home_repairs` (item, prioridade, status, custo estimado)
-- `/app/casa` reformulado com abas por ambiente, escala, estoque, reparos
+**Meu Espaço:**
+- Resumo financeiro pessoal (saldo das contas/cartões privados)
+- Próximas tarefas pessoais
+- Próximos eventos pessoais
+- Hábitos do dia + streak
+- Indicador de saúde (peso atual, água do dia)
+- Metas pessoais em andamento
 
-**Financeiro Premium:**
-- `budgets` (mês, category_id, valor planejado)
-- `subscriptions` (nome, valor, dia cobrança, ativa)
-- `recurring_bills` (já temos `future_bills` — estender)
-- `emergency_fund`, `investments` (instituição, tipo, valor, rentabilidade)
-- `/app/contas` e novo `/app/financeiro/planejamento`: orçamento por categoria com barras, fluxo de caixa, reserva, investimentos, relatórios anual/mensal
-- Indicadores: saldo atual/previsto, economia, por categoria, por parceiro
+**Nosso Espaço (já existente, ajustado):**
+- Finanças do casal
+- Tarefas do casal pendentes
+- Metas compartilhadas
+- Cardápio do dia
+- Lista de compras pendente
+- Próximos eventos / contas / dates
 
-## Fase 5 — Dashboard, Gamificação Unificada e Polimento
+## 5. Finanças privadas — invisibilidade total
 
-**Dashboard `/app/`** — widgets:
-- Rotina de hoje, próximas tarefas, próximo treino, água, cardápio do dia, lista de compras, próxima conta, meta financeira principal, próximo date, última memória
+- Conta/cartão/transação `private` não entram em nenhuma query do parceiro.
+- `FinanceInsights` e consolidado bancário filtram por `visibility`.
+- Sem "soma anônima" — invisível de verdade.
 
-**Gamificação:**
-- Triggers de pontos para: treino (gym_checkin), hábito (habit_log), refeição registrada, água, meta semanal/mensal cumprida, economia (transação income > meta)
-- Tabela `levels` (nível, pontos mínimos, título) + cálculo de nível atual
-- Página `/app/conquistas` com medalhas, nível, ranking do casal, desafios semanais/mensais automáticos
+## 6. Detalhes técnicos
 
-**Realtime:** habilitar publicação em todas as novas tabelas críticas (habits, gym_checkins, routine_completions, budgets, etc).
+- Migration única adicionando `visibility` + backfill + recriação das policies.
+- Novo `src/lib/space.tsx` (Context + hook `useSpace()`).
+- Novo `src/lib/queries.ts` com helper `spaceFilter`.
+- Novos arquivos de rota: `src/routes/app/meu/route.tsx`, `meu/index.tsx`, e telas dedicadas (`meu/tarefas.tsx`, `meu/agenda.tsx`, `meu/metas.tsx`, `meu/financas.tsx`, `meu/habitos.tsx`, `meu/saude.tsx`) reutilizando os componentes existentes em modo `private`.
+- `src/routes/app/nosso/route.tsx` como hub do casal (links já existentes).
+- AppHeader ganha o `SpaceToggle`.
+- BottomNav atualizada.
+- `/app/adicionar` herda o espaço ativo.
 
----
+## 7. Entrega
 
-## Detalhes técnicos
+Implementação em uma única passada conforme solicitado. Após a migration aprovada:
+1. Context + toggle + helpers
+2. RLS + filtros nas queries
+3. Hubs e rotas Meu/Nosso
+4. Dashboard dual
+5. Ajuste do menu "Mais" e BottomNav
 
-- Todas as migrações seguirão: CREATE TABLE → GRANT (authenticated + service_role) → ENABLE RLS → POLICY usando `is_couple_member(couple_id)` ou `auth.uid() = user_id`
-- Triggers `update_updated_at_column` em todas
-- Realtime via `ALTER PUBLICATION supabase_realtime ADD TABLE ...`
-- Storage `attachments` (já existe) para exames/receitas
-- Tudo client-side via `@/integrations/supabase/client` com TanStack Query
-- Gráficos: `recharts` (já no projeto)
-
----
-
-## Confirmação
-
-Quer que eu siga **fase por fase com aprovação entre cada uma** (mais seguro, você revisa cada bloco) ou **emendar tudo seguido sem parar** (mais rápido, mas commits enormes)?
-
-Posso começar a **Fase 1 (Rotina)** assim que você confirmar.
+Confirma para eu seguir?

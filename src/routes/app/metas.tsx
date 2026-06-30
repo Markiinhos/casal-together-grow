@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/hooks";
+import { useSpace, applySpaceFilter } from "@/lib/space";
 import { formatBRL } from "@/lib/couple";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
@@ -24,16 +25,18 @@ function GoalsPage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const coupleId = profile?.couple_id ?? null;
+  const { space } = useSpace();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [contribOpen, setContribOpen] = useState<string | null>(null);
   const [contribAmount, setContribAmount] = useState("");
 
   const { data: goals = [] } = useQuery({
-    queryKey: ["goals", coupleId, user?.id],
+    queryKey: ["goals", space, coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("goals").select("*").order("created_at", { ascending: false });
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
+      let q: any = supabase.from("goals").select("*").order("created_at", { ascending: false });
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return data ?? [];
     },
     enabled: !!user,
@@ -150,15 +153,18 @@ function GoalForm({ onDone }: { onDone: () => void }) {
   const [description, setDescription] = useState("");
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { space } = useSpace();
   const qc = useQueryClient();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
     const { error } = await supabase.from("goals").insert({
-      user_id: user.id, couple_id: profile?.couple_id ?? null,
+      user_id: user.id,
+      couple_id: space === "shared" ? profile?.couple_id ?? null : null,
+      visibility: space,
       name, description, target_amount: parseFloat(target.replace(",", ".")) || 0, deadline: deadline || null,
-    });
+    } as any);
     if (error) toast.error(error.message);
     else { toast.success("Criada!"); qc.invalidateQueries(); onDone(); }
   }

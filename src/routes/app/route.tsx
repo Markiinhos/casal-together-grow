@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { SpaceProvider } from "@/lib/space";
 import { BottomNav } from "@/components/BottomNav";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -21,7 +22,9 @@ export const Route = createFileRoute("/app")({
 function AppLayout() {
   return (
     <AuthProvider>
-      <Inner />
+      <SpaceProvider>
+        <Inner />
+      </SpaceProvider>
     </AuthProvider>
   );
 }

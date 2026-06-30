@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/hooks";
+import { useSpace, applySpaceFilter } from "@/lib/space";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,14 +24,16 @@ function AgendaPage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const coupleId = profile?.couple_id ?? null;
+  const { space } = useSpace();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 
   const { data: events = [] } = useQuery({
-    queryKey: ["events", coupleId, user?.id],
+    queryKey: ["events", space, coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("events").select("*").order("event_date").order("event_time");
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
+      let q: any = supabase.from("events").select("*").order("event_date").order("event_time");
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return data ?? [];
     },
     enabled: !!user,
@@ -114,15 +117,18 @@ function EventForm({ onDone }: { onDone: () => void }) {
   const [recurrence, setRecurrence] = useState("none");
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { space } = useSpace();
   const qc = useQueryClient();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
     const { error } = await supabase.from("events").insert({
-      user_id: user.id, couple_id: profile?.couple_id ?? null,
+      user_id: user.id,
+      couple_id: space === "shared" ? profile?.couple_id ?? null : null,
+      visibility: space,
       title, event_date: date, event_time: time || null, recurrence,
-    });
+    } as any);
     if (error) toast.error(error.message);
     else { toast.success("Evento criado!"); qc.invalidateQueries(); onDone(); }
   }

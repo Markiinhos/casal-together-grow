@@ -1,15 +1,14 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, Calendar, Plus, Heart, MoreHorizontal } from "lucide-react";
+import { Home, User, Plus, Heart, MoreHorizontal } from "lucide-react";
 
 type NavItem = { to: string; icon: typeof Home; label: string; exact?: boolean; primary?: boolean };
 const items: NavItem[] = [
   { to: "/app", icon: Home, label: "Início", exact: true },
-  { to: "/app/agenda", icon: Calendar, label: "Agenda" },
+  { to: "/app/meu", icon: User, label: "Meu" },
   { to: "/app/adicionar", icon: Plus, label: "Adicionar", primary: true },
-  { to: "/app/casal", icon: Heart, label: "Casal" },
+  { to: "/app/nosso", icon: Heart, label: "Nosso" },
   { to: "/app/mais", icon: MoreHorizontal, label: "Mais" },
 ];
-
 
 export function BottomNav() {
   const { pathname } = useLocation();
