@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/hooks";
+import { useSpace, applySpaceFilter } from "@/lib/space";
 import { formatBRL } from "@/lib/couple";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
@@ -24,13 +25,15 @@ function FinancePage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const coupleId = profile?.couple_id ?? null;
+  const { space } = useSpace();
   const qc = useQueryClient();
 
   const { data: tx = [] } = useQuery({
-    queryKey: ["tx-list", coupleId, user?.id],
+    queryKey: ["tx-list", space, coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("transactions").select("*, categories(name,color,icon)").order("date", { ascending: false });
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
+      let q: any = supabase.from("transactions").select("*, categories(name,color,icon)").order("date", { ascending: false });
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return data ?? [];
     },
     enabled: !!user,
@@ -75,10 +78,12 @@ function FinancePage() {
   }
   async function handleDuplicate(t: any) {
     const { error } = await supabase.from("transactions").insert({
-      user_id: user!.id, couple_id: coupleId,
+      user_id: user!.id,
+      couple_id: space === "shared" ? coupleId : null,
+      visibility: space,
       type: t.type, amount: t.amount, description: t.description, date: new Date().toISOString().slice(0, 10),
       category_id: t.category_id, note: t.note,
-    });
+    } as any);
     if (error) toast.error(error.message); else { toast.success("Duplicado"); qc.invalidateQueries(); }
   }
 

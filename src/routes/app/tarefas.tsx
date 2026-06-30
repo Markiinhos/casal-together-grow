@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile, usePartner } from "@/lib/hooks";
+import { useSpace, applySpaceFilter } from "@/lib/space";
 import { notifyPartnerMention } from "@/lib/mentions";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
@@ -27,14 +28,16 @@ function TasksPage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const coupleId = profile?.couple_id ?? null;
+  const { space } = useSpace();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 
   const { data: tasks = [] } = useQuery({
-    queryKey: ["tasks", coupleId, user?.id],
+    queryKey: ["tasks", space, coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("house_tasks").select("*").order("completed").order("due_date", { nullsFirst: false });
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
+      let q: any = supabase.from("house_tasks").select("*").order("completed").order("due_date", { nullsFirst: false });
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return data ?? [];
     },
     enabled: !!user,
@@ -166,15 +169,19 @@ function TaskFormDialog({ onDone }: { onDone: () => void }) {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const { data: partner } = usePartner();
+  const { space } = useSpace();
   const qc = useQueryClient();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
-    const { data, error } = await supabase.from("house_tasks").insert({
-      user_id: user.id, couple_id: profile?.couple_id ?? null,
+    const visibility = space;
+    const { error } = await supabase.from("house_tasks").insert({
+      user_id: user.id,
+      couple_id: visibility === "shared" ? profile?.couple_id ?? null : null,
+      visibility,
       name, description, responsible, priority, frequency, due_date: dueDate || null,
-    }).select().single();
+    } as any).select().single();
     if (error) { toast.error(error.message); return; }
     await notifyPartnerMention({
       text: `${name} ${description ?? ""}`,
