@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile, useCouple, usePartner } from "@/lib/hooks";
+import { useSpace } from "@/lib/space";
+import { SpaceToggle } from "@/components/SpaceToggle";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,7 @@ function AddPage() {
     <>
       <AppHeader title="Adicionar" subtitle="Registre algo novo" />
       <div className="px-4 py-4 space-y-4">
+        <div className="flex justify-center"><SpaceToggle /></div>
         <div className="grid grid-cols-3 gap-2">
           {[
             { k: "ai", label: "IA", icon: Sparkles },
@@ -174,6 +177,7 @@ function TxForm({ type }: { type: "income" | "expense" }) {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { space } = useSpace();
   const qc = useQueryClient();
   const navigate = useNavigate();
 
@@ -193,13 +197,14 @@ function TxForm({ type }: { type: "income" | "expense" }) {
     setLoading(true);
     const { error } = await supabase.from("transactions").insert({
       user_id: user.id,
-      couple_id: profile?.couple_id ?? null,
+      couple_id: space === "shared" ? profile?.couple_id ?? null : null,
+      visibility: space,
       type,
       amount: parseFloat(amount.replace(",", ".")),
       description,
       date,
       category_id: categoryId || null,
-    });
+    } as any);
     setLoading(false);
     if (error) toast.error(error.message);
     else {
@@ -252,6 +257,7 @@ function TaskForm() {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { space } = useSpace();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -260,9 +266,11 @@ function TaskForm() {
     if (!user) return;
     setLoading(true);
     const { error } = await supabase.from("house_tasks").insert({
-      user_id: user.id, couple_id: profile?.couple_id ?? null,
+      user_id: user.id,
+      couple_id: space === "shared" ? profile?.couple_id ?? null : null,
+      visibility: space,
       name, responsible, priority, due_date: dueDate || null,
-    });
+    } as any);
     setLoading(false);
     if (error) toast.error(error.message);
     else { toast.success("Tarefa criada!"); qc.invalidateQueries(); navigate({ to: "/app/tarefas" }); }
@@ -311,6 +319,7 @@ function EventForm() {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { space } = useSpace();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -319,9 +328,11 @@ function EventForm() {
     if (!user) return;
     setLoading(true);
     const { error } = await supabase.from("events").insert({
-      user_id: user.id, couple_id: profile?.couple_id ?? null,
+      user_id: user.id,
+      couple_id: space === "shared" ? profile?.couple_id ?? null : null,
+      visibility: space,
       title, event_date: date, event_time: time || null, recurrence,
-    });
+    } as any);
     setLoading(false);
     if (error) toast.error(error.message);
     else { toast.success("Evento criado!"); qc.invalidateQueries(); navigate({ to: "/app/agenda" }); }
@@ -365,6 +376,7 @@ function GoalForm() {
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { space } = useSpace();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -373,9 +385,11 @@ function GoalForm() {
     if (!user) return;
     setLoading(true);
     const { error } = await supabase.from("goals").insert({
-      user_id: user.id, couple_id: profile?.couple_id ?? null,
+      user_id: user.id,
+      couple_id: space === "shared" ? profile?.couple_id ?? null : null,
+      visibility: space,
       name, description, target_amount: parseFloat(target.replace(",", ".")) || 0, deadline: deadline || null,
-    });
+    } as any);
     setLoading(false);
     if (error) toast.error(error.message);
     else { toast.success("Meta criada!"); qc.invalidateQueries(); navigate({ to: "/app/metas" }); }
