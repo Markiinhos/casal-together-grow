@@ -1,18 +1,21 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
+const serverUrl = process.env.CAPACITOR_SERVER_URL ?? 'https://casal-together-grow.lovable.app';
+const usesClearText = serverUrl.startsWith('http://');
+
 const config: CapacitorConfig = {
   appId: 'app.lovable.casal',
   appName: 'Casal',
-  webDir: 'dist',
+  // TanStack Start + Nitro gera uma aplicação server-rendered, não um SPA estático em `dist/`.
+  // Para Android/Capacitor, este projeto usa um shell nativo que abre a URL publicada.
+  // `mobile-web` existe apenas para satisfazer o requisito do Capacitor de haver um index.html local.
+  webDir: 'mobile-web',
   server: {
-    // Hot-reload do preview do Lovable no celular durante o desenvolvimento.
-    // Para gerar o APK final de produção, REMOVA o bloco `server` inteiro
-    // e rode `npx cap sync android` novamente.
-    url: 'https://33e7c33e-da92-44e5-b7bb-e0e1a998d186.lovableproject.com?forceHideBadge=true',
-    cleartext: true,
+    url: serverUrl,
+    cleartext: usesClearText,
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: usesClearText,
   },
 };
 
