@@ -198,6 +198,7 @@ export type Database = {
           pluggy_transaction_id: string
           type: string | null
           user_id: string
+          visibility: string
         }
         Insert: {
           account_id: string
@@ -214,6 +215,7 @@ export type Database = {
           pluggy_transaction_id: string
           type?: string | null
           user_id: string
+          visibility?: string
         }
         Update: {
           account_id?: string
@@ -230,6 +232,7 @@ export type Database = {
           pluggy_transaction_id?: string
           type?: string | null
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
@@ -1860,6 +1863,7 @@ export type Database = {
           pluggy_card_id: string
           updated_at: string
           user_id: string
+          visibility: string
         }
         Insert: {
           account_id?: string | null
@@ -1878,6 +1882,7 @@ export type Database = {
           pluggy_card_id: string
           updated_at?: string
           user_id: string
+          visibility?: string
         }
         Update: {
           account_id?: string | null
@@ -1896,6 +1901,7 @@ export type Database = {
           pluggy_card_id?: string
           updated_at?: string
           user_id?: string
+          visibility?: string
         }
         Relationships: [
           {
