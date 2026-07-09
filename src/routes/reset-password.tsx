@@ -24,12 +24,21 @@ function ResetPage() {
     }
   }, []);
 
+  function translate(msg: string) {
+    const m = msg.toLowerCase();
+    if (m.includes("expired") || m.includes("invalid") && m.includes("token")) return "Link expirado. Solicite um novo e-mail de recuperação.";
+    if (m.includes("weak") || m.includes("pwned") || m.includes("breach")) return "Senha vazada publicamente. Escolha outra.";
+    if (m.includes("same as")) return "A nova senha deve ser diferente da atual.";
+    if (m.includes("network") || m.includes("failed to fetch")) return "Não foi possível conectar agora. Verifique sua internet e tente novamente.";
+    return "Não foi possível atualizar a senha. Tente novamente.";
+  }
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
+    if (password.length < 8) return toast.error("A senha deve ter pelo menos 8 caracteres.");
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(translate(error.message));
     else {
       toast.success("Senha atualizada!");
       navigate({ to: "/app" });
