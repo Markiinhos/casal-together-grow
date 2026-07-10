@@ -623,6 +623,81 @@ export type Database = {
           },
         ]
       }
+      expense_simulations: {
+        Row: {
+          amount: number
+          card_id: string | null
+          category: string | null
+          converted_expense_id: string | null
+          couple_id: string | null
+          created_at: string
+          final_amount: number | null
+          first_payment_date: string | null
+          id: string
+          installments: number
+          interest_enabled: boolean
+          interest_rate: number | null
+          metadata: Json | null
+          payment_method: string
+          purchase_date: string
+          risk_level: string | null
+          simulation_result: Json | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          amount: number
+          card_id?: string | null
+          category?: string | null
+          converted_expense_id?: string | null
+          couple_id?: string | null
+          created_at?: string
+          final_amount?: number | null
+          first_payment_date?: string | null
+          id?: string
+          installments?: number
+          interest_enabled?: boolean
+          interest_rate?: number | null
+          metadata?: Json | null
+          payment_method: string
+          purchase_date?: string
+          risk_level?: string | null
+          simulation_result?: Json | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          amount?: number
+          card_id?: string | null
+          category?: string | null
+          converted_expense_id?: string | null
+          couple_id?: string | null
+          created_at?: string
+          final_amount?: number | null
+          first_payment_date?: string | null
+          id?: string
+          installments?: number
+          interest_enabled?: boolean
+          interest_rate?: number | null
+          metadata?: Json | null
+          payment_method?: string
+          purchase_date?: string
+          risk_level?: string | null
+          simulation_result?: Json | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
       financial_institutions: {
         Row: {
           country: string | null
