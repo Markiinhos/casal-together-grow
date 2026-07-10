@@ -54,6 +54,17 @@ function AddPage() {
           })}
         </div>
 
+        {mode === "expense" && (
+          <div className="rounded-2xl bg-primary/5 border border-primary/20 p-3 flex items-center justify-between gap-2">
+            <div className="text-xs">
+              <p className="font-semibold">Não sabe se cabe no orçamento?</p>
+              <p className="text-muted-foreground">Simule antes de adicionar como despesa.</p>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/app/financas/simular"><Sparkles className="size-4 mr-1" />Simular</Link>
+            </Button>
+          </div>
+        )}
         {mode === "ai" && <AIForm />}
         {mode === "expense" && <TxForm type="expense" />}
         {mode === "income" && <TxForm type="income" />}
