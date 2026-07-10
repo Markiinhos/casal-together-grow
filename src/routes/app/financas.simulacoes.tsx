@@ -104,7 +104,7 @@ function HistoryPage() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Carregando…</p>
         ) : filtered.length === 0 ? (
-          <EmptyState title="Sem simulações" description="Crie sua primeira simulação para ver aqui." />
+          <EmptyState icon={Sparkles} title="Sem simulações" description="Crie sua primeira simulação para ver aqui." />
         ) : (
           <div className="space-y-3">
             {filtered.map((s: any) => (
