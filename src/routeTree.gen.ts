@@ -39,6 +39,8 @@ import { Route as AppMaisRouteRouteImport } from './routes/app/mais/route'
 import { Route as AppMaisIndexRouteImport } from './routes/app/mais/index'
 import { Route as AppMaisNotificacoesRouteImport } from './routes/app/mais/notificacoes'
 import { Route as AppMaisConfiguracoesRouteImport } from './routes/app/mais/configuracoes'
+import { Route as AppFinancasSimularRouteImport } from './routes/app/financas.simular'
+import { Route as AppFinancasSimulacoesRouteImport } from './routes/app/financas.simulacoes'
 import { Route as ApiPublicHooksSyncInstitutionsRouteImport } from './routes/api/public/hooks/sync-institutions'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -191,6 +193,16 @@ const AppMaisConfiguracoesRoute = AppMaisConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => AppMaisRouteRoute,
 } as any)
+const AppFinancasSimularRoute = AppFinancasSimularRouteImport.update({
+  id: '/simular',
+  path: '/simular',
+  getParentRoute: () => AppFinancasRoute,
+} as any)
+const AppFinancasSimulacoesRoute = AppFinancasSimulacoesRouteImport.update({
+  id: '/simulacoes',
+  path: '/simulacoes',
+  getParentRoute: () => AppFinancasRoute,
+} as any)
 const ApiPublicHooksSyncInstitutionsRoute =
   ApiPublicHooksSyncInstitutionsRouteImport.update({
     id: '/api/public/hooks/sync-institutions',
@@ -216,7 +228,7 @@ export interface FileRoutesByFullPath {
   '/app/contas': typeof AppContasRoute
   '/app/dates': typeof AppDatesRoute
   '/app/desafios': typeof AppDesafiosRoute
-  '/app/financas': typeof AppFinancasRoute
+  '/app/financas': typeof AppFinancasRouteWithChildren
   '/app/integracoes': typeof AppIntegracoesRoute
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
@@ -226,6 +238,8 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app/': typeof AppIndexRoute
+  '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
+  '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
   '/app/mais/': typeof AppMaisIndexRoute
@@ -247,7 +261,7 @@ export interface FileRoutesByTo {
   '/app/contas': typeof AppContasRoute
   '/app/dates': typeof AppDatesRoute
   '/app/desafios': typeof AppDesafiosRoute
-  '/app/financas': typeof AppFinancasRoute
+  '/app/financas': typeof AppFinancasRouteWithChildren
   '/app/integracoes': typeof AppIntegracoesRoute
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
@@ -257,6 +271,8 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app': typeof AppIndexRoute
+  '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
+  '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
   '/app/mais': typeof AppMaisIndexRoute
@@ -281,7 +297,7 @@ export interface FileRoutesById {
   '/app/contas': typeof AppContasRoute
   '/app/dates': typeof AppDatesRoute
   '/app/desafios': typeof AppDesafiosRoute
-  '/app/financas': typeof AppFinancasRoute
+  '/app/financas': typeof AppFinancasRouteWithChildren
   '/app/integracoes': typeof AppIntegracoesRoute
   '/app/metas': typeof AppMetasRoute
   '/app/parceiro': typeof AppParceiroRoute
@@ -291,6 +307,8 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app/': typeof AppIndexRoute
+  '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
+  '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
   '/app/mais/': typeof AppMaisIndexRoute
@@ -326,6 +344,8 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/convite/$code'
     | '/app/'
+    | '/app/financas/simulacoes'
+    | '/app/financas/simular'
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
     | '/app/mais/'
@@ -357,6 +377,8 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/convite/$code'
     | '/app'
+    | '/app/financas/simulacoes'
+    | '/app/financas/simular'
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
     | '/app/mais'
@@ -390,6 +412,8 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/convite/$code'
     | '/app/'
+    | '/app/financas/simulacoes'
+    | '/app/financas/simular'
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
     | '/app/mais/'
@@ -617,6 +641,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMaisConfiguracoesRouteImport
       parentRoute: typeof AppMaisRouteRoute
     }
+    '/app/financas/simular': {
+      id: '/app/financas/simular'
+      path: '/simular'
+      fullPath: '/app/financas/simular'
+      preLoaderRoute: typeof AppFinancasSimularRouteImport
+      parentRoute: typeof AppFinancasRoute
+    }
+    '/app/financas/simulacoes': {
+      id: '/app/financas/simulacoes'
+      path: '/simulacoes'
+      fullPath: '/app/financas/simulacoes'
+      preLoaderRoute: typeof AppFinancasSimulacoesRouteImport
+      parentRoute: typeof AppFinancasRoute
+    }
     '/api/public/hooks/sync-institutions': {
       id: '/api/public/hooks/sync-institutions'
       path: '/api/public/hooks/sync-institutions'
@@ -643,6 +681,20 @@ const AppMaisRouteRouteWithChildren = AppMaisRouteRoute._addFileChildren(
   AppMaisRouteRouteChildren,
 )
 
+interface AppFinancasRouteChildren {
+  AppFinancasSimulacoesRoute: typeof AppFinancasSimulacoesRoute
+  AppFinancasSimularRoute: typeof AppFinancasSimularRoute
+}
+
+const AppFinancasRouteChildren: AppFinancasRouteChildren = {
+  AppFinancasSimulacoesRoute: AppFinancasSimulacoesRoute,
+  AppFinancasSimularRoute: AppFinancasSimularRoute,
+}
+
+const AppFinancasRouteWithChildren = AppFinancasRoute._addFileChildren(
+  AppFinancasRouteChildren,
+)
+
 interface AppRouteRouteChildren {
   AppMaisRouteRoute: typeof AppMaisRouteRouteWithChildren
   AppMeuRouteRoute: typeof AppMeuRouteRoute
@@ -657,7 +709,7 @@ interface AppRouteRouteChildren {
   AppContasRoute: typeof AppContasRoute
   AppDatesRoute: typeof AppDatesRoute
   AppDesafiosRoute: typeof AppDesafiosRoute
-  AppFinancasRoute: typeof AppFinancasRoute
+  AppFinancasRoute: typeof AppFinancasRouteWithChildren
   AppIntegracoesRoute: typeof AppIntegracoesRoute
   AppMetasRoute: typeof AppMetasRoute
   AppParceiroRoute: typeof AppParceiroRoute
@@ -681,7 +733,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppContasRoute: AppContasRoute,
   AppDatesRoute: AppDatesRoute,
   AppDesafiosRoute: AppDesafiosRoute,
-  AppFinancasRoute: AppFinancasRoute,
+  AppFinancasRoute: AppFinancasRouteWithChildren,
   AppIntegracoesRoute: AppIntegracoesRoute,
   AppMetasRoute: AppMetasRoute,
   AppParceiroRoute: AppParceiroRoute,

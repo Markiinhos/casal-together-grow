@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/EmptyState";
-import { TrendingUp, TrendingDown, Wallet, Trash2, Copy } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Trash2, Copy, Sparkles, History } from "lucide-react";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from "recharts";
 
@@ -91,6 +91,18 @@ function FinancePage() {
     <>
       <AppHeader title="Finanças" subtitle="Receitas, despesas e gráficos" />
       <div className="px-4 py-4 space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          <Button asChild variant="outline" className="rounded-2xl h-auto py-3">
+            <Link to="/app/financas/simular">
+              <Sparkles className="size-4 mr-1" /> Simular despesa
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="rounded-2xl h-auto py-3">
+            <Link to="/app/financas/simulacoes">
+              <History className="size-4 mr-1" /> Simulações
+            </Link>
+          </Button>
+        </div>
         <Card className="rounded-3xl p-5 shadow-card">
           <div className="text-3xl font-bold mb-1">{formatBRL(summary.balance)}</div>
           <p className="text-xs text-muted-foreground mb-4">Saldo do mês</p>

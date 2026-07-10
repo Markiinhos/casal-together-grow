@@ -1,111 +1,93 @@
+# Simulador de Despesas
 
-# Reestruturação CASAL — Meu Espaço × Nosso Espaço
+Nova área no módulo financeiro que permite simular uma compra antes de virar despesa real, mostrando impacto no mês, saldo, fatura, próximos meses e nível de risco.
 
-Vamos transformar o app em duas experiências integradas, com privacidade real garantida no banco e troca de contexto fluida na UI.
+## Fluxo do usuário
 
-## 1. Modelo de dados
+1. Em `/app/financas` (e no botão de adicionar despesa `/app/adicionar`), aparece a opção "Simular despesa" ao lado de "Adicionar despesa real".
+2. Rota nova: `/app/financas/simular` — formulário completo.
+3. Após simular, tela de resultado com cards, gráficos, nível de risco, sugestão e ações: confirmar como despesa real, salvar, editar, comparar formas de pagamento, compartilhar com parceiro.
+4. Rota `/app/financas/simulacoes` — histórico com filtros (privadas, compartilhadas, convertidas, arquivadas, alto/baixo risco).
 
-Adicionar em todas as tabelas relevantes a coluna:
+Respeita Meu Espaço / Nosso Espaço via `useSpace()`; o seletor de visibilidade (private/shared) já existente é reutilizado.
 
-```
-visibility text not null default 'shared'  -- 'private' | 'shared'
-```
+## Backend
 
-Tabelas afetadas (já existem todas):
-- `transactions`, `credit_cards`, `bank_accounts`, `bank_connections`, `installments`, `future_bills`
-- `house_tasks`, `goals`, `events`, `memories`, `wishes`, `dates`
-- `habits`, `habit_logs`, `routines`, `routine_items`, `period_goals`
-- `health_metrics`, `water_intake`, `workouts`, `health_meals`
-- `meal_plans`, `shopping_items`, `recipes`, `categories`
+Nova tabela `expense_simulations` com RLS espelhando o padrão de `transactions`:
 
-### Regra de migração dos dados existentes
+- Campos: `title`, `amount`, `payment_method`, `card_id`, `installments`, `interest_enabled`, `interest_rate`, `final_amount`, `first_payment_date`, `purchase_date`, `category`, `simulation_result` (jsonb com projeção mês a mês, antes/depois, risco), `risk_level`, `status` (draft/simulated/converted/archived), `converted_expense_id`, `metadata`, `visibility`, `user_id`, `couple_id`.
+- RLS: SELECT/UPDATE/DELETE seguem o padrão privado=dono / compartilhado=membros do casal. INSERT sempre `user_id = auth.uid()`.
+- Trigger `notify_partner_on_simulation`: notifica o parceiro quando uma simulação compartilhada é criada, convertida em despesa, ou marcada como alto risco.
+- Ao converter em despesa: uma server function cria a `transactions` (e installments quando aplicável, aproveitando o trigger existente `generate_installments`) e grava `converted_expense_id` + `status='converted'`.
 
-| Módulo | Decisão |
-|---|---|
-| Finanças (transações, cartões, contas, parcelas, contas futuras) | `shared` (histórico do casal continua visível) |
-| Tarefas da casa, metas, eventos, cardápio, lista de compras, receitas, categorias, memórias, wishes, dates | `shared` |
-| Hábitos, logs, rotinas, metas de período | `private` do criador |
-| Saúde (peso, água, treinos, refeições saúde) | `private` do criador |
+## Cálculo de impacto (client-side, puro TS)
 
-### RLS (padrão para todas as tabelas)
+Módulo `src/lib/simulator.ts` — recebe: transações do mês atual, faturas, parcelas em aberto, orçamento configurado, e a simulação. Retorna:
 
-```sql
--- SELECT
-using (
-  (visibility = 'private' and user_id = auth.uid())
-  or (visibility = 'shared' and couple_id is not null and is_couple_member(couple_id))
-  or (visibility = 'shared' and couple_id is null and user_id = auth.uid())
-)
--- INSERT/UPDATE/DELETE: dono sempre pode; parceiro só em 'shared'
-```
+- Despesas antes / depois do mês.
+- Saldo previsto antes / depois.
+- Impacto na fatura do cartão (usa `closing_day`/`due_day` de `credit_cards` para localizar a fatura correta).
+- Projeção mês a mês (12 meses) para parcelas / financiamento / boleto.
+- Percentual de orçamento antes / depois.
+- Nível de risco: seguro / atenção / arriscado / crítico — baseado em delta de saldo, comprometimento de renda, cauda de parcelas.
+- Sugestão em linguagem simples derivada dessas métricas.
 
-## 2. Navegação
+Regras por forma de pagamento:
+- Pix / dinheiro / débito → impacto integral no mês da compra.
+- Cartão à vista → soma na fatura correspondente ao fechamento.
+- Cartão parcelado → distribui em N meses; se `interest_enabled`, aplica taxa mensal para calcular parcela final.
+- Boleto → impacta o mês do vencimento.
+- Financiamento → tabela Price (juros compostos) por N meses.
 
-- **AppHeader**: novo toggle global `👤 Meu / ❤️ Nosso` (salvo em `localStorage` + Context `SpaceProvider`). Visível em todas as telas do app.
-- **BottomNav** reorganizada:
-  - Início (dashboard contextual ao espaço ativo)
-  - 👤 Meu Espaço (hub)
-  - ➕ Adicionar (já respeita o espaço ativo no formulário)
-  - ❤️ Nosso Espaço (hub atual de Casal)
-  - Mais
-- **Hub Meu Espaço** (`/app/meu`): grid com Minhas Tarefas, Minha Agenda, Minhas Metas, Minhas Finanças, Meus Hábitos, Minha Saúde.
-- **Hub Nosso Espaço** (`/app/nosso`): Finanças do Casal, Agenda, Metas, Cardápio, Compras, Casa (tarefas), Dates, Memórias.
-- Menu "Mais" reagrupado em duas seções (Pessoal / Casal / Sistema).
+## Comparador de formas de pagamento
 
-## 3. Filtros nas telas existentes
+Rota `/app/financas/simular/comparar` — usuário informa valor e o app roda o simulador para: Pix à vista, Cartão 6x, Cartão 12x, Boleto 1x. Mostra cards lado a lado com impacto mensal e risco, e destaca "Melhor opção para este momento".
 
-Todas as queries passam por um helper `applySpaceFilter(query, space, userId, coupleId)`:
-- `private` → `.eq('visibility','private').eq('user_id', userId)`
-- `shared` → `.eq('visibility','shared').eq('couple_id', coupleId)`
+## Gráficos (recharts, já instalado)
 
-Telas atualizadas: financas, cartoes, contas, tarefas, metas, agenda, cardapio, compras, dates, casal (memórias/wishes), rotina, saude, categorias.
+- Barras: despesas antes vs depois.
+- Linha: saldo previsto ao longo dos próximos 6 meses.
+- Barras empilhadas: parcelas futuras mês a mês.
+- Radial/progress: percentual de orçamento antes vs depois.
+- Linha: evolução da fatura do cartão nos próximos 12 meses.
 
-Formulários de criação setam `visibility` automaticamente baseado no espaço ativo, com possibilidade de override (toggle "Privado / Compartilhado" no form).
+## Notificações
 
-## 4. Dashboards
+Integração com `notifications` existente. Trigger dispara quando `visibility='shared'` em INSERT/converted/high risk. Reaproveita o padrão de `notify_partner_on_task`.
 
-`/app/index.tsx` vira contextual:
+## Arquivos a criar
 
-**Meu Espaço:**
-- Resumo financeiro pessoal (saldo das contas/cartões privados)
-- Próximas tarefas pessoais
-- Próximos eventos pessoais
-- Hábitos do dia + streak
-- Indicador de saúde (peso atual, água do dia)
-- Metas pessoais em andamento
+- `supabase/migrations/<ts>_expense_simulations.sql` — tabela + RLS + trigger de notificação.
+- `src/lib/simulator.ts` — cálculo puro (unit-testável).
+- `src/lib/simulator.functions.ts` — `saveSimulation`, `convertSimulationToExpense`, `listSimulations`, `archiveSimulation` (todas com `requireSupabaseAuth`).
+- `src/routes/app/financas/simular.tsx` — formulário + resultado.
+- `src/routes/app/financas/simular.comparar.tsx` — comparador.
+- `src/routes/app/financas/simulacoes.tsx` — histórico com filtros.
+- `src/components/simulator/SimulationResult.tsx` — cards + gráficos.
+- `src/components/simulator/RiskBadge.tsx`, `PaymentMethodPicker.tsx`, `InstallmentsPicker.tsx`.
 
-**Nosso Espaço (já existente, ajustado):**
-- Finanças do casal
-- Tarefas do casal pendentes
-- Metas compartilhadas
-- Cardápio do dia
-- Lista de compras pendente
-- Próximos eventos / contas / dates
+## Arquivos a editar
 
-## 5. Finanças privadas — invisibilidade total
+- `src/routes/app/adicionar.tsx` — adicionar toggle "Adicionar despesa real / Simular despesa".
+- `src/routes/app/financas.tsx` — atalho "Simular despesa" e link para histórico.
+- `src/components/BottomNav.tsx` — sem mudança (fica dentro de Finanças).
 
-- Conta/cartão/transação `private` não entram em nenhuma query do parceiro.
-- `FinanceInsights` e consolidado bancário filtram por `visibility`.
-- Sem "soma anônima" — invisível de verdade.
+## Ordem de implementação
 
-## 6. Detalhes técnicos
+1. Migração `expense_simulations` + RLS + trigger de notificação.
+2. `src/lib/simulator.ts` (cálculo puro).
+3. Rota `simular.tsx` com formulário + resultado + gráficos.
+4. Server functions (salvar / converter / listar / arquivar).
+5. Comparador de formas de pagamento.
+6. Histórico com filtros.
+7. Atalhos em `adicionar.tsx` e `financas.tsx`.
 
-- Migration única adicionando `visibility` + backfill + recriação das policies.
-- Novo `src/lib/space.tsx` (Context + hook `useSpace()`).
-- Novo `src/lib/queries.ts` com helper `spaceFilter`.
-- Novos arquivos de rota: `src/routes/app/meu/route.tsx`, `meu/index.tsx`, e telas dedicadas (`meu/tarefas.tsx`, `meu/agenda.tsx`, `meu/metas.tsx`, `meu/financas.tsx`, `meu/habitos.tsx`, `meu/saude.tsx`) reutilizando os componentes existentes em modo `private`.
-- `src/routes/app/nosso/route.tsx` como hub do casal (links já existentes).
-- AppHeader ganha o `SpaceToggle`.
-- BottomNav atualizada.
-- `/app/adicionar` herda o espaço ativo.
+## Detalhes técnicos
 
-## 7. Entrega
+- Cálculos rodam no cliente para feedback instantâneo; ao salvar, o resultado (`simulation_result`) é persistido em JSONB para exibir o mesmo snapshot depois.
+- Ao converter em despesa: chamamos `insertTransaction` reutilizando o trigger `generate_installments` existente — nada é duplicado. `simulation.status='converted'` + `converted_expense_id` amarra os dois.
+- Todos os fetches de dados financeiros da simulação usam server functions com `requireSupabaseAuth` (não expõe token).
+- Grafo de leitura via `useSuspenseQuery` + `ensureQueryData` no loader (padrão TanStack).
+- Rotas ficam sob `/app` (já protegido). Sem necessidade de novo layout.
 
-Implementação em uma única passada conforme solicitado. Após a migration aprovada:
-1. Context + toggle + helpers
-2. RLS + filtros nas queries
-3. Hubs e rotas Meu/Nosso
-4. Dashboard dual
-5. Ajuste do menu "Mais" e BottomNav
-
-Confirma para eu seguir?
+Pronto para implementar?
