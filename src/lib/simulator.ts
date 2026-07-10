@@ -29,7 +29,7 @@ export interface SimulationInput {
   interestRate?: number; // % ao mês
   purchaseDate: string; // yyyy-mm-dd
   firstPaymentDate?: string; // yyyy-mm-dd
-  card?: { closing_day: number; due_day: number } | null;
+  card?: { closing_day: number; due_day: number; limit_amount?: number; used_amount?: number } | null;
 }
 
 export interface FinancialContext {
@@ -87,25 +87,27 @@ export function simulate(input: SimulationInput, ctx: FinancialContext): Simulat
   const existing = ctx.existingUpcomingInstallments ?? [];
 
   let startMonth = 0;
+  let purchaseDay = now.getDate();
+  let purchaseMonthOffset = 0;
+  if (input.purchaseDate) {
+    const pDate = new Date(input.purchaseDate);
+    // Using UTC to avoid timezone shift on YYYY-MM-DD strings
+    purchaseDay = pDate.getUTCDate();
+    purchaseMonthOffset = (pDate.getUTCFullYear() - now.getFullYear()) * 12 + (pDate.getUTCMonth() - now.getMonth());
+  }
+
   if (input.paymentMethod === "credit" || input.paymentMethod === "credit_installments") {
-    // impacta primeira fatura relativa ao fechamento
-    if (input.card) {
-      const day = now.getDate();
-      startMonth = day > input.card.closing_day ? 1 : 0;
+    if (input.card && input.card.closing_day) {
+      startMonth = purchaseMonthOffset + (purchaseDay >= input.card.closing_day ? 1 : 0);
     } else {
-      startMonth = 0;
+      startMonth = purchaseMonthOffset;
     }
-  } else if (input.paymentMethod === "boleto" && input.firstPaymentDate) {
+    startMonth = Math.max(0, startMonth);
+  } else if ((input.paymentMethod === "boleto" || input.paymentMethod === "financing") && input.firstPaymentDate) {
     const first = new Date(input.firstPaymentDate);
     startMonth = Math.max(
       0,
-      (first.getFullYear() - now.getFullYear()) * 12 + (first.getMonth() - now.getMonth()),
-    );
-  } else if (input.paymentMethod === "financing" && input.firstPaymentDate) {
-    const first = new Date(input.firstPaymentDate);
-    startMonth = Math.max(
-      0,
-      (first.getFullYear() - now.getFullYear()) * 12 + (first.getMonth() - now.getMonth()),
+      (first.getUTCFullYear() - now.getFullYear()) * 12 + (first.getUTCMonth() - now.getMonth())
     );
   }
 
@@ -140,17 +142,33 @@ export function simulate(input: SimulationInput, ctx: FinancialContext): Simulat
 
   // Risco
   let risk: RiskLevel = "seguro";
-  const incomeRatio = ctx.monthIncome > 0 ? monthlyImpact[0] / ctx.monthIncome : 1;
-  if (balanceAfter < 0) risk = "critico";
-  else if (budgetPctAfter >= 95 || incomeRatio >= 0.4) risk = "arriscado";
-  else if (budgetPctAfter >= 75 || incomeRatio >= 0.2) risk = "atencao";
+  let riskMessage = "Essa compra parece caber no seu orçamento atual.";
+  const isCredit = input.paymentMethod === "credit" || input.paymentMethod === "credit_installments";
+  
+  const cardLimitExceeded = isCredit && input.card?.limit_amount 
+    ? ((input.card.used_amount || 0) + input.amount > input.card.limit_amount) 
+    : false;
 
-  const riskMessages: Record<RiskLevel, string> = {
-    seguro: "Essa compra parece caber no seu orçamento atual.",
-    atencao: "Essa compra vai reduzir bastante sua sobra mensal. Avalie se é prioridade.",
-    arriscado: "Essa compra pode comprometer seu orçamento dos próximos meses.",
-    critico: "Essa compra pode deixar seu saldo negativo ou ultrapassar seu limite financeiro.",
-  };
+  if (balanceAfter < 0) {
+    risk = "critico";
+    riskMessage = "Crítico: Essa compra deixará seu saldo projetado negativo.";
+  } else if (cardLimitExceeded) {
+    risk = "critico";
+    riskMessage = "Crítico: Essa compra ultrapassará o limite do seu cartão de crédito.";
+  } else if (budgetPctAfter > 100) {
+    risk = "critico";
+    riskMessage = `Crítico: O orçamento mensal será excedido (${Math.round(budgetPctAfter)}%).`;
+  } else if (budgetPctAfter >= 85) {
+    risk = "arriscado";
+    riskMessage = `Arriscado: A compra elevará o uso do orçamento para ${Math.round(budgetPctAfter)}% e comprometerá meses futuros.`;
+  } else if (budgetPctAfter >= 70) {
+    risk = "atencao";
+    riskMessage = `Atenção: Seu orçamento chegará a ${Math.round(budgetPctAfter)}%. Avalie se é uma prioridade agora.`;
+  }
+
+  if (risk === "arriscado" && n > 6) {
+    riskMessage += ` Terá impacto prolongado por ${n} meses.`;
+  }
 
   const suggestions: string[] = [];
   if (isImmediate && input.amount > ctx.monthIncome * 0.15) {
@@ -186,7 +204,7 @@ export function simulate(input: SimulationInput, ctx: FinancialContext): Simulat
     budgetPctAfter,
     cardImpact,
     risk,
-    riskMessage: riskMessages[risk],
+    riskMessage,
     suggestion: suggestions.join(" "),
   };
 }

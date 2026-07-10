@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   simulate,
   PAYMENT_LABELS,
@@ -74,6 +75,8 @@ function SimulatePage() {
   const [category, setCategory] = useState<string>("Outros");
   const [cardId, setCardId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isConverted, setIsConverted] = useState(false);
 
   // Cartões
   const { data: cards = [] } = useQuery({
@@ -206,6 +209,8 @@ function SimulatePage() {
           .from("expense_simulations")
           .update({ converted_expense_id: newTx.id, status: "converted" })
           .eq("id", sim.id);
+        setIsConverted(true);
+        setConfirmOpen(false);
         toast.success("Despesa criada a partir da simulação");
         qc.invalidateQueries();
         navigate({ to: "/app/financas" });
@@ -368,13 +373,38 @@ function SimulatePage() {
 
         {result && (
           <div className="fixed bottom-16 left-0 right-0 px-4 pb-3 pt-2 bg-background/95 backdrop-blur border-t z-40 flex gap-2">
-            <Button variant="outline" onClick={() => handleSave("simulated")} disabled={saving} className="flex-1">
+            <Button variant="outline" onClick={() => handleSave("simulated")} disabled={saving || isConverted} className="flex-1">
               <Save className="size-4 mr-1" /> Salvar
             </Button>
-            <Button onClick={() => handleSave("converted")} disabled={saving} className="flex-1">
+            <Button onClick={() => setConfirmOpen(true)} disabled={saving || isConverted} className="flex-1">
               <CheckCircle2 className="size-4 mr-1" /> Converter em despesa
             </Button>
           </div>
+        )}
+
+        {result && (
+          <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <DialogContent className="w-[90vw] max-w-md rounded-3xl">
+              <DialogHeader>
+                <DialogTitle>Confirmar conversão</DialogTitle>
+                <DialogDescription>Isso criará uma despesa real nos seus registros.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 my-4 text-sm">
+                <div className="flex justify-between"><span>Nome:</span> <span className="font-medium">{title}</span></div>
+                <div className="flex justify-between"><span>Valor:</span> <span className="font-medium">{formatBRL(result.totalCost)}</span></div>
+                <div className="flex justify-between"><span>Forma:</span> <span className="font-medium">{PAYMENT_LABELS[paymentMethod]} {showInstallments && `em ${installments}x`}</span></div>
+                <div className="flex justify-between"><span>Categoria:</span> <span className="font-medium">{category}</span></div>
+              </div>
+              <DialogFooter className="flex-row gap-2 sm:justify-between">
+                <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={saving} className="flex-1">
+                  Cancelar
+                </Button>
+                <Button onClick={() => handleSave("converted")} disabled={saving} className="flex-1">
+                  Confirmar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
     </>

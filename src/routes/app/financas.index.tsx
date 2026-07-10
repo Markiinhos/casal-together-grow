@@ -11,11 +11,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, TrendingDown, Wallet, Trash2, Copy, Sparkles, History } from "lucide-react";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from "recharts";
 
-export const Route = createFileRoute("/app/financas")({
+export const Route = createFileRoute("/app/financas/")({
   component: FinancePage,
 });
 
@@ -28,7 +29,7 @@ function FinancePage() {
   const { space } = useSpace();
   const qc = useQueryClient();
 
-  const { data: tx = [] } = useQuery({
+  const { data: tx = [], isLoading } = useQuery({
     queryKey: ["tx-list", space, coupleId, user?.id],
     queryFn: async () => {
       let q: any = supabase.from("transactions").select("*, categories(name,color,icon)").order("date", { ascending: false });
@@ -104,18 +105,31 @@ function FinancePage() {
           </Button>
         </div>
         <Card className="rounded-3xl p-5 shadow-card">
-          <div className="text-3xl font-bold mb-1">{formatBRL(summary.balance)}</div>
-          <p className="text-xs text-muted-foreground mb-4">Saldo do mês</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-success/10 p-3">
-              <div className="flex items-center gap-1.5 text-success mb-1"><TrendingUp className="size-4" /><span className="text-xs">Receitas</span></div>
-              <div className="font-semibold text-sm">{formatBRL(summary.income)}</div>
+          {isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-9 w-32 rounded-xl" />
+              <Skeleton className="h-3 w-20 rounded-md" />
+              <div className="grid grid-cols-2 gap-3">
+                <Skeleton className="h-16 rounded-2xl" />
+                <Skeleton className="h-16 rounded-2xl" />
+              </div>
             </div>
-            <div className="rounded-2xl bg-destructive/10 p-3">
-              <div className="flex items-center gap-1.5 text-destructive mb-1"><TrendingDown className="size-4" /><span className="text-xs">Despesas</span></div>
-              <div className="font-semibold text-sm">{formatBRL(summary.expense)}</div>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="text-3xl font-bold mb-1">{formatBRL(summary.balance)}</div>
+              <p className="text-xs text-muted-foreground mb-4">Saldo do mês</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-success/10 p-3">
+                  <div className="flex items-center gap-1.5 text-success mb-1"><TrendingUp className="size-4" /><span className="text-xs">Receitas</span></div>
+                  <div className="font-semibold text-sm">{formatBRL(summary.income)}</div>
+                </div>
+                <div className="rounded-2xl bg-destructive/10 p-3">
+                  <div className="flex items-center gap-1.5 text-destructive mb-1"><TrendingDown className="size-4" /><span className="text-xs">Despesas</span></div>
+                  <div className="font-semibold text-sm">{formatBRL(summary.expense)}</div>
+                </div>
+              </div>
+            </>
+          )}
         </Card>
 
         <Tabs defaultValue="list">
