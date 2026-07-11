@@ -631,6 +631,9 @@ export type Database = {
           converted_expense_id: string | null
           couple_id: string | null
           created_at: string
+          decision_at: string | null
+          decision_by: string | null
+          decision_status: string | null
           final_amount: number | null
           first_payment_date: string | null
           id: string
@@ -638,6 +641,7 @@ export type Database = {
           interest_enabled: boolean
           interest_rate: number | null
           metadata: Json | null
+          partner_comment: string | null
           payment_method: string
           purchase_date: string
           risk_level: string | null
@@ -655,6 +659,9 @@ export type Database = {
           converted_expense_id?: string | null
           couple_id?: string | null
           created_at?: string
+          decision_at?: string | null
+          decision_by?: string | null
+          decision_status?: string | null
           final_amount?: number | null
           first_payment_date?: string | null
           id?: string
@@ -662,6 +669,7 @@ export type Database = {
           interest_enabled?: boolean
           interest_rate?: number | null
           metadata?: Json | null
+          partner_comment?: string | null
           payment_method: string
           purchase_date?: string
           risk_level?: string | null
@@ -679,6 +687,9 @@ export type Database = {
           converted_expense_id?: string | null
           couple_id?: string | null
           created_at?: string
+          decision_at?: string | null
+          decision_by?: string | null
+          decision_status?: string | null
           final_amount?: number | null
           first_payment_date?: string | null
           id?: string
@@ -686,6 +697,7 @@ export type Database = {
           interest_enabled?: boolean
           interest_rate?: number | null
           metadata?: Json | null
+          partner_comment?: string | null
           payment_method?: string
           purchase_date?: string
           risk_level?: string | null
