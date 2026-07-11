@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PageHeader } from "@/components/PageHeader";
 import {
   Dialog,
   DialogContent,
@@ -399,18 +400,14 @@ function ItemDetail() {
   /* ── render: detail view ── */
   return (
     <>
-      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
-          <Link to="/app/casa/compras" className="size-9 rounded-full hover:bg-accent flex items-center justify-center"><ArrowLeft className="size-5" /></Link>
-          <h1 className="font-bold flex-1 truncate">{item.title}</h1>
-          <button onClick={startEditing} className="size-9 rounded-full hover:bg-accent flex items-center justify-center text-primary" title="Editar">
-            <Edit2 className="size-4" />
-          </button>
-          <button onClick={() => setDeleteOpen(true)} className="size-9 rounded-full hover:bg-accent text-destructive flex items-center justify-center" title="Excluir">
-            <Trash2 className="size-4" />
-          </button>
-        </div>
-      </header>
+      <PageHeader title={item.title || "Detalhes"} fallbackRoute="/app/casa/compras">
+        <button onClick={startEditing} className="size-9 rounded-full hover:bg-accent flex items-center justify-center text-primary" title="Editar">
+          <Edit2 className="size-4" />
+        </button>
+        <button onClick={() => setDeleteOpen(true)} className="size-9 rounded-full hover:bg-accent text-destructive flex items-center justify-center" title="Excluir">
+          <Trash2 className="size-4" />
+        </button>
+      </PageHeader>
 
       <div className="max-w-md mx-auto px-4 py-4 space-y-3 pb-24">
         {/* info card */}

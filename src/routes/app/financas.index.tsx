@@ -92,15 +92,20 @@ function FinancePage() {
     <>
       <AppHeader title="Finanças" subtitle="Receitas, despesas e gráficos" />
       <div className="px-4 py-4 space-y-4">
-        <div className="grid grid-cols-2 gap-2">
-          <Button asChild variant="outline" className="rounded-2xl h-auto py-3">
-            <Link to="/app/financas/simular">
-              <Sparkles className="size-4 mr-1" /> Simular despesa
+        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <Button asChild variant="outline" className="rounded-2xl h-auto py-3 whitespace-nowrap shrink-0 flex-1">
+            <Link to="/app/financas/projecao">
+              <TrendingUp className="size-4 mr-1" /> Projeção
             </Link>
           </Button>
-          <Button asChild variant="outline" className="rounded-2xl h-auto py-3">
+          <Button asChild variant="outline" className="rounded-2xl h-auto py-3 whitespace-nowrap shrink-0 flex-1">
+            <Link to="/app/financas/simular">
+              <Sparkles className="size-4 mr-1" /> Simular
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="rounded-2xl h-auto py-3 whitespace-nowrap shrink-0 flex-1">
             <Link to="/app/financas/simulacoes">
-              <History className="size-4 mr-1" /> Simulações
+              <History className="size-4 mr-1" /> Histórico
             </Link>
           </Button>
         </div>

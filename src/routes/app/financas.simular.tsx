@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/hooks";
 import { useSpace, applySpaceFilter } from "@/lib/space";
 import { formatBRL } from "@/lib/couple";
-import { AppHeader } from "@/components/AppHeader";
+import { PageHeader } from "@/components/PageHeader";
 import { SpaceToggle } from "@/components/SpaceToggle";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -243,7 +243,7 @@ function SimulatePage() {
 
   return (
     <>
-      <AppHeader title="Simular despesa" subtitle="Veja o impacto antes de comprar" />
+      <PageHeader title="Simular despesa" subtitle="Veja o impacto antes de comprar" fallbackRoute="/app/financas" />
       <div className="px-4 py-4 space-y-4 pb-32">
         <div className="flex items-center justify-between gap-2">
           <SpaceToggle />

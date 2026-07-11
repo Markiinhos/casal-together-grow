@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PageHeader } from "@/components/PageHeader";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, ITEM_TYPES, PAY_METHODS, PRIORITIES, STATUSES } from "@/lib/household";
@@ -79,12 +80,7 @@ function NewItem() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
-          <Link to="/app/casa/compras" className="size-9 rounded-full hover:bg-accent flex items-center justify-center"><ArrowLeft className="size-5" /></Link>
-          <h1 className="font-bold">Novo item</h1>
-        </div>
-      </header>
+      <PageHeader title="Novo item" fallbackRoute="/app/casa/compras" />
 
       <form onSubmit={(e) => { e.preventDefault(); create.mutate(); }} className="px-4 py-4 space-y-3 max-w-md mx-auto pb-24">
         <Card className="rounded-2xl p-4 space-y-3 shadow-card">

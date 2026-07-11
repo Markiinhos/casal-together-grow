@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
+import { PageHeader } from "@/components/PageHeader";
 import { ArrowLeft, Plus, RefreshCw, ShoppingCart } from "lucide-react";
 import { PRIORITIES, STATUSES, fmtBRL, labelFor, priorityBadge, statusBadge } from "@/lib/household";
 
@@ -17,6 +18,7 @@ type Filter = "all" | "pending" | "urgent" | "this_month" | "purchased" | "done"
 
 function ComprasList() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<Filter>("all");
 
   const { data: items = [], isLoading, isError, refetch } = useQuery({
@@ -66,20 +68,16 @@ function ComprasList() {
     { v: "done", label: "Concluídos" },
   ];
 
+  const handleNewItem = () => {
+    navigate({ to: "/app/casa/compras/nova" });
+  };
+
   return (
     <>
-      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
-          <Link to="/app/casa" className="size-9 rounded-full hover:bg-accent flex items-center justify-center"><ArrowLeft className="size-5" /></Link>
-          <div className="flex-1">
-            <h1 className="font-bold">Compras para Casa</h1>
-            <p className="text-[11px] text-muted-foreground">Planeje compras, melhorias e manutenções do lar</p>
-          </div>
-          <Link to="/app/casa/compras/nova">
-            <Button size="sm" className="rounded-full gradient-coral text-white border-0 gap-1"><Plus className="size-4" /> Novo</Button>
-          </Link>
-        </div>
-      </header>
+      <PageHeader title="Compras para Casa" subtitle="Planeje compras e manutenções" fallbackRoute="/app/nosso" />
+      <div className="px-4 py-3 flex justify-end">
+        <Button onClick={handleNewItem} size="sm" className="rounded-full gradient-coral text-white border-0 gap-1"><Plus className="size-4" /> Novo</Button>
+      </div>
 
       <div className="px-4 py-4 space-y-3">
         <div className="grid grid-cols-3 gap-2">
@@ -144,7 +142,7 @@ function ComprasList() {
               }
               action={
                 filter === "all"
-                  ? <Link to="/app/casa/compras/nova"><Button className="rounded-xl gradient-coral text-white border-0">Adicionar primeiro item</Button></Link>
+                  ? <Button onClick={handleNewItem} className="rounded-xl gradient-coral text-white border-0">Adicionar primeiro item</Button>
                   : <Button variant="outline" className="rounded-xl" onClick={() => setFilter("all")}>Limpar filtro</Button>
               }
             />
