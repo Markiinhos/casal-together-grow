@@ -1,13 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { Bell, Settings as SettingsIcon } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { SpaceToggle } from "@/components/SpaceToggle";
 import logoAsset from "@/assets/casal-logo.png.asset.json";
+import { toast } from "sonner";
 
 export function AppHeader({ title, subtitle, showSpaceToggle = true }: { title?: string; subtitle?: string; showSpaceToggle?: boolean }) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   const { data: unread = 0 } = useQuery({
     queryKey: ["notif-unread", user?.id],
     queryFn: async () => {
@@ -21,6 +24,29 @@ export function AppHeader({ title, subtitle, showSpaceToggle = true }: { title?:
     enabled: !!user,
     refetchInterval: 30000,
   });
+
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`notif-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const n: any = payload.new;
+          qc.invalidateQueries({ queryKey: ["notif-unread"] });
+          qc.invalidateQueries({ queryKey: ["notif"] });
+          if (n?.title) toast(n.title, { description: n.body ?? undefined });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        () => qc.invalidateQueries({ queryKey: ["notif-unread"] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, qc]);
 
   return (
     <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
