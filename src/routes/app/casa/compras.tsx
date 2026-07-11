@@ -1,0 +1,167 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { AppHeader } from "@/components/AppHeader";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/EmptyState";
+import { ArrowLeft, Plus, ShoppingCart } from "lucide-react";
+import { PRIORITIES, STATUSES, fmtBRL, labelFor, priorityBadge, statusBadge } from "@/lib/household";
+
+export const Route = createFileRoute("/app/casa/compras")({
+  component: ComprasList,
+});
+
+type Filter = "all" | "pending" | "urgent" | "this_month" | "purchased" | "done";
+
+function ComprasList() {
+  const { user } = useAuth();
+  const [filter, setFilter] = useState<Filter>("all");
+
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ["household_needs", user?.id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("household_needs")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
+  const filtered = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return (items as any[]).filter((i) => {
+      if (filter === "pending") return !["purchased", "done", "cancelled"].includes(i.status);
+      if (filter === "urgent") return i.priority === "urgent";
+      if (filter === "purchased") return i.status === "purchased";
+      if (filter === "done") return i.status === "done";
+      if (filter === "this_month") {
+        const d = i.planned_date ? new Date(i.planned_date) : i.planned_month ? new Date(i.planned_month) : null;
+        return d && d >= monthStart && d <= monthEnd;
+      }
+      return true;
+    });
+  }, [items, filter]);
+
+  const summary = useMemo(() => {
+    const pending = (items as any[]).filter((i) => !["purchased", "done", "cancelled"].includes(i.status));
+    const totalEstimated = pending.reduce((s, i) => s + (Number(i.estimated_amount) || 0), 0);
+    const urgent = pending.filter((i) => i.priority === "urgent").length;
+    const done = (items as any[]).filter((i) => ["purchased", "done"].includes(i.status)).length;
+    return { count: pending.length, totalEstimated, urgent, done };
+  }, [items]);
+
+  const filters: { v: Filter; label: string }[] = [
+    { v: "all", label: "Todos" },
+    { v: "pending", label: "Pendentes" },
+    { v: "urgent", label: "Urgentes" },
+    { v: "this_month", label: "Este mês" },
+    { v: "purchased", label: "Comprados" },
+    { v: "done", label: "Concluídos" },
+  ];
+
+  return (
+    <>
+      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
+          <Link to="/app/casa" className="size-9 rounded-full hover:bg-accent flex items-center justify-center"><ArrowLeft className="size-5" /></Link>
+          <div className="flex-1">
+            <h1 className="font-bold">Compras para Casa</h1>
+            <p className="text-[11px] text-muted-foreground">Planeje compras, melhorias e manutenções do lar</p>
+          </div>
+          <Link to="/app/casa/compras/nova">
+            <Button size="sm" className="rounded-full gradient-coral text-white border-0 gap-1"><Plus className="size-4" /> Novo</Button>
+          </Link>
+        </div>
+      </header>
+
+      <div className="px-4 py-4 space-y-3">
+        <div className="grid grid-cols-3 gap-2">
+          <Card className="rounded-2xl p-3 text-center shadow-card">
+            <div className="text-xs text-muted-foreground">Pendentes</div>
+            <div className="text-lg font-bold">{summary.count}</div>
+          </Card>
+          <Card className="rounded-2xl p-3 text-center shadow-card">
+            <div className="text-xs text-muted-foreground">Previsto</div>
+            <div className="text-sm font-bold">{fmtBRL(summary.totalEstimated)}</div>
+          </Card>
+          <Card className="rounded-2xl p-3 text-center shadow-card">
+            <div className="text-xs text-muted-foreground">Urgentes</div>
+            <div className="text-lg font-bold text-destructive">{summary.urgent}</div>
+          </Card>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          {filters.map((f) => (
+            <button
+              key={f.v}
+              onClick={() => setFilter(f.v)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition ${
+                filter === f.v ? "bg-primary text-white border-primary" : "bg-background border-border text-muted-foreground"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {isLoading ? (
+          <Card className="rounded-2xl p-6 shadow-card text-center text-sm text-muted-foreground">Carregando…</Card>
+        ) : filtered.length === 0 ? (
+          <Card className="rounded-2xl p-4 shadow-card">
+            <EmptyState
+              icon={ShoppingCart}
+              title="Nenhum item"
+              description="Cadastre o que precisa comprar ou consertar em casa."
+              action={<Link to="/app/casa/compras/nova"><Button className="rounded-xl gradient-coral text-white border-0">Novo item</Button></Link>}
+            />
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {filtered.map((i) => (
+              <Link key={i.id} to="/app/casa/compras/$id" params={{ id: i.id }}>
+                <Card className="rounded-2xl p-4 shadow-card active:scale-[0.99] transition">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm">{i.title}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${priorityBadge(i.priority)}`}>
+                          {labelFor(PRIORITIES, i.priority)}
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusBadge(i.status)}`}>
+                          {labelFor(STATUSES, i.status)}
+                        </span>
+                      </div>
+                      {i.category && <div className="text-xs text-muted-foreground mt-0.5">{i.category}</div>}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {i.planned_date ? new Date(i.planned_date).toLocaleDateString("pt-BR") :
+                          i.planned_month ? new Date(i.planned_month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" }) :
+                          "Sem data"}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold">{fmtBRL(Number(i.actual_amount ?? i.estimated_amount))}</div>
+                      {i.actual_amount && i.estimated_amount && Number(i.actual_amount) !== Number(i.estimated_amount) && (
+                        <div className={`text-[10px] ${Number(i.actual_amount) > Number(i.estimated_amount) ? "text-destructive" : "text-success"}`}>
+                          {Number(i.actual_amount) > Number(i.estimated_amount) ? "+" : ""}
+                          {fmtBRL(Number(i.actual_amount) - Number(i.estimated_amount))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
