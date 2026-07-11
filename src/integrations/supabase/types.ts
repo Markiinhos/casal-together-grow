@@ -1273,6 +1273,128 @@ export type Database = {
           },
         ]
       }
+      household_need_attachments: {
+        Row: {
+          created_at: string
+          file_name: string | null
+          file_type: string | null
+          file_url: string
+          household_need_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name?: string | null
+          file_type?: string | null
+          file_url: string
+          household_need_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string | null
+          file_type?: string | null
+          file_url?: string
+          household_need_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_need_attachments_household_need_id_fkey"
+            columns: ["household_need_id"]
+            isOneToOne: false
+            referencedRelation: "household_needs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      household_needs: {
+        Row: {
+          actual_amount: number | null
+          assigned_to: string | null
+          category: string | null
+          completed_at: string | null
+          couple_id: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          estimated_amount: number | null
+          expense_id: string | null
+          id: string
+          item_type: string
+          metadata: Json
+          planned_date: string | null
+          planned_installments: number | null
+          planned_month: string | null
+          planned_payment_method: string | null
+          priority: string
+          simulation_id: string | null
+          status: string
+          task_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          actual_amount?: number | null
+          assigned_to?: string | null
+          category?: string | null
+          completed_at?: string | null
+          couple_id?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          estimated_amount?: number | null
+          expense_id?: string | null
+          id?: string
+          item_type?: string
+          metadata?: Json
+          planned_date?: string | null
+          planned_installments?: number | null
+          planned_month?: string | null
+          planned_payment_method?: string | null
+          priority?: string
+          simulation_id?: string | null
+          status?: string
+          task_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          actual_amount?: number | null
+          assigned_to?: string | null
+          category?: string | null
+          completed_at?: string | null
+          couple_id?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          estimated_amount?: number | null
+          expense_id?: string | null
+          id?: string
+          item_type?: string
+          metadata?: Json
+          planned_date?: string | null
+          planned_installments?: number | null
+          planned_month?: string | null
+          planned_payment_method?: string | null
+          priority?: string
+          simulation_id?: string | null
+          status?: string
+          task_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: []
+      }
       installments: {
         Row: {
           amount: number
@@ -1495,6 +1617,7 @@ export type Database = {
         Row: {
           body: string | null
           created_at: string
+          dedupe_key: string | null
           id: string
           link: string | null
           read: boolean
@@ -1505,6 +1628,7 @@ export type Database = {
         Insert: {
           body?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           link?: string | null
           read?: boolean
@@ -1515,6 +1639,7 @@ export type Database = {
         Update: {
           body?: string | null
           created_at?: string
+          dedupe_key?: string | null
           id?: string
           link?: string | null
           read?: boolean
