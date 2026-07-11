@@ -19,7 +19,7 @@ export const Route = createFileRoute("/app/casa/compras/$id")({
 function ItemDetail() {
   const { id } = Route.useParams();
   const { user } = useAuth();
-  const { coupleId } = useCouple();
+  
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
