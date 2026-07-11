@@ -18,7 +18,12 @@ export const Route = createFileRoute("/app/casa/compras/nova")({
 
 function NewItem() {
   const { user } = useAuth();
-  const { coupleId } = useCouple();
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => (await supabase.from("profiles").select("couple_id").eq("id", user!.id).maybeSingle()).data,
+    enabled: !!user,
+  });
+  const coupleId = profile?.couple_id ?? null;
   const navigate = useNavigate();
   const qc = useQueryClient();
 
