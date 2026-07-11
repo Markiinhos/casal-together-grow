@@ -38,6 +38,16 @@ import { toast } from "sonner";
 import { Sparkles, Save, CheckCircle2, GitCompare, History } from "lucide-react";
 
 export const Route = createFileRoute("/app/financas/simular")({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      title: search.title as string | undefined,
+      amount: search.amount as string | undefined,
+      payment: search.payment as PaymentMethod | undefined,
+      installments: search.installments ? Number(search.installments) : undefined,
+      origin: search.origin as string | undefined,
+      date: search.date as string | undefined,
+    }
+  },
   component: SimulatePage,
 });
 
@@ -57,6 +67,7 @@ const CATEGORIES = [
 const INSTALLMENT_OPTIONS = [1, 2, 3, 4, 5, 6, 10, 12, 18, 24];
 
 function SimulatePage() {
+  const search = Route.useSearch();
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const coupleId = profile?.couple_id ?? null;
@@ -64,19 +75,20 @@ function SimulatePage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  const [title, setTitle] = useState("");
-  const [amount, setAmount] = useState<string>("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("pix");
-  const [installments, setInstallments] = useState<number>(1);
+  const [title, setTitle] = useState(search.title ?? "");
+  const [amount, setAmount] = useState<string>(search.amount ?? "");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(search.payment ?? "pix");
+  const [installments, setInstallments] = useState<number>(search.installments ?? 1);
   const [interestEnabled, setInterestEnabled] = useState(false);
   const [interestRate, setInterestRate] = useState<string>("");
-  const [purchaseDate, setPurchaseDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [purchaseDate, setPurchaseDate] = useState<string>(() => search.date ?? new Date().toISOString().slice(0, 10));
   const [firstPaymentDate, setFirstPaymentDate] = useState<string>("");
   const [category, setCategory] = useState<string>("Outros");
   const [cardId, setCardId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isConverted, setIsConverted] = useState(false);
+  const originParts = search.origin?.split(":") ?? null;
 
   // Cartões
   const { data: cards = [] } = useQuery({
@@ -177,6 +189,8 @@ function SimulatePage() {
         simulation_result: result as any,
         risk_level: result.risk,
         status,
+        source_type: originParts?.[0] ?? null,
+        source_id: originParts?.[1] ?? null,
       };
 
       const { data: sim, error } = await supabase

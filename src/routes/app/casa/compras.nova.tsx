@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORIES, ITEM_TYPES, PAY_METHODS, PRIORITIES, STATUSES } from "@/lib/household";
 
@@ -74,7 +74,7 @@ function NewItem() {
       toast.success("Item criado");
       navigate({ to: "/app/casa/compras/$id", params: { id: data.id } });
     },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao salvar"),
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível salvar o item."),
   });
 
   return (
@@ -193,7 +193,9 @@ function NewItem() {
         </Card>
 
         <Button type="submit" disabled={create.isPending} className="w-full h-12 rounded-xl gradient-coral text-white border-0">
-          {create.isPending ? "Salvando…" : "Salvar"}
+          {create.isPending ? (
+            <span className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Salvando…</span>
+          ) : "Salvar"}
         </Button>
       </form>
     </>

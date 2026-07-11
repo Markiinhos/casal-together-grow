@@ -44,6 +44,7 @@ import { Route as AppMaisConfiguracoesRouteImport } from './routes/app/mais/conf
 import { Route as AppFinancasSimularRouteImport } from './routes/app/financas.simular'
 import { Route as AppFinancasSimulacoesRouteImport } from './routes/app/financas.simulacoes'
 import { Route as AppCasaComprasRouteImport } from './routes/app/casa/compras'
+import { Route as AppCasaComprasIndexRouteImport } from './routes/app/casa/compras.index'
 import { Route as AppCasaComprasNovaRouteImport } from './routes/app/casa/compras.nova'
 import { Route as AppCasaComprasIdRouteImport } from './routes/app/casa/compras.$id'
 import { Route as ApiPublicHooksSyncInstitutionsRouteImport } from './routes/api/public/hooks/sync-institutions'
@@ -223,6 +224,11 @@ const AppCasaComprasRoute = AppCasaComprasRouteImport.update({
   path: '/compras',
   getParentRoute: () => AppCasaRouteRoute,
 } as any)
+const AppCasaComprasIndexRoute = AppCasaComprasIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppCasaComprasRoute,
+} as any)
 const AppCasaComprasNovaRoute = AppCasaComprasNovaRouteImport.update({
   id: '/nova',
   path: '/nova',
@@ -279,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
   '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
+  '/app/casa/compras/': typeof AppCasaComprasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -305,7 +312,6 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app': typeof AppIndexRoute
-  '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
@@ -316,6 +322,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
   '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
+  '/app/casa/compras': typeof AppCasaComprasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -357,6 +364,7 @@ export interface FileRoutesById {
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
   '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
+  '/app/casa/compras/': typeof AppCasaComprasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -399,6 +407,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-institutions'
     | '/app/casa/compras/$id'
     | '/app/casa/compras/nova'
+    | '/app/casa/compras/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -425,7 +434,6 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/convite/$code'
     | '/app'
-    | '/app/casa/compras'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
     | '/app/mais/configuracoes'
@@ -436,6 +444,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-institutions'
     | '/app/casa/compras/$id'
     | '/app/casa/compras/nova'
+    | '/app/casa/compras'
   id:
     | '__root__'
     | '/'
@@ -476,6 +485,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-institutions'
     | '/app/casa/compras/$id'
     | '/app/casa/compras/nova'
+    | '/app/casa/compras/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -734,6 +744,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCasaComprasRouteImport
       parentRoute: typeof AppCasaRouteRoute
     }
+    '/app/casa/compras/': {
+      id: '/app/casa/compras/'
+      path: '/'
+      fullPath: '/app/casa/compras/'
+      preLoaderRoute: typeof AppCasaComprasIndexRouteImport
+      parentRoute: typeof AppCasaComprasRoute
+    }
     '/app/casa/compras/nova': {
       id: '/app/casa/compras/nova'
       path: '/nova'
@@ -761,11 +778,13 @@ declare module '@tanstack/react-router' {
 interface AppCasaComprasRouteChildren {
   AppCasaComprasIdRoute: typeof AppCasaComprasIdRoute
   AppCasaComprasNovaRoute: typeof AppCasaComprasNovaRoute
+  AppCasaComprasIndexRoute: typeof AppCasaComprasIndexRoute
 }
 
 const AppCasaComprasRouteChildren: AppCasaComprasRouteChildren = {
   AppCasaComprasIdRoute: AppCasaComprasIdRoute,
   AppCasaComprasNovaRoute: AppCasaComprasNovaRoute,
+  AppCasaComprasIndexRoute: AppCasaComprasIndexRoute,
 }
 
 const AppCasaComprasRouteWithChildren = AppCasaComprasRoute._addFileChildren(

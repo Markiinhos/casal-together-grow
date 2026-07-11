@@ -3,31 +3,68 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Calculator, ListChecks, Paperclip, Receipt, Trash2, Upload } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  ArrowLeft, Calculator, Edit2, ExternalLink, ListChecks,
+  Loader2, Paperclip, Receipt, RefreshCw, Trash2, Upload,
+} from "lucide-react";
 import { toast } from "sonner";
-import { CATEGORIES, ITEM_TYPES, PAY_METHODS, PRIORITIES, STATUSES, fmtBRL, labelFor, priorityBadge, statusBadge } from "@/lib/household";
+import {
+  CATEGORIES, ITEM_TYPES, PAY_METHODS, PRIORITIES, STATUSES,
+  fmtBRL, labelFor, priorityBadge, statusBadge,
+} from "@/lib/household";
 
 export const Route = createFileRoute("/app/casa/compras/$id")({
   component: ItemDetail,
 });
 
+/* ──────── component ──────── */
 function ItemDetail() {
   const { id } = Route.useParams();
   const { user } = useAuth();
-  
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { data: item, isLoading } = useQuery({
+  /* ── state ── */
+  const [showConvert, setShowConvert] = useState(false);
+  const [actualAmount, setActualAmount] = useState("");
+  const [payMethod, setPayMethod] = useState("pix");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  /* ── edit form state ── */
+  const [eTitle, setETitle] = useState("");
+  const [eDescription, setEDescription] = useState("");
+  const [eItemType, setEItemType] = useState("purchase");
+  const [eCategory, setECategory] = useState("");
+  const [eEstimated, setEEstimated] = useState("");
+  const [ePriority, setEPriority] = useState("medium");
+  const [eStatus, setEStatus] = useState("idea");
+  const [ePlannedDate, setEPlannedDate] = useState("");
+  const [ePlannedMonth, setEPlannedMonth] = useState("");
+  const [ePayment, setEPayment] = useState("undefined");
+  const [eInstallments, setEInstallments] = useState("1");
+  const [eVisibility, setEVisibility] = useState<"shared"|"private">("shared");
+
+  /* ── queries ── */
+  const { data: item, isLoading, isError, refetch } = useQuery({
     queryKey: ["household_need", id],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("household_needs").select("*").eq("id", id).maybeSingle();
+      const { data, error } = await (supabase as any)
+        .from("household_needs").select("*").eq("id", id).maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -45,10 +82,7 @@ function ItemDetail() {
     },
   });
 
-  const [showConvert, setShowConvert] = useState(false);
-  const [actualAmount, setActualAmount] = useState("");
-  const [payMethod, setPayMethod] = useState("pix");
-
+  /* populate convert fields */
   useEffect(() => {
     if (item) {
       setActualAmount(String(item.actual_amount ?? item.estimated_amount ?? ""));
@@ -56,6 +90,25 @@ function ItemDetail() {
     }
   }, [item]);
 
+  /* populate edit fields */
+  function startEditing() {
+    if (!item) return;
+    setETitle(item.title ?? "");
+    setEDescription(item.description ?? "");
+    setEItemType(item.item_type ?? "purchase");
+    setECategory(item.category ?? "");
+    setEEstimated(item.estimated_amount != null ? String(item.estimated_amount) : "");
+    setEPriority(item.priority ?? "medium");
+    setEStatus(item.status ?? "idea");
+    setEPlannedDate(item.planned_date ?? "");
+    setEPlannedMonth(item.planned_month ? (item.planned_month as string).slice(0, 7) : "");
+    setEPayment(item.planned_payment_method ?? "undefined");
+    setEInstallments(String(item.planned_installments ?? 1));
+    setEVisibility(item.visibility ?? "shared");
+    setEditing(true);
+  }
+
+  /* ── mutations ── */
   const updateStatus = useMutation({
     mutationFn: async (patch: any) => {
       const { error } = await (supabase as any).from("household_needs").update(patch).eq("id", id);
@@ -64,7 +117,39 @@ function ItemDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["household_need", id] });
       qc.invalidateQueries({ queryKey: ["household_needs"] });
+      toast.success("Status atualizado");
     },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível atualizar o item."),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!eTitle.trim()) throw new Error("Informe o nome do item.");
+      const patch: any = {
+        title: eTitle.trim(),
+        description: eDescription.trim() || null,
+        item_type: eItemType,
+        category: eCategory || null,
+        estimated_amount: eEstimated ? Number(eEstimated.replace(",", ".")) : null,
+        priority: ePriority,
+        status: eStatus,
+        planned_date: ePlannedDate || null,
+        planned_month: ePlannedMonth ? ePlannedMonth + "-01" : null,
+        planned_payment_method: ePayment === "undefined" ? null : ePayment,
+        planned_installments: ePayment === "credit_installments" ? Math.max(1, Number(eInstallments) || 1) : 1,
+        visibility: eVisibility,
+        completed_at: ["done", "purchased"].includes(eStatus) ? new Date().toISOString() : null,
+      };
+      const { error } = await (supabase as any).from("household_needs").update(patch).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["household_need", id] });
+      qc.invalidateQueries({ queryKey: ["household_needs"] });
+      toast.success("Item atualizado");
+      setEditing(false);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível atualizar o item."),
   });
 
   const remove = useMutation({
@@ -77,7 +162,7 @@ function ItemDetail() {
       toast.success("Item excluído");
       navigate({ to: "/app/casa/compras" });
     },
-    onError: (e: any) => toast.error(e?.message ?? "Erro ao excluir"),
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível excluir o item."),
   });
 
   const createTask = useMutation({
@@ -99,14 +184,16 @@ function ItemDetail() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["household_need", id] });
+      qc.invalidateQueries({ queryKey: ["household_needs"] });
       toast.success("Tarefa criada");
     },
-    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível criar a tarefa."),
   });
 
   const convertToExpense = useMutation({
     mutationFn: async () => {
       if (!user || !item) throw new Error("sem sessão");
+      if (item.expense_id) throw new Error("Despesa já registrada para este item.");
       const amount = Number((actualAmount || "0").replace(",", "."));
       if (!amount || amount <= 0) throw new Error("Informe o valor real.");
       const { data, error } = await (supabase as any).from("transactions").insert({
@@ -131,12 +218,13 @@ function ItemDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["household_need", id] });
       qc.invalidateQueries({ queryKey: ["household_needs"] });
-      toast.success("Despesa criada");
+      toast.success("Despesa registrada com sucesso");
       setShowConvert(false);
     },
-    onError: (e: any) => toast.error(e?.message ?? "Erro"),
+    onError: (e: any) => toast.error(e?.message ?? "Não foi possível registrar a despesa."),
   });
 
+  /* ── file upload ── */
   async function uploadFile(file: File) {
     if (!user) return;
     const path = `${user.id}/${id}/${Date.now()}-${file.name}`;
@@ -159,6 +247,7 @@ function ItemDetail() {
     refetchAttachments();
   }
 
+  /* ── simulate in finance ── */
   function simulateInFinance() {
     if (!item) return;
     const params = new URLSearchParams({
@@ -172,22 +261,159 @@ function ItemDetail() {
     navigate({ to: `/app/financas/simular?${params.toString()}` as any });
   }
 
-  if (isLoading) return <div className="p-6 text-center text-sm text-muted-foreground">Carregando…</div>;
-  if (!item) return <div className="p-6 text-center text-sm text-muted-foreground">Item não encontrado.</div>;
+  /* ── render: loading ── */
+  if (isLoading) return (
+    <div className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+      <Loader2 className="size-4 animate-spin" /> Carregando…
+    </div>
+  );
 
+  /* ── render: error ── */
+  if (isError) return (
+    <div className="p-6 text-center space-y-3">
+      <p className="text-sm text-destructive">Não foi possível carregar o item.</p>
+      <Button variant="outline" onClick={() => refetch()} className="rounded-xl gap-2">
+        <RefreshCw className="size-4" /> Tentar novamente
+      </Button>
+    </div>
+  );
+
+  /* ── render: not found ── */
+  if (!item) return (
+    <div className="p-6 text-center space-y-3">
+      <p className="text-sm text-muted-foreground">Item não encontrado.</p>
+      <Link to="/app/casa/compras">
+        <Button variant="outline" className="rounded-xl gap-2">
+          <ArrowLeft className="size-4" /> Voltar para a lista
+        </Button>
+      </Link>
+    </div>
+  );
+
+  /* ── render: editing mode ── */
+  if (editing) return (
+    <>
+      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
+          <button onClick={() => setEditing(false)} className="size-9 rounded-full hover:bg-accent flex items-center justify-center">
+            <ArrowLeft className="size-5" />
+          </button>
+          <h1 className="font-bold flex-1">Editar item</h1>
+        </div>
+      </header>
+
+      <form onSubmit={(e) => { e.preventDefault(); editMutation.mutate(); }} className="px-4 py-4 space-y-3 max-w-md mx-auto pb-24">
+        <Card className="rounded-2xl p-4 space-y-3 shadow-card">
+          <div>
+            <Label>Nome</Label>
+            <Input value={eTitle} onChange={(e) => setETitle(e.target.value)} required />
+          </div>
+          <div>
+            <Label>Tipo</Label>
+            <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={eItemType} onChange={(e) => setEItemType(e.target.value)}>
+              {ITEM_TYPES.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label>Categoria</Label>
+            <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={eCategory} onChange={(e) => setECategory(e.target.value)}>
+              <option value="">Sem categoria</option>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label>Descrição</Label>
+            <Textarea rows={2} value={eDescription} onChange={(e) => setEDescription(e.target.value)} />
+          </div>
+        </Card>
+
+        <Card className="rounded-2xl p-4 space-y-3 shadow-card">
+          <div>
+            <Label>Valor estimado (R$)</Label>
+            <Input inputMode="decimal" value={eEstimated} onChange={(e) => setEEstimated(e.target.value)} />
+          </div>
+          <div>
+            <Label>Data planejada</Label>
+            <Input type="date" value={ePlannedDate} onChange={(e) => setEPlannedDate(e.target.value)} />
+          </div>
+          <div>
+            <Label>Mês planejado</Label>
+            <Input type="month" value={ePlannedMonth} onChange={(e) => setEPlannedMonth(e.target.value)} />
+          </div>
+          <div>
+            <Label>Prioridade</Label>
+            <div className="grid grid-cols-4 gap-1.5 mt-1">
+              {PRIORITIES.map((p) => (
+                <button type="button" key={p.v} onClick={() => setEPriority(p.v)}
+                  className={`py-1.5 rounded-lg text-xs font-medium border ${ePriority === p.v ? "bg-primary text-white border-primary" : "border-border text-muted-foreground"}`}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </Card>
+
+        <Card className="rounded-2xl p-4 space-y-3 shadow-card">
+          <div>
+            <Label>Forma de pagamento</Label>
+            <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={ePayment} onChange={(e) => setEPayment(e.target.value)}>
+              {PAY_METHODS.map((p) => <option key={p.v} value={p.v}>{p.label}</option>)}
+            </select>
+          </div>
+          {ePayment === "credit_installments" && (
+            <div>
+              <Label>Parcelas</Label>
+              <Input type="number" min={1} max={48} value={eInstallments} onChange={(e) => setEInstallments(e.target.value)} />
+            </div>
+          )}
+          <div>
+            <Label>Status</Label>
+            <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={eStatus} onChange={(e) => setEStatus(e.target.value)}>
+              {STATUSES.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label>Visibilidade</Label>
+            <div className="flex gap-2 mt-1">
+              <button type="button" onClick={() => setEVisibility("shared")}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${eVisibility === "shared" ? "bg-primary text-white border-primary" : "border-border text-muted-foreground"}`}>
+                Nosso espaço
+              </button>
+              <button type="button" onClick={() => setEVisibility("private")}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium border ${eVisibility === "private" ? "bg-primary text-white border-primary" : "border-border text-muted-foreground"}`}>
+                Meu espaço
+              </button>
+            </div>
+          </div>
+        </Card>
+
+        <Button type="submit" disabled={editMutation.isPending} className="w-full h-12 rounded-xl gradient-coral text-white border-0">
+          {editMutation.isPending ? (
+            <span className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Salvando…</span>
+          ) : "Salvar alterações"}
+        </Button>
+      </form>
+    </>
+  );
+
+  /* ── render: detail view ── */
   return (
     <>
       <header className="sticky top-0 z-30 bg-background/85 backdrop-blur border-b border-border">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
           <Link to="/app/casa/compras" className="size-9 rounded-full hover:bg-accent flex items-center justify-center"><ArrowLeft className="size-5" /></Link>
           <h1 className="font-bold flex-1 truncate">{item.title}</h1>
-          <button onClick={() => { if (confirm("Excluir este item?")) remove.mutate(); }} className="size-9 rounded-full hover:bg-accent text-destructive flex items-center justify-center">
+          <button onClick={startEditing} className="size-9 rounded-full hover:bg-accent flex items-center justify-center text-primary" title="Editar">
+            <Edit2 className="size-4" />
+          </button>
+          <button onClick={() => setDeleteOpen(true)} className="size-9 rounded-full hover:bg-accent text-destructive flex items-center justify-center" title="Excluir">
             <Trash2 className="size-4" />
           </button>
         </div>
       </header>
 
       <div className="max-w-md mx-auto px-4 py-4 space-y-3 pb-24">
+        {/* info card */}
         <Card className="rounded-2xl p-4 shadow-card space-y-2">
           <div className="flex flex-wrap gap-1.5">
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${priorityBadge(item.priority)}`}>{labelFor(PRIORITIES, item.priority)}</span>
@@ -216,6 +442,16 @@ function ItemDetail() {
               <div className="text-muted-foreground">Pagamento</div>
               <div className="font-medium">{labelFor(PAY_METHODS, item.planned_payment_method ?? "undefined")}</div>
             </div>
+            {item.planned_installments && item.planned_installments > 1 && (
+              <div>
+                <div className="text-muted-foreground">Parcelas</div>
+                <div className="font-medium">{item.planned_installments}x</div>
+              </div>
+            )}
+            <div>
+              <div className="text-muted-foreground">Visibilidade</div>
+              <div className="font-medium">{item.visibility === "shared" ? "Compartilhado" : "Privado"}</div>
+            </div>
           </div>
           {item.actual_amount && item.estimated_amount && (
             <div className={`text-xs mt-1 ${Number(item.actual_amount) > Number(item.estimated_amount) ? "text-destructive" : "text-success"}`}>
@@ -226,18 +462,58 @@ function ItemDetail() {
           )}
         </Card>
 
+        {/* linked items */}
+        {(item.task_id || item.simulation_id || item.expense_id) && (
+          <Card className="rounded-2xl p-4 shadow-card space-y-2">
+            <div className="font-semibold text-sm">Vínculos</div>
+            {item.task_id && (
+              <div className="flex items-center gap-2 text-xs">
+                <ListChecks className="size-4 text-primary" />
+                <span>Tarefa vinculada</span>
+                <Link to="/app/tarefas" className="text-primary hover:underline ml-auto flex items-center gap-1">
+                  Abrir <ExternalLink className="size-3" />
+                </Link>
+              </div>
+            )}
+            {item.expense_id && (
+              <div className="flex items-center gap-2 text-xs">
+                <Receipt className="size-4 text-success" />
+                <span>Despesa registrada</span>
+                <Link to="/app/financas" className="text-primary hover:underline ml-auto flex items-center gap-1">
+                  Abrir <ExternalLink className="size-3" />
+                </Link>
+              </div>
+            )}
+            {item.simulation_id && (
+              <div className="flex items-center gap-2 text-xs">
+                <Calculator className="size-4 text-accent-purple" />
+                <span>Simulação salva</span>
+                <Link to="/app/financas/simulacoes" className="text-primary hover:underline ml-auto flex items-center gap-1">
+                  Abrir <ExternalLink className="size-3" />
+                </Link>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* actions */}
         <Card className="rounded-2xl p-4 shadow-card space-y-2">
           <div className="font-semibold text-sm">Ações</div>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" className="rounded-xl gap-2" onClick={simulateInFinance}>
-              <Calculator className="size-4" /> Simular no financeiro
+              <Calculator className="size-4" /> Simular
             </Button>
-            <Button variant="outline" className="rounded-xl gap-2" onClick={() => createTask.mutate()} disabled={!!item.task_id || createTask.isPending}>
-              <ListChecks className="size-4" /> {item.task_id ? "Tarefa criada" : "Criar tarefa"}
+            <Button
+              variant="outline" className="rounded-xl gap-2"
+              onClick={() => createTask.mutate()}
+              disabled={!!item.task_id || createTask.isPending}
+            >
+              {createTask.isPending ? <Loader2 className="size-4 animate-spin" /> : <ListChecks className="size-4" />}
+              {item.task_id ? "Tarefa criada" : "Criar tarefa"}
             </Button>
             {item.expense_id ? (
               <Button variant="secondary" className="rounded-xl gap-2 col-span-2" disabled>
-                <Receipt className="size-4" /> Despesa registrada
+                <Receipt className="size-4" /> Despesa já registrada
               </Button>
             ) : (
               <Button className="rounded-xl gap-2 col-span-2 gradient-coral text-white border-0" onClick={() => setShowConvert((s) => !s)}>
@@ -258,25 +534,42 @@ function ItemDetail() {
                   {PAY_METHODS.filter((p) => p.v !== "undefined").map((p) => <option key={p.v} value={p.v}>{p.label}</option>)}
                 </select>
               </div>
-              <Button className="w-full rounded-xl gradient-coral text-white border-0" onClick={() => convertToExpense.mutate()} disabled={convertToExpense.isPending}>
-                {convertToExpense.isPending ? "Salvando…" : "Confirmar e criar despesa"}
+              <Button
+                className="w-full rounded-xl gradient-coral text-white border-0"
+                onClick={() => convertToExpense.mutate()}
+                disabled={convertToExpense.isPending}
+              >
+                {convertToExpense.isPending ? (
+                  <span className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Salvando…</span>
+                ) : "Confirmar e criar despesa"}
               </Button>
             </div>
           )}
         </Card>
 
+        {/* status changer */}
         <Card className="rounded-2xl p-4 shadow-card space-y-2">
           <div className="font-semibold text-sm">Alterar status</div>
           <div className="flex flex-wrap gap-1.5">
             {STATUSES.map((s) => (
-              <button key={s.v} onClick={() => updateStatus.mutate({ status: s.v, completed_at: ["done", "purchased"].includes(s.v) ? new Date().toISOString() : null })}
-                className={`text-[11px] px-2.5 py-1 rounded-full border ${item.status === s.v ? "bg-primary text-white border-primary" : "border-border text-muted-foreground"}`}>
+              <button
+                key={s.v}
+                disabled={updateStatus.isPending}
+                onClick={() => updateStatus.mutate({
+                  status: s.v,
+                  completed_at: ["done", "purchased"].includes(s.v) ? new Date().toISOString() : null,
+                })}
+                className={`text-[11px] px-2.5 py-1 rounded-full border transition ${
+                  item.status === s.v ? "bg-primary text-white border-primary" : "border-border text-muted-foreground hover:bg-accent"
+                }`}
+              >
                 {s.label}
               </button>
             ))}
           </div>
         </Card>
 
+        {/* attachments */}
         <Card className="rounded-2xl p-4 shadow-card space-y-2">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-sm flex items-center gap-2"><Paperclip className="size-4" /> Anexos</div>
@@ -301,6 +594,34 @@ function ItemDetail() {
           )}
         </Card>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="w-[90vw] max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Excluir item</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir "{item.title}"?
+              {(item.task_id || item.expense_id || item.simulation_id) && (
+                <span className="block mt-2 text-xs text-warning-foreground">
+                  ⚠ Este item possui vínculos com {[item.task_id && "tarefa", item.expense_id && "despesa", item.simulation_id && "simulação"].filter(Boolean).join(", ")}.
+                  Apenas o registro da casa será removido. Os registros financeiros e tarefas serão preservados.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={remove.isPending} className="flex-1">
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={() => remove.mutate()} disabled={remove.isPending} className="flex-1">
+              {remove.isPending ? (
+                <span className="flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Excluindo…</span>
+              ) : "Excluir"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
