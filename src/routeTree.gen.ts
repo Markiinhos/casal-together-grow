@@ -35,12 +35,17 @@ import { Route as AppAdicionarRouteImport } from './routes/app/adicionar'
 import { Route as AppNossoRouteRouteImport } from './routes/app/nosso/route'
 import { Route as AppMeuRouteRouteImport } from './routes/app/meu/route'
 import { Route as AppMaisRouteRouteImport } from './routes/app/mais/route'
+import { Route as AppCasaRouteRouteImport } from './routes/app/casa/route'
 import { Route as AppMaisIndexRouteImport } from './routes/app/mais/index'
 import { Route as AppFinancasIndexRouteImport } from './routes/app/financas.index'
+import { Route as AppCasaIndexRouteImport } from './routes/app/casa/index'
 import { Route as AppMaisNotificacoesRouteImport } from './routes/app/mais/notificacoes'
 import { Route as AppMaisConfiguracoesRouteImport } from './routes/app/mais/configuracoes'
 import { Route as AppFinancasSimularRouteImport } from './routes/app/financas.simular'
 import { Route as AppFinancasSimulacoesRouteImport } from './routes/app/financas.simulacoes'
+import { Route as AppCasaComprasRouteImport } from './routes/app/casa/compras'
+import { Route as AppCasaComprasNovaRouteImport } from './routes/app/casa/compras.nova'
+import { Route as AppCasaComprasIdRouteImport } from './routes/app/casa/compras.$id'
 import { Route as ApiPublicHooksSyncInstitutionsRouteImport } from './routes/api/public/hooks/sync-institutions'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -173,6 +178,11 @@ const AppMaisRouteRoute = AppMaisRouteRouteImport.update({
   path: '/mais',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppCasaRouteRoute = AppCasaRouteRouteImport.update({
+  id: '/casa',
+  path: '/casa',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppMaisIndexRoute = AppMaisIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -182,6 +192,11 @@ const AppFinancasIndexRoute = AppFinancasIndexRouteImport.update({
   id: '/financas/',
   path: '/financas/',
   getParentRoute: () => AppRouteRoute,
+} as any)
+const AppCasaIndexRoute = AppCasaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppCasaRouteRoute,
 } as any)
 const AppMaisNotificacoesRoute = AppMaisNotificacoesRouteImport.update({
   id: '/notificacoes',
@@ -203,6 +218,21 @@ const AppFinancasSimulacoesRoute = AppFinancasSimulacoesRouteImport.update({
   path: '/financas/simulacoes',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppCasaComprasRoute = AppCasaComprasRouteImport.update({
+  id: '/compras',
+  path: '/compras',
+  getParentRoute: () => AppCasaRouteRoute,
+} as any)
+const AppCasaComprasNovaRoute = AppCasaComprasNovaRouteImport.update({
+  id: '/nova',
+  path: '/nova',
+  getParentRoute: () => AppCasaComprasRoute,
+} as any)
+const AppCasaComprasIdRoute = AppCasaComprasIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppCasaComprasRoute,
+} as any)
 const ApiPublicHooksSyncInstitutionsRoute =
   ApiPublicHooksSyncInstitutionsRouteImport.update({
     id: '/api/public/hooks/sync-institutions',
@@ -215,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/app/casa': typeof AppCasaRouteRouteWithChildren
   '/app/mais': typeof AppMaisRouteRouteWithChildren
   '/app/meu': typeof AppMeuRouteRoute
   '/app/nosso': typeof AppNossoRouteRoute
@@ -237,13 +268,17 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app/': typeof AppIndexRoute
+  '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
+  '/app/casa/': typeof AppCasaIndexRoute
   '/app/financas/': typeof AppFinancasIndexRoute
   '/app/mais/': typeof AppMaisIndexRoute
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
+  '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
+  '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -270,13 +305,17 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app': typeof AppIndexRoute
+  '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
+  '/app/casa': typeof AppCasaIndexRoute
   '/app/financas': typeof AppFinancasIndexRoute
   '/app/mais': typeof AppMaisIndexRoute
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
+  '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
+  '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -284,6 +323,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
+  '/app/casa': typeof AppCasaRouteRouteWithChildren
   '/app/mais': typeof AppMaisRouteRouteWithChildren
   '/app/meu': typeof AppMeuRouteRoute
   '/app/nosso': typeof AppNossoRouteRoute
@@ -306,13 +346,17 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/convite/$code': typeof ConviteCodeRoute
   '/app/': typeof AppIndexRoute
+  '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
+  '/app/casa/': typeof AppCasaIndexRoute
   '/app/financas/': typeof AppFinancasIndexRoute
   '/app/mais/': typeof AppMaisIndexRoute
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
+  '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
+  '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -321,6 +365,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/auth'
     | '/reset-password'
+    | '/app/casa'
     | '/app/mais'
     | '/app/meu'
     | '/app/nosso'
@@ -343,13 +388,17 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/convite/$code'
     | '/app/'
+    | '/app/casa/compras'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
+    | '/app/casa/'
     | '/app/financas/'
     | '/app/mais/'
     | '/api/public/hooks/sync-institutions'
+    | '/app/casa/compras/$id'
+    | '/app/casa/compras/nova'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -376,19 +425,24 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/convite/$code'
     | '/app'
+    | '/app/casa/compras'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
+    | '/app/casa'
     | '/app/financas'
     | '/app/mais'
     | '/api/public/hooks/sync-institutions'
+    | '/app/casa/compras/$id'
+    | '/app/casa/compras/nova'
   id:
     | '__root__'
     | '/'
     | '/app'
     | '/auth'
     | '/reset-password'
+    | '/app/casa'
     | '/app/mais'
     | '/app/meu'
     | '/app/nosso'
@@ -411,13 +465,17 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/convite/$code'
     | '/app/'
+    | '/app/casa/compras'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
+    | '/app/casa/'
     | '/app/financas/'
     | '/app/mais/'
     | '/api/public/hooks/sync-institutions'
+    | '/app/casa/compras/$id'
+    | '/app/casa/compras/nova'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -613,6 +671,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMaisRouteRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/casa': {
+      id: '/app/casa'
+      path: '/casa'
+      fullPath: '/app/casa'
+      preLoaderRoute: typeof AppCasaRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/mais/': {
       id: '/app/mais/'
       path: '/'
@@ -626,6 +691,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/financas/'
       preLoaderRoute: typeof AppFinancasIndexRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/app/casa/': {
+      id: '/app/casa/'
+      path: '/'
+      fullPath: '/app/casa/'
+      preLoaderRoute: typeof AppCasaIndexRouteImport
+      parentRoute: typeof AppCasaRouteRoute
     }
     '/app/mais/notificacoes': {
       id: '/app/mais/notificacoes'
@@ -655,6 +727,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancasSimulacoesRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/casa/compras': {
+      id: '/app/casa/compras'
+      path: '/compras'
+      fullPath: '/app/casa/compras'
+      preLoaderRoute: typeof AppCasaComprasRouteImport
+      parentRoute: typeof AppCasaRouteRoute
+    }
+    '/app/casa/compras/nova': {
+      id: '/app/casa/compras/nova'
+      path: '/nova'
+      fullPath: '/app/casa/compras/nova'
+      preLoaderRoute: typeof AppCasaComprasNovaRouteImport
+      parentRoute: typeof AppCasaComprasRoute
+    }
+    '/app/casa/compras/$id': {
+      id: '/app/casa/compras/$id'
+      path: '/$id'
+      fullPath: '/app/casa/compras/$id'
+      preLoaderRoute: typeof AppCasaComprasIdRouteImport
+      parentRoute: typeof AppCasaComprasRoute
+    }
     '/api/public/hooks/sync-institutions': {
       id: '/api/public/hooks/sync-institutions'
       path: '/api/public/hooks/sync-institutions'
@@ -664,6 +757,34 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AppCasaComprasRouteChildren {
+  AppCasaComprasIdRoute: typeof AppCasaComprasIdRoute
+  AppCasaComprasNovaRoute: typeof AppCasaComprasNovaRoute
+}
+
+const AppCasaComprasRouteChildren: AppCasaComprasRouteChildren = {
+  AppCasaComprasIdRoute: AppCasaComprasIdRoute,
+  AppCasaComprasNovaRoute: AppCasaComprasNovaRoute,
+}
+
+const AppCasaComprasRouteWithChildren = AppCasaComprasRoute._addFileChildren(
+  AppCasaComprasRouteChildren,
+)
+
+interface AppCasaRouteRouteChildren {
+  AppCasaComprasRoute: typeof AppCasaComprasRouteWithChildren
+  AppCasaIndexRoute: typeof AppCasaIndexRoute
+}
+
+const AppCasaRouteRouteChildren: AppCasaRouteRouteChildren = {
+  AppCasaComprasRoute: AppCasaComprasRouteWithChildren,
+  AppCasaIndexRoute: AppCasaIndexRoute,
+}
+
+const AppCasaRouteRouteWithChildren = AppCasaRouteRoute._addFileChildren(
+  AppCasaRouteRouteChildren,
+)
 
 interface AppMaisRouteRouteChildren {
   AppMaisConfiguracoesRoute: typeof AppMaisConfiguracoesRoute
@@ -682,6 +803,7 @@ const AppMaisRouteRouteWithChildren = AppMaisRouteRoute._addFileChildren(
 )
 
 interface AppRouteRouteChildren {
+  AppCasaRouteRoute: typeof AppCasaRouteRouteWithChildren
   AppMaisRouteRoute: typeof AppMaisRouteRouteWithChildren
   AppMeuRouteRoute: typeof AppMeuRouteRoute
   AppNossoRouteRoute: typeof AppNossoRouteRoute
@@ -708,6 +830,7 @@ interface AppRouteRouteChildren {
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppCasaRouteRoute: AppCasaRouteRouteWithChildren,
   AppMaisRouteRoute: AppMaisRouteRouteWithChildren,
   AppMeuRouteRoute: AppMeuRouteRoute,
   AppNossoRouteRoute: AppNossoRouteRoute,
