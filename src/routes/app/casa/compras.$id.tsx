@@ -44,6 +44,7 @@ function ItemDetail() {
   const [actualAmount, setActualAmount] = useState("");
   const [payMethod, setPayMethod] = useState("pix");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTaskToo, setDeleteTaskToo] = useState(false);
   const [editing, setEditing] = useState(false);
 
   /* ── edit form state ── */
@@ -141,8 +142,32 @@ function ItemDetail() {
         visibility: eVisibility,
         completed_at: ["done", "purchased"].includes(eStatus) ? new Date().toISOString() : null,
       };
+      
+      const prevDate = item.planned_date;
+      
       const { error } = await (supabase as any).from("household_needs").update(patch).eq("id", id);
       if (error) throw error;
+
+      // Recalculate reminders if date changed
+      if (ePlannedDate && ePlannedDate !== prevDate) {
+        const { data: pendings } = await (supabase as any).from("household_need_reminders")
+          .select("*").eq("household_need_id", id).eq("status", "pending");
+          
+        if (pendings && pendings.length > 0) {
+          for (const rem of pendings) {
+            if (rem.reminder_type === "custom") continue;
+            let dateObj = new Date(ePlannedDate + "T09:00:00");
+            if (rem.reminder_type === "one_day_before") dateObj.setDate(dateObj.getDate() - 1);
+            if (rem.reminder_type === "one_week_before") dateObj.setDate(dateObj.getDate() - 7);
+            
+            if (dateObj.getTime() <= Date.now()) {
+              await (supabase as any).from("household_need_reminders").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", rem.id);
+            } else {
+              await (supabase as any).from("household_need_reminders").update({ remind_at: dateObj.toISOString() }).eq("id", rem.id);
+            }
+          }
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["household_need", id] });
@@ -155,6 +180,12 @@ function ItemDetail() {
 
   const remove = useMutation({
     mutationFn: async () => {
+      if (item.task_id && deleteTaskToo) {
+        await (supabase as any).from("house_tasks").delete().eq("id", item.task_id);
+      } else if (item.task_id) {
+        // Just unlink the task if we don't delete it
+        await (supabase as any).from("house_tasks").update({ source_type: null, source_id: null }).eq("id", item.task_id);
+      }
       const { error } = await (supabase as any).from("household_needs").delete().eq("id", id);
       if (error) throw error;
     },
@@ -599,13 +630,20 @@ function ItemDetail() {
             <DialogTitle>Excluir item</DialogTitle>
             <DialogDescription>
               Tem certeza que deseja excluir "{item.title}"?
-              {(item.task_id || item.expense_id || item.simulation_id) && (
+              {(item.expense_id || item.simulation_id || item.task_id) && (
                 <span className="block mt-2 text-xs text-warning-foreground">
-                  ⚠ Este item possui vínculos com {[item.task_id && "tarefa", item.expense_id && "despesa", item.simulation_id && "simulação"].filter(Boolean).join(", ")}.
-                  Apenas o registro da casa será removido. Os registros financeiros e tarefas serão preservados.
+                  ⚠ Este item possui vínculos (como despesas ou simulações) que serão preservados, apenas o item da casa será excluído.
                 </span>
               )}
             </DialogDescription>
+            {item.task_id && (
+              <div className="mt-4 p-3 bg-muted/30 rounded-xl border border-border">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={deleteTaskToo} onChange={(e) => setDeleteTaskToo(e.target.checked)} className="rounded" />
+                  Também excluir a tarefa vinculada
+                </label>
+              </div>
+            )}
           </DialogHeader>
           <DialogFooter className="flex-row gap-2 sm:justify-between">
             <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={remove.isPending} className="flex-1">

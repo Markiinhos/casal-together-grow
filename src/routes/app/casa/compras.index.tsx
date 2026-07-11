@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
 import { ArrowLeft, Plus, RefreshCw, ShoppingCart } from "lucide-react";
 import { PRIORITIES, STATUSES, fmtBRL, labelFor, priorityBadge, statusBadge } from "@/lib/household";
+import { HouseholdDashboard } from "@/components/HouseholdDashboard";
 
 export const Route = createFileRoute("/app/casa/compras/")({
   component: ComprasList,
@@ -20,6 +21,7 @@ function ComprasList() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<Filter>("all");
+  const [viewMode, setViewMode] = useState<"list" | "summary">("list");
 
   const { data: items = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["household_needs", user?.id],
@@ -75,12 +77,20 @@ function ComprasList() {
   return (
     <>
       <PageHeader title="Compras para Casa" subtitle="Planeje compras e manutenções" fallbackRoute="/app/nosso" />
-      <div className="px-4 py-3 flex justify-end">
+      <div className="px-4 py-3 flex justify-between items-center">
+        <div className="flex bg-muted p-1 rounded-xl">
+          <button onClick={() => setViewMode("list")} className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${viewMode === "list" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}>Lista</button>
+          <button onClick={() => setViewMode("summary")} className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${viewMode === "summary" ? "bg-background shadow text-foreground" : "text-muted-foreground"}`}>Resumo da Casa</button>
+        </div>
         <Button onClick={handleNewItem} size="sm" className="rounded-full gradient-coral text-white border-0 gap-1"><Plus className="size-4" /> Novo</Button>
       </div>
 
       <div className="px-4 py-4 space-y-3">
-        <div className="grid grid-cols-3 gap-2">
+        {viewMode === "summary" ? (
+          <HouseholdDashboard />
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-2">
           <Card className="rounded-2xl p-3 text-center shadow-card">
             <div className="text-xs text-muted-foreground">Pendentes</div>
             <div className="text-lg font-bold">{summary.count}</div>
@@ -184,6 +194,8 @@ function ComprasList() {
               </Link>
             ))}
           </div>
+        )}
+          </>
         )}
       </div>
     </>

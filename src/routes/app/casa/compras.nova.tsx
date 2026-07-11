@@ -25,6 +25,15 @@ function NewItem() {
     enabled: !!user,
   });
   const coupleId = profile?.couple_id ?? null;
+  const { data: partner } = useQuery({
+    queryKey: ["partner", coupleId],
+    queryFn: async () => {
+      if(!coupleId) return null;
+      const { data } = await supabase.from("profiles").select("id").eq("couple_id", coupleId).neq("id", user!.id).maybeSingle();
+      return data;
+    },
+    enabled: !!coupleId,
+  });
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -43,6 +52,11 @@ function NewItem() {
   const [status, setStatus] = useState<string>("idea");
   const [notes, setNotes] = useState("");
   const [visibility, setVisibility] = useState<"shared" | "private">("shared");
+
+  const [reminderType, setReminderType] = useState<string>("none");
+  const [reminderRecipients, setReminderRecipients] = useState<string>("me");
+  const [reminderCustomDate, setReminderCustomDate] = useState("");
+  const [reminderCustomTime, setReminderCustomTime] = useState("09:00");
 
   const create = useMutation({
     mutationFn: async () => {
@@ -68,6 +82,34 @@ function NewItem() {
       };
       const { data, error } = await (supabase as any).from("household_needs").insert(payload).select().single();
       if (error) throw error;
+
+      if (reminderType !== "none" && plannedDate) {
+        let dateObj = new Date(plannedDate + "T09:00:00");
+        if (reminderType === "one_day_before") dateObj.setDate(dateObj.getDate() - 1);
+        if (reminderType === "one_week_before") dateObj.setDate(dateObj.getDate() - 7);
+        if (reminderType === "custom") {
+          dateObj = new Date(reminderCustomDate + "T" + reminderCustomTime + ":00");
+        }
+
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const usersToRemind = [];
+        if (reminderRecipients === "me" || reminderRecipients === "both") usersToRemind.push(user.id);
+        if ((reminderRecipients === "partner" || reminderRecipients === "both") && partner?.id) usersToRemind.push(partner.id);
+
+        const reminders = usersToRemind.map(uid => ({
+          household_need_id: data.id,
+          user_id: uid,
+          couple_id: visibility === "shared" ? coupleId : null,
+          reminder_type: reminderType,
+          remind_at: dateObj.toISOString(),
+          timezone: tz
+        }));
+
+        if (reminders.length > 0) {
+          await supabase.from("household_need_reminders").insert(reminders);
+        }
+      }
+
       return data;
     },
     onSuccess: (data: any) => {
@@ -138,6 +180,37 @@ function NewItem() {
               ))}
             </div>
           </div>
+
+          {dateMode === "date" && plannedDate && (
+            <div className="pt-2 border-t mt-3">
+              <Label>Lembrete</Label>
+              <select className="w-full h-10 rounded-md border bg-background px-3 text-sm mt-1 mb-3" value={reminderType} onChange={(e) => setReminderType(e.target.value)}>
+                <option value="none">Sem lembrete</option>
+                <option value="same_day">No dia</option>
+                <option value="one_day_before">1 dia antes</option>
+                <option value="one_week_before">1 semana antes</option>
+                <option value="custom">Personalizado</option>
+              </select>
+
+              {reminderType === "custom" && (
+                <div className="flex gap-2 mb-3">
+                  <Input type="date" value={reminderCustomDate} onChange={(e) => setReminderCustomDate(e.target.value)} required />
+                  <Input type="time" value={reminderCustomTime} onChange={(e) => setReminderCustomTime(e.target.value)} required />
+                </div>
+              )}
+
+              {reminderType !== "none" && visibility === "shared" && coupleId && (
+                <div>
+                  <Label>Destinatários do Lembrete</Label>
+                  <select className="w-full h-10 rounded-md border bg-background px-3 text-sm mt-1" value={reminderRecipients} onChange={(e) => setReminderRecipients(e.target.value)}>
+                    <option value="me">Somente eu</option>
+                    <option value="partner">Somente o parceiro</option>
+                    <option value="both">Ambos</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <Label>Responsável</Label>
