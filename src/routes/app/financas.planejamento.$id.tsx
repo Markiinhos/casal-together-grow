@@ -59,15 +59,11 @@ function PlanDetail() {
 
   return (
     <>
-      <PageHeader
-        title={monthLabel(refDate)}
-        fallbackRoute="/app/financas/planejamento"
-        rightSlot={
-          <Link to="/app/financas/planejamento/novo" search={{ id: p.id }} className="p-2 hover:bg-accent rounded-lg">
-            <Pencil className="size-4" />
-          </Link>
-        }
-      />
+      <PageHeader title={monthLabel(refDate)} fallbackRoute="/app/financas/planejamento">
+        <Link to="/app/financas/planejamento/novo" search={{ id: p.id }} className="p-2 hover:bg-accent rounded-lg">
+          <Pencil className="size-4" />
+        </Link>
+      </PageHeader>
       <div className="px-4 py-4 space-y-3 pb-24">
         <Card className="rounded-2xl p-4 shadow-card space-y-2">
           <div className="grid grid-cols-2 gap-3">
