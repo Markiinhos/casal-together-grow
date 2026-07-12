@@ -106,7 +106,7 @@ function NewItem() {
         }));
 
         if (reminders.length > 0) {
-          await supabase.from("household_need_reminders").insert(reminders);
+          await (supabase as any).from("household_need_reminders").insert(reminders);
         }
       }
 
