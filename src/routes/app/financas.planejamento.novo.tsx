@@ -96,7 +96,7 @@ function PlanWizard() {
       setReserve(Number(plan.planned_reserve));
       setGoals(Number(plan.planned_goals));
       setDistributeAll(plan.distribute_all);
-      setEditPolicy(plan.edit_policy);
+      setEditPolicy(plan.edit_policy === "creator_only" ? "creator_only" : "both");
       const { data: allocs } = await supabase.from("monthly_budget_allocations").select("*").eq("plan_id", editingId);
       const ids: string[] = [];
       const amts: Record<string, number> = {};
