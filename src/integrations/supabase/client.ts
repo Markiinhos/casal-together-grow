@@ -2,6 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+declare const process: any;
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)

@@ -99,7 +99,7 @@ function HistoryPage() {
       <div className="px-4 py-4 space-y-4 pb-20">
         <div className="flex gap-2 justify-between">
           <Button asChild size="sm">
-            <Link to="/app/financas/simular"><Sparkles className="size-4 mr-1" /> Nova</Link>
+            <Link to="/app/financas/simular" search={(prev: any) => prev}><Sparkles className="size-4 mr-1" /> Nova</Link>
           </Button>
         </div>
 

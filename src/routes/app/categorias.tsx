@@ -308,17 +308,19 @@ function SubcatForm({ catId, editing, onDone }: { catId: string; editing: Subcat
   const [color, setColor] = useState(editing?.color ?? "");
   const [is_archived, setIsArchived] = useState(editing?.is_archived ?? false);
   const [saving, setSaving] = useState(false);
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user) return;
     setSaving(true);
     const payload = { name, color: color || null, is_archived };
     let error;
     if (editing) {
       ({ error } = await supabase.from("subcategories").update(payload).eq("id", editing.id));
     } else {
-      ({ error } = await supabase.from("subcategories").insert({ ...payload, category_id: catId }));
+      ({ error } = await supabase.from("subcategories").insert({ ...payload, category_id: catId, created_by: user.id }));
     }
     setSaving(false);
     if (error) {

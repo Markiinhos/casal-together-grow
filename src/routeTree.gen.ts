@@ -46,9 +46,12 @@ import { Route as AppFinancasSimulacoesRouteImport } from './routes/app/financas
 import { Route as AppFinancasProjecaoRouteImport } from './routes/app/financas.projecao'
 import { Route as AppCasaComprasRouteImport } from './routes/app/casa/compras'
 import { Route as AppFinancasPlanejamentoIndexRouteImport } from './routes/app/financas.planejamento.index'
+import { Route as AppFinancasAssinaturasIndexRouteImport } from './routes/app/financas.assinaturas.index'
 import { Route as AppCasaComprasIndexRouteImport } from './routes/app/casa/compras.index'
 import { Route as AppFinancasPlanejamentoNovoRouteImport } from './routes/app/financas.planejamento.novo'
 import { Route as AppFinancasPlanejamentoIdRouteImport } from './routes/app/financas.planejamento.$id'
+import { Route as AppFinancasAssinaturasNovaRouteImport } from './routes/app/financas.assinaturas.nova'
+import { Route as AppFinancasAssinaturasIdRouteImport } from './routes/app/financas.assinaturas.$id'
 import { Route as AppCasaComprasNovaRouteImport } from './routes/app/casa/compras.nova'
 import { Route as AppCasaComprasIdRouteImport } from './routes/app/casa/compras.$id'
 import { Route as ApiPublicHooksSyncInstitutionsRouteImport } from './routes/api/public/hooks/sync-institutions'
@@ -239,6 +242,12 @@ const AppFinancasPlanejamentoIndexRoute =
     path: '/financas/planejamento/',
     getParentRoute: () => AppRouteRoute,
   } as any)
+const AppFinancasAssinaturasIndexRoute =
+  AppFinancasAssinaturasIndexRouteImport.update({
+    id: '/financas/assinaturas/',
+    path: '/financas/assinaturas/',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 const AppCasaComprasIndexRoute = AppCasaComprasIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -254,6 +263,18 @@ const AppFinancasPlanejamentoIdRoute =
   AppFinancasPlanejamentoIdRouteImport.update({
     id: '/financas/planejamento/$id',
     path: '/financas/planejamento/$id',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
+const AppFinancasAssinaturasNovaRoute =
+  AppFinancasAssinaturasNovaRouteImport.update({
+    id: '/financas/assinaturas/nova',
+    path: '/financas/assinaturas/nova',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
+const AppFinancasAssinaturasIdRoute =
+  AppFinancasAssinaturasIdRouteImport.update({
+    id: '/financas/assinaturas/$id',
+    path: '/financas/assinaturas/$id',
     getParentRoute: () => AppRouteRoute,
   } as any)
 const AppCasaComprasNovaRoute = AppCasaComprasNovaRouteImport.update({
@@ -313,9 +334,12 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
   '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
+  '/app/financas/assinaturas/$id': typeof AppFinancasAssinaturasIdRoute
+  '/app/financas/assinaturas/nova': typeof AppFinancasAssinaturasNovaRoute
   '/app/financas/planejamento/$id': typeof AppFinancasPlanejamentoIdRoute
   '/app/financas/planejamento/novo': typeof AppFinancasPlanejamentoNovoRoute
   '/app/casa/compras/': typeof AppCasaComprasIndexRoute
+  '/app/financas/assinaturas/': typeof AppFinancasAssinaturasIndexRoute
   '/app/financas/planejamento/': typeof AppFinancasPlanejamentoIndexRoute
 }
 export interface FileRoutesByTo {
@@ -354,9 +378,12 @@ export interface FileRoutesByTo {
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
   '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
+  '/app/financas/assinaturas/$id': typeof AppFinancasAssinaturasIdRoute
+  '/app/financas/assinaturas/nova': typeof AppFinancasAssinaturasNovaRoute
   '/app/financas/planejamento/$id': typeof AppFinancasPlanejamentoIdRoute
   '/app/financas/planejamento/novo': typeof AppFinancasPlanejamentoNovoRoute
   '/app/casa/compras': typeof AppCasaComprasIndexRoute
+  '/app/financas/assinaturas': typeof AppFinancasAssinaturasIndexRoute
   '/app/financas/planejamento': typeof AppFinancasPlanejamentoIndexRoute
 }
 export interface FileRoutesById {
@@ -400,9 +427,12 @@ export interface FileRoutesById {
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
   '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
+  '/app/financas/assinaturas/$id': typeof AppFinancasAssinaturasIdRoute
+  '/app/financas/assinaturas/nova': typeof AppFinancasAssinaturasNovaRoute
   '/app/financas/planejamento/$id': typeof AppFinancasPlanejamentoIdRoute
   '/app/financas/planejamento/novo': typeof AppFinancasPlanejamentoNovoRoute
   '/app/casa/compras/': typeof AppCasaComprasIndexRoute
+  '/app/financas/assinaturas/': typeof AppFinancasAssinaturasIndexRoute
   '/app/financas/planejamento/': typeof AppFinancasPlanejamentoIndexRoute
 }
 export interface FileRouteTypes {
@@ -447,9 +477,12 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-institutions'
     | '/app/casa/compras/$id'
     | '/app/casa/compras/nova'
+    | '/app/financas/assinaturas/$id'
+    | '/app/financas/assinaturas/nova'
     | '/app/financas/planejamento/$id'
     | '/app/financas/planejamento/novo'
     | '/app/casa/compras/'
+    | '/app/financas/assinaturas/'
     | '/app/financas/planejamento/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -488,9 +521,12 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-institutions'
     | '/app/casa/compras/$id'
     | '/app/casa/compras/nova'
+    | '/app/financas/assinaturas/$id'
+    | '/app/financas/assinaturas/nova'
     | '/app/financas/planejamento/$id'
     | '/app/financas/planejamento/novo'
     | '/app/casa/compras'
+    | '/app/financas/assinaturas'
     | '/app/financas/planejamento'
   id:
     | '__root__'
@@ -533,9 +569,12 @@ export interface FileRouteTypes {
     | '/api/public/hooks/sync-institutions'
     | '/app/casa/compras/$id'
     | '/app/casa/compras/nova'
+    | '/app/financas/assinaturas/$id'
+    | '/app/financas/assinaturas/nova'
     | '/app/financas/planejamento/$id'
     | '/app/financas/planejamento/novo'
     | '/app/casa/compras/'
+    | '/app/financas/assinaturas/'
     | '/app/financas/planejamento/'
   fileRoutesById: FileRoutesById
 }
@@ -809,6 +848,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancasPlanejamentoIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/financas/assinaturas/': {
+      id: '/app/financas/assinaturas/'
+      path: '/financas/assinaturas'
+      fullPath: '/app/financas/assinaturas/'
+      preLoaderRoute: typeof AppFinancasAssinaturasIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/casa/compras/': {
       id: '/app/casa/compras/'
       path: '/'
@@ -828,6 +874,20 @@ declare module '@tanstack/react-router' {
       path: '/financas/planejamento/$id'
       fullPath: '/app/financas/planejamento/$id'
       preLoaderRoute: typeof AppFinancasPlanejamentoIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/financas/assinaturas/nova': {
+      id: '/app/financas/assinaturas/nova'
+      path: '/financas/assinaturas/nova'
+      fullPath: '/app/financas/assinaturas/nova'
+      preLoaderRoute: typeof AppFinancasAssinaturasNovaRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/financas/assinaturas/$id': {
+      id: '/app/financas/assinaturas/$id'
+      path: '/financas/assinaturas/$id'
+      fullPath: '/app/financas/assinaturas/$id'
+      preLoaderRoute: typeof AppFinancasAssinaturasIdRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/casa/compras/nova': {
@@ -926,8 +986,11 @@ interface AppRouteRouteChildren {
   AppFinancasSimulacoesRoute: typeof AppFinancasSimulacoesRoute
   AppFinancasSimularRoute: typeof AppFinancasSimularRoute
   AppFinancasIndexRoute: typeof AppFinancasIndexRoute
+  AppFinancasAssinaturasIdRoute: typeof AppFinancasAssinaturasIdRoute
+  AppFinancasAssinaturasNovaRoute: typeof AppFinancasAssinaturasNovaRoute
   AppFinancasPlanejamentoIdRoute: typeof AppFinancasPlanejamentoIdRoute
   AppFinancasPlanejamentoNovoRoute: typeof AppFinancasPlanejamentoNovoRoute
+  AppFinancasAssinaturasIndexRoute: typeof AppFinancasAssinaturasIndexRoute
   AppFinancasPlanejamentoIndexRoute: typeof AppFinancasPlanejamentoIndexRoute
 }
 
@@ -957,8 +1020,11 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppFinancasSimulacoesRoute: AppFinancasSimulacoesRoute,
   AppFinancasSimularRoute: AppFinancasSimularRoute,
   AppFinancasIndexRoute: AppFinancasIndexRoute,
+  AppFinancasAssinaturasIdRoute: AppFinancasAssinaturasIdRoute,
+  AppFinancasAssinaturasNovaRoute: AppFinancasAssinaturasNovaRoute,
   AppFinancasPlanejamentoIdRoute: AppFinancasPlanejamentoIdRoute,
   AppFinancasPlanejamentoNovoRoute: AppFinancasPlanejamentoNovoRoute,
+  AppFinancasAssinaturasIndexRoute: AppFinancasAssinaturasIndexRoute,
   AppFinancasPlanejamentoIndexRoute: AppFinancasPlanejamentoIndexRoute,
 }
 
@@ -987,3 +1053,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

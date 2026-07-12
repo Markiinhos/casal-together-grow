@@ -61,7 +61,7 @@ function AddPage() {
               <p className="text-muted-foreground">Simule antes de adicionar como despesa.</p>
             </div>
             <Button asChild size="sm" variant="outline">
-              <Link to="/app/financas/simular"><Sparkles className="size-4 mr-1" />Simular</Link>
+              <Link to="/app/financas/simular" search={(prev: any) => prev}><Sparkles className="size-4 mr-1" />Simular</Link>
             </Button>
           </div>
         )}
