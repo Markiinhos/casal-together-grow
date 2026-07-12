@@ -13,14 +13,30 @@ type NavItem = { to: string; icon: any; label: string; exact?: boolean; primary?
 
 const items: NavItem[] = [
   { to: "/app", icon: Home, label: "Principal", exact: true },
-  { to: "/app/financas", icon: ArrowRightLeft, label: "Transações", exact: false },
+  { to: "/app/financas", icon: ArrowRightLeft, label: "Transações" },
   { to: "#", icon: Plus, label: "", primary: true },
   { to: "/app/financas/planejamento", icon: Target, label: "Planejamento" },
   { to: "/app/mais", icon: MoreHorizontal, label: "Mais" },
 ];
 
+/** Smarter active-state: longer paths win (so /app/financas/planejamento beats /app/financas) */
+function useActiveTab(pathname: string) {
+  let bestMatch = -1;
+  let bestLen = 0;
+  items.forEach((item, idx) => {
+    if (item.primary) return;
+    if (item.exact && pathname === item.to) { bestMatch = idx; bestLen = Infinity; return; }
+    if (!item.exact && pathname.startsWith(item.to) && item.to.length > bestLen) {
+      bestMatch = idx;
+      bestLen = item.to.length;
+    }
+  });
+  return bestMatch;
+}
+
 export function BottomNav() {
   const { pathname } = useLocation();
+  const activeIdx = useActiveTab(pathname);
   const [open, setOpen] = useState(false);
 
   return (
@@ -28,8 +44,9 @@ export function BottomNav() {
       <nav className="fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)] rounded-t-2xl shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
         <div className="max-w-md mx-auto grid grid-cols-5 px-1 py-1 relative">
           {items.map((item) => {
-            const { to, icon: Icon, label, primary, exact } = item;
-            const active = exact ? pathname === to : pathname.startsWith(to) && to !== "#";
+            const { to, icon: Icon, label, primary } = item;
+            const idx = items.indexOf(item);
+            const active = idx === activeIdx;
             
             if (primary) {
               return (
@@ -114,8 +131,6 @@ export function BottomNav() {
           })}
         </div>
       </nav>
-      {/* Padding space element to avoid content being hidden by nav */}
-      <div className="h-20 w-full md:hidden" />
     </>
   );
 }
