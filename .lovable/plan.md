@@ -1,93 +1,69 @@
-# Simulador de Despesas
+# Reestruturação do Módulo Financeiro — CASAL
 
-Nova área no módulo financeiro que permite simular uma compra antes de virar despesa real, mostrando impacto no mês, saldo, fatura, próximos meses e nível de risco.
+Escopo grande. Vou entregar em **3 fases sequenciais** para garantir qualidade, cada uma testável de forma independente. Antes de começar, preciso confirmar o escopo e algumas decisões.
 
-## Fluxo do usuário
+## Estado atual (o que já existe)
 
-1. Em `/app/financas` (e no botão de adicionar despesa `/app/adicionar`), aparece a opção "Simular despesa" ao lado de "Adicionar despesa real".
-2. Rota nova: `/app/financas/simular` — formulário completo.
-3. Após simular, tela de resultado com cards, gráficos, nível de risco, sugestão e ações: confirmar como despesa real, salvar, editar, comparar formas de pagamento, compartilhar com parceiro.
-4. Rota `/app/financas/simulacoes` — histórico com filtros (privadas, compartilhadas, convertidas, arquivadas, alto/baixo risco).
+- Tabelas: `transactions`, `credit_cards`, `bank_accounts`, `bank_transactions`, `installments`, `synced_cards`, `bank_connections`, `categories`, `future_bills`, `expense_simulations`, `notifications`, `goals`, `household_needs`.
+- Rotas: `/app/financas/` (resumo + lista), `/app/financas/projecao`, `/app/financas/simular`, `/app/financas/simulacoes`, `/app/cartoes`, `/app/contas`, `/app/categorias`.
+- Sistema de notificações real-time já operante (triggers para tarefas, eventos, transações, simulações, casa).
+- Toggle Meu/Nosso via `useSpace()` e `applySpaceFilter()`.
 
-Respeita Meu Espaço / Nosso Espaço via `useSpace()`; o seletor de visibilidade (private/shared) já existente é reutilizado.
+## Fase 1 — Central Financeira reestruturada (tela `/app/financas`)
 
-## Backend
+**Entregáveis:**
+- Nova tela `/app/financas` como central única com:
+  - Cabeçalho: voltar, título, seletor de mês (setas prev/next), toggle Meu/Nosso, ícone olho para ocultar valores, gear para configurações.
+  - Card principal: **Saldo em contas** (soma de `bank_accounts.current_balance` ativas) + Receitas / Despesas do mês (skeleton durante loading).
+  - Seção **Contas**: lista de `bank_accounts` (manual + Pluggy), nome, instituição, saldo, tipo, última atualização, total, botão "Adicionar conta" → abre `/app/contas` (já existe).
+  - Seção **Cartões de crédito** com abas **Faturas abertas / fechadas** — reutiliza `credit_cards`, mostra bandeira, final, valor da fatura (via `installments` + `transactions` com `payment_method='credit'`), limite, % usado, fechamento, vencimento, parceladas.
+  - Seção **Despesas por categoria** — lista com total, clique → drawer/modal com detalhamento (data, valor, forma pgto, quem, conta/cartão).
+  - Seção **Projeção** (link para tela existente).
+- **Correção de contagem dupla**: normalizar cálculo de despesas do mês para NÃO contar pagamento de fatura como despesa nova; parcelas contam mês a mês via `installments`; transferências (novo `type='transfer'` ou marcador) excluídas.
+- Botão "Financeiro" garantido na home (`/app/index.tsx`) e no menu Mais.
 
-Nova tabela `expense_simulations` com RLS espelhando o padrão de `transactions`:
+**Arquivos:** reescreve `src/routes/app/financas.index.tsx`; cria `src/components/finance/AccountsSection.tsx`, `CardsSection.tsx`, `CategoriesBreakdown.tsx`, `MonthSelector.tsx`, `HideValuesToggle.tsx`; ajusta home.
 
-- Campos: `title`, `amount`, `payment_method`, `card_id`, `installments`, `interest_enabled`, `interest_rate`, `final_amount`, `first_payment_date`, `purchase_date`, `category`, `simulation_result` (jsonb com projeção mês a mês, antes/depois, risco), `risk_level`, `status` (draft/simulated/converted/archived), `converted_expense_id`, `metadata`, `visibility`, `user_id`, `couple_id`.
-- RLS: SELECT/UPDATE/DELETE seguem o padrão privado=dono / compartilhado=membros do casal. INSERT sempre `user_id = auth.uid()`.
-- Trigger `notify_partner_on_simulation`: notifica o parceiro quando uma simulação compartilhada é criada, convertida em despesa, ou marcada como alto risco.
-- Ao converter em despesa: uma server function cria a `transactions` (e installments quando aplicável, aproveitando o trigger existente `generate_installments`) e grava `converted_expense_id` + `status='converted'`.
+## Fase 2 — Planejamento Mensal (orçamento base zero)
 
-## Cálculo de impacto (client-side, puro TS)
+**Banco (migração):**
+- `monthly_financial_plans` (id, user_id, couple_id, visibility, reference_month DATE, expected_income, suggested_percentage, spending_limit, planned_reserve, planned_goals, distribute_all BOOL, status, created_by, timestamps). Índice único parcial por `(reference_month, user_id, visibility)` quando privado e `(reference_month, couple_id, visibility)` quando compartilhado.
+- `monthly_budget_allocations` (id, plan_id, category_id, subcategory_id, planned_amount, timestamps). Unique `(plan_id, category_id, coalesce(subcategory_id, ...))`.
+- `monthly_plan_history` (id, plan_id, changed_by, action, old_values jsonb, new_values jsonb, created_at).
+- RLS: owner vê privados; membros do casal veem compartilhados (via `is_couple_member`); INSERT valida `couple_id` do próprio usuário; UPDATE/DELETE conforme visibility + role.
+- Trigger `notify_partner_on_plan` (criação, edição, faixas 70/90/100/excedido) com dedupe_key.
+- Trigger `log_plan_history` para auditoria.
 
-Módulo `src/lib/simulator.ts` — recebe: transações do mês atual, faturas, parcelas em aberto, orçamento configurado, e a simulação. Retorna:
+**Rotas:**
+- `/app/financas/planejamento` — lista de planos + botão "Novo", "Copiar mês anterior".
+- `/app/financas/planejamento/novo` — wizard 4 etapas:
+  1. Receita prevista (autopopula receitas recorrentes; opções Meu/Nosso/Somar).
+  2. Limite de gastos (sugestão 80%, editável, alerta se > receita).
+  3. Seleção de categorias/subcategorias (multi, com busca; inclui Sonhos e metas, Reserva, Compras para Casa).
+  4. Distribuição de valores (total, distribuído, disponível; validação; toggle "Distribuir todo o valor").
+- `/app/financas/planejamento/$id` — dashboard: cards (receita, limite, gasto, restante, reserva, **disponível por dia**, % utilizado) + lista de categorias com barra, situação (dentro/atenção/próximo/excedido) e alerta.
+- `/app/financas/planejamento/$id/editar` — mesma UI do wizard já preenchida.
 
-- Despesas antes / depois do mês.
-- Saldo previsto antes / depois.
-- Impacto na fatura do cartão (usa `closing_day`/`due_day` de `credit_cards` para localizar a fatura correta).
-- Projeção mês a mês (12 meses) para parcelas / financiamento / boleto.
-- Percentual de orçamento antes / depois.
-- Nível de risco: seguro / atenção / arriscado / crítico — baseado em delta de saldo, comprometimento de renda, cauda de parcelas.
-- Sugestão em linguagem simples derivada dessas métricas.
+**Cálculos (todos com guards):**
+- `saldo em contas = Σ bank_accounts.current_balance WHERE active`
+- `receitas do mês = Σ transactions.amount WHERE type='income' AND date IN mês AND scope`
+- `despesas do mês = Σ transactions.amount WHERE type='expense' e não é pagamento de fatura e não é transferência` (+ parcelas do mês via `installments.due_date`)
+- `limite sugerido = receita × 0.80`
+- `valor restante = spending_limit - despesas contabilizadas`
+- `dias restantes = max(0, último_dia_mês - hoje + 1)`; se mês passado, não calcular.
+- `disponível por dia = max(0, valor restante / dias restantes)`
+- `% categoria = orçamento > 0 ? (gasto / orçamento × 100) : null` (mostra "sem orçamento" quando null). Barra clamp 0–100, texto real. Sem NaN/Infinity/negativos.
 
-Regras por forma de pagamento:
-- Pix / dinheiro / débito → impacto integral no mês da compra.
-- Cartão à vista → soma na fatura correspondente ao fechamento.
-- Cartão parcelado → distribui em N meses; se `interest_enabled`, aplica taxa mensal para calcular parcela final.
-- Boleto → impacta o mês do vencimento.
-- Financiamento → tabela Price (juros compostos) por N meses.
+## Fase 3 — Ajustes finos + polish
 
-## Comparador de formas de pagamento
+- Página `/app/financas/categorias` (já existe): garantir CRUD com ícone, cor, tipo, arquivamento (não deletar se tem transações), subcategorias.
+- Projeção 6–12 meses (já existe `financas.projecao.tsx`): revisar cálculos, incluir parcelas e faturas + planejamento quando existir.
+- Testes manuais completos conforme lista do briefing.
+- Relatório final com arquivos/rotas/tabelas/policies/fórmulas/testes.
 
-Rota `/app/financas/simular/comparar` — usuário informa valor e o app roda o simulador para: Pix à vista, Cartão 6x, Cartão 12x, Boleto 1x. Mostra cards lado a lado com impacto mensal e risco, e destaca "Melhor opção para este momento".
+## Decisões que preciso confirmar antes de começar
 
-## Gráficos (recharts, já instalado)
-
-- Barras: despesas antes vs depois.
-- Linha: saldo previsto ao longo dos próximos 6 meses.
-- Barras empilhadas: parcelas futuras mês a mês.
-- Radial/progress: percentual de orçamento antes vs depois.
-- Linha: evolução da fatura do cartão nos próximos 12 meses.
-
-## Notificações
-
-Integração com `notifications` existente. Trigger dispara quando `visibility='shared'` em INSERT/converted/high risk. Reaproveita o padrão de `notify_partner_on_task`.
-
-## Arquivos a criar
-
-- `supabase/migrations/<ts>_expense_simulations.sql` — tabela + RLS + trigger de notificação.
-- `src/lib/simulator.ts` — cálculo puro (unit-testável).
-- `src/lib/simulator.functions.ts` — `saveSimulation`, `convertSimulationToExpense`, `listSimulations`, `archiveSimulation` (todas com `requireSupabaseAuth`).
-- `src/routes/app/financas/simular.tsx` — formulário + resultado.
-- `src/routes/app/financas/simular.comparar.tsx` — comparador.
-- `src/routes/app/financas/simulacoes.tsx` — histórico com filtros.
-- `src/components/simulator/SimulationResult.tsx` — cards + gráficos.
-- `src/components/simulator/RiskBadge.tsx`, `PaymentMethodPicker.tsx`, `InstallmentsPicker.tsx`.
-
-## Arquivos a editar
-
-- `src/routes/app/adicionar.tsx` — adicionar toggle "Adicionar despesa real / Simular despesa".
-- `src/routes/app/financas.tsx` — atalho "Simular despesa" e link para histórico.
-- `src/components/BottomNav.tsx` — sem mudança (fica dentro de Finanças).
-
-## Ordem de implementação
-
-1. Migração `expense_simulations` + RLS + trigger de notificação.
-2. `src/lib/simulator.ts` (cálculo puro).
-3. Rota `simular.tsx` com formulário + resultado + gráficos.
-4. Server functions (salvar / converter / listar / arquivar).
-5. Comparador de formas de pagamento.
-6. Histórico com filtros.
-7. Atalhos em `adicionar.tsx` e `financas.tsx`.
-
-## Detalhes técnicos
-
-- Cálculos rodam no cliente para feedback instantâneo; ao salvar, o resultado (`simulation_result`) é persistido em JSONB para exibir o mesmo snapshot depois.
-- Ao converter em despesa: chamamos `insertTransaction` reutilizando o trigger `generate_installments` existente — nada é duplicado. `simulation.status='converted'` + `converted_expense_id` amarra os dois.
-- Todos os fetches de dados financeiros da simulação usam server functions com `requireSupabaseAuth` (não expõe token).
-- Grafo de leitura via `useSuspenseQuery` + `ensureQueryData` no loader (padrão TanStack).
-- Rotas ficam sob `/app` (já protegido). Sem necessidade de novo layout.
-
-Pronto para implementar?
+1. **Fase única ou faseada?** Este é um pedido enorme (3 migrações + ~15 novos componentes + reescrita de 4 rotas + wizard). Recomendo entregar por fases, uma por mensagem, para você validar cada uma. Alternativa: tudo em uma entrega gigante (maior risco de bugs, difícil de revisar).
+2. **Categorias — recriar seed?** Você listou 20 categorias. Devo inserir automaticamente as que faltarem para todos os usuários (via migração + trigger em novos users), ou apenas garantir que o usuário possa criá-las manualmente?
+3. **Transferências entre contas** — hoje não existe `type='transfer'` no schema `transactions`. Devo adicionar? (Recomendo sim, para não contar como despesa/receita.)
+4. **Pagamento de fatura** — como marcar? Sugiro adicionar coluna `is_card_payment BOOLEAN` em `transactions` OU uma categoria/tag reservada. Qual prefere?
