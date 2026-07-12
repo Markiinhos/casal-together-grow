@@ -4,224 +4,339 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/hooks";
-import { useSpace, applySpaceFilter } from "@/lib/space";
-import { formatBRL } from "@/lib/couple";
+import { useSpace } from "@/lib/space";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingUp, TrendingDown, Wallet, Trash2, Copy, Sparkles, History } from "lucide-react";
-import { toast } from "sonner";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from "recharts";
+import { EmptyState } from "@/components/EmptyState";
+import {
+  ChevronLeft, ChevronRight, Eye, EyeOff, Wallet, CreditCard,
+  TrendingUp, TrendingDown, Plus, ChartLine, Sparkles, PieChart,
+  Target,
+} from "lucide-react";
+import {
+  fetchAccountsTotal, fetchMonthExpenses, fetchMonthIncome, fetchCardInvoice,
+  formatBRL, hideOrShow, monthLabel, monthRange,
+} from "@/lib/finance";
 
 export const Route = createFileRoute("/app/financas/")({
-  component: FinancePage,
+  component: FinancasCentral,
 });
 
-const COLORS = ["#FF6B57", "#7B61FF", "#FF8A7A", "#F25542", "#34D399", "#FBBF24", "#60A5FA"];
-
-function FinancePage() {
+function FinancasCentral() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const coupleId = profile?.couple_id ?? null;
   const { space } = useSpace();
   const qc = useQueryClient();
 
-  const { data: tx = [], isLoading } = useQuery({
-    queryKey: ["tx-list", space, coupleId, user?.id],
+  const [ref, setRef] = useState(() => new Date());
+  const [hidden, setHidden] = useState(false);
+  const opts = { space, userId: user?.id ?? "", coupleId };
+  const monthKey = `${ref.getFullYear()}-${ref.getMonth()}`;
+
+  const accountsTotal = useQuery({
+    queryKey: ["fin-accounts-total", monthKey, space, coupleId, user?.id],
+    queryFn: () => fetchAccountsTotal(opts),
+    enabled: !!user,
+  });
+
+  const income = useQuery({
+    queryKey: ["fin-income", monthKey, space, coupleId, user?.id],
+    queryFn: () => fetchMonthIncome(ref, opts),
+    enabled: !!user,
+  });
+
+  const expenses = useQuery({
+    queryKey: ["fin-expenses", monthKey, space, coupleId, user?.id],
+    queryFn: () => fetchMonthExpenses(ref, opts),
+    enabled: !!user,
+  });
+
+  const accounts = useQuery({
+    queryKey: ["fin-accounts", space, coupleId, user?.id],
     queryFn: async () => {
-      let q: any = supabase.from("transactions").select("*, categories(name,color,icon)").order("date", { ascending: false });
-      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
-      const { data } = await q;
+      let q: any = supabase.from("bank_accounts").select("*").eq("hidden", false);
+      if (space === "private") q = q.eq("visibility", "private").eq("user_id", user!.id);
+      else if (coupleId) q = q.eq("visibility", "shared").eq("couple_id", coupleId);
+      else q = q.eq("visibility", "shared").eq("user_id", user!.id);
+      const { data } = await q.order("name");
       return data ?? [];
     },
     enabled: !!user,
   });
 
+  const cards = useQuery({
+    queryKey: ["fin-cards", space, coupleId, user?.id],
+    queryFn: async () => {
+      let q: any = supabase.from("credit_cards").select("*");
+      if (space === "private") q = q.eq("visibility", "private").eq("user_id", user!.id);
+      else if (coupleId) q = q.eq("visibility", "shared").eq("couple_id", coupleId);
+      else q = q.eq("visibility", "shared").eq("user_id", user!.id);
+      const { data } = await q.order("name");
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
+  // Fatura por cartão
+  const cardInvoices = useQuery({
+    queryKey: ["fin-invoices", monthKey, cards.data?.map((c: any) => c.id).join(",")],
+    queryFn: async () => {
+      const list = cards.data ?? [];
+      const res: Record<string, { total: number; count: number; installments: number }> = {};
+      await Promise.all(
+        list.map(async (c: any) => {
+          res[c.id] = await fetchCardInvoice(c.id, Number(c.closing_day ?? 1), ref);
+        }),
+      );
+      return res;
+    },
+    enabled: !!cards.data && cards.data.length > 0,
+  });
+
+  // Categorias
+  const categories = useQuery({
+    queryKey: ["fin-cats", space, coupleId, user?.id],
+    queryFn: async () => {
+      let q: any = supabase.from("categories").select("*").eq("type", "expense");
+      if (space === "private") q = q.eq("visibility", "private").eq("user_id", user!.id);
+      else if (coupleId) q = q.eq("visibility", "shared").eq("couple_id", coupleId);
+      else q = q.eq("visibility", "shared").eq("user_id", user!.id);
+      const { data } = await q;
+      return (data ?? []) as any[];
+    },
+    enabled: !!user,
+  });
+
+  // Realtime — invalida no update
   useEffect(() => {
-    const ch = supabase.channel("tx-rt").on("postgres_changes",
-      { event: "*", schema: "public", table: "transactions" },
-      () => qc.invalidateQueries({ queryKey: ["tx-list"] })
-    ).subscribe();
+    if (!user) return;
+    const ch = supabase.channel("fin-central")
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
+        qc.invalidateQueries({ queryKey: ["fin-income"] });
+        qc.invalidateQueries({ queryKey: ["fin-expenses"] });
+        qc.invalidateQueries({ queryKey: ["fin-invoices"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "bank_accounts" }, () => {
+        qc.invalidateQueries({ queryKey: ["fin-accounts"] });
+        qc.invalidateQueries({ queryKey: ["fin-accounts-total"] });
+      })
+      .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [qc]);
+  }, [user, qc]);
 
-  const summary = useMemo(() => {
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    let income = 0, expense = 0;
-    const byCat: Record<string, { name: string; value: number; color: string }> = {};
-    const byDay: Record<string, number> = {};
-    for (const t of tx as any[]) {
-      const d = new Date(t.date);
-      if (d >= monthStart) {
-        if (t.type === "income") income += Number(t.amount);
-        if (t.type === "expense") {
-          expense += Number(t.amount);
-          const key = t.categories?.name ?? "Sem categoria";
-          if (!byCat[key]) byCat[key] = { name: key, value: 0, color: t.categories?.color ?? "#FF6B57" };
-          byCat[key].value += Number(t.amount);
-        }
-      }
-      const ds = t.date as string;
-      byDay[ds] = (byDay[ds] ?? 0) + (t.type === "expense" ? -Number(t.amount) : Number(t.amount));
-    }
-    const days = Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).slice(-14)
-      .map(([date, v]) => ({ date: date.slice(5), value: v }));
-    return { income, expense, balance: income - expense, byCat: Object.values(byCat), days };
-  }, [tx]);
+  const balance = (income.data ?? 0) - (expenses.data?.total ?? 0);
+  const cardsList = cards.data ?? [];
+  const openInvoices = cardsList; // todas aparecem em "abertas"; "fechadas" é view alternativa
+  const [invoiceTab, setInvoiceTab] = useState<"open" | "closed">("open");
 
-  async function handleDelete(id: string) {
-    if (!confirm("Excluir transação?")) return;
-    const { error } = await supabase.from("transactions").delete().eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Excluído"); qc.invalidateQueries(); }
-  }
-  async function handleDuplicate(t: any) {
-    const { error } = await supabase.from("transactions").insert({
-      user_id: user!.id,
-      couple_id: space === "shared" ? coupleId : null,
-      visibility: space,
-      type: t.type, amount: t.amount, description: t.description, date: new Date().toISOString().slice(0, 10),
-      category_id: t.category_id, note: t.note,
-    } as any);
-    if (error) toast.error(error.message); else { toast.success("Duplicado"); qc.invalidateQueries(); }
-  }
+  const byCatSorted = useMemo(() => {
+    const map = expenses.data?.byCategory ?? {};
+    const cats = categories.data ?? [];
+    return Object.entries(map)
+      .map(([id, total]) => ({
+        id,
+        total,
+        cat: cats.find((c) => c.id === id),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [expenses.data, categories.data]);
 
   return (
     <>
-      <AppHeader title="Finanças" subtitle="Receitas, despesas e gráficos" />
-      <div className="px-4 py-4 space-y-4">
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <Button asChild variant="outline" className="rounded-2xl h-auto py-3 whitespace-nowrap shrink-0 flex-1">
-            <Link to="/app/financas/projecao">
-              <TrendingUp className="size-4 mr-1" /> Projeção
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-2xl h-auto py-3 whitespace-nowrap shrink-0 flex-1">
-            <Link to="/app/financas/simular">
-              <Sparkles className="size-4 mr-1" /> Simular
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-2xl h-auto py-3 whitespace-nowrap shrink-0 flex-1">
-            <Link to="/app/financas/simulacoes">
-              <History className="size-4 mr-1" /> Histórico
-            </Link>
-          </Button>
+      <AppHeader title="Financeiro" subtitle="Contas, cartões e planejamento" />
+      <div className="px-4 py-4 space-y-4 pb-24">
+        {/* Seletor de mês */}
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={() => setRef(new Date(ref.getFullYear(), ref.getMonth() - 1, 1))}
+            className="size-9 rounded-full hover:bg-accent flex items-center justify-center"
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+          <div className="flex-1 text-center font-semibold capitalize">{monthLabel(ref)}</div>
+          <button
+            onClick={() => setRef(new Date(ref.getFullYear(), ref.getMonth() + 1, 1))}
+            className="size-9 rounded-full hover:bg-accent flex items-center justify-center"
+            aria-label="Próximo mês"
+          >
+            <ChevronRight className="size-5" />
+          </button>
+          <button
+            onClick={() => setHidden((h) => !h)}
+            className="size-9 rounded-full hover:bg-accent flex items-center justify-center"
+            aria-label={hidden ? "Mostrar valores" : "Ocultar valores"}
+          >
+            {hidden ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+          </button>
         </div>
+
+        {/* Card principal */}
         <Card className="rounded-3xl p-5 shadow-card">
-          {isLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-9 w-32 rounded-xl" />
-              <Skeleton className="h-3 w-20 rounded-md" />
-              <div className="grid grid-cols-2 gap-3">
-                <Skeleton className="h-16 rounded-2xl" />
-                <Skeleton className="h-16 rounded-2xl" />
-              </div>
-            </div>
+          {accountsTotal.isLoading ? (
+            <Skeleton className="h-9 w-40 rounded-xl" />
           ) : (
-            <>
-              <div className="text-3xl font-bold mb-1">{formatBRL(summary.balance)}</div>
-              <p className="text-xs text-muted-foreground mb-4">Saldo do mês</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-success/10 p-3">
-                  <div className="flex items-center gap-1.5 text-success mb-1"><TrendingUp className="size-4" /><span className="text-xs">Receitas</span></div>
-                  <div className="font-semibold text-sm">{formatBRL(summary.income)}</div>
-                </div>
-                <div className="rounded-2xl bg-destructive/10 p-3">
-                  <div className="flex items-center gap-1.5 text-destructive mb-1"><TrendingDown className="size-4" /><span className="text-xs">Despesas</span></div>
-                  <div className="font-semibold text-sm">{formatBRL(summary.expense)}</div>
-                </div>
-              </div>
-            </>
+            <div className="text-3xl font-bold">{hideOrShow(accountsTotal.data ?? 0, hidden)}</div>
           )}
+          <p className="text-xs text-muted-foreground mt-1">Saldo em contas</p>
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            <div className="rounded-2xl bg-success/10 p-3">
+              <div className="flex items-center gap-1.5 text-success mb-1"><TrendingUp className="size-3.5" /><span className="text-[11px] font-medium">Receitas</span></div>
+              {income.isLoading ? <Skeleton className="h-4 w-16" /> : <div className="font-semibold text-sm">{hideOrShow(income.data ?? 0, hidden)}</div>}
+            </div>
+            <div className="rounded-2xl bg-destructive/10 p-3">
+              <div className="flex items-center gap-1.5 text-destructive mb-1"><TrendingDown className="size-3.5" /><span className="text-[11px] font-medium">Despesas</span></div>
+              {expenses.isLoading ? <Skeleton className="h-4 w-16" /> : <div className="font-semibold text-sm">{hideOrShow(expenses.data?.total ?? 0, hidden)}</div>}
+            </div>
+            <div className="rounded-2xl bg-accent-purple/10 p-3">
+              <div className="flex items-center gap-1.5 text-accent-purple mb-1"><ChartLine className="size-3.5" /><span className="text-[11px] font-medium">Saldo mês</span></div>
+              <div className={`font-semibold text-sm ${balance < 0 ? "text-destructive" : ""}`}>{hideOrShow(balance, hidden)}</div>
+            </div>
+          </div>
         </Card>
 
-        <Tabs defaultValue="list">
-          <TabsList className="grid grid-cols-2 w-full">
-            <TabsTrigger value="list">Transações</TabsTrigger>
-            <TabsTrigger value="charts">Gráficos</TabsTrigger>
-          </TabsList>
-          <TabsContent value="list" className="mt-4">
-            {tx.length === 0 ? (
-              <Card className="rounded-2xl p-4 shadow-card">
-                <EmptyState icon={Wallet} title="Sem transações" description="Adicione uma receita ou despesa pelo botão central." />
-              </Card>
-            ) : (
-              <Card className="rounded-3xl divide-y divide-border shadow-card overflow-hidden">
-                {(tx as any[]).map((t) => (
-                  <div key={t.id} className="px-4 py-3 flex items-center gap-3">
-                    <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      t.type === "income" ? "bg-success/10 text-success" : t.type === "expense" ? "bg-destructive/10 text-destructive" : "bg-accent-purple/10 text-accent-purple"
-                    }`}>
-                      {t.type === "income" ? <TrendingUp className="size-4" /> : <TrendingDown className="size-4" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{t.description || t.categories?.name || "Sem descrição"}</div>
-                      <div className="text-xs text-muted-foreground">{new Date(t.date).toLocaleDateString("pt-BR")} · {t.categories?.name ?? "—"}</div>
-                    </div>
-                    <div className={`text-sm font-semibold ${t.type === "income" ? "text-success" : "text-foreground"}`}>
-                      {t.type === "expense" ? "-" : ""}{formatBRL(Number(t.amount))}
-                    </div>
-                    <button onClick={() => handleDuplicate(t)} className="size-8 rounded-lg hover:bg-accent flex items-center justify-center text-muted-foreground"><Copy className="size-3.5" /></button>
-                    <button onClick={() => handleDelete(t.id)} className="size-8 rounded-lg hover:bg-destructive/10 flex items-center justify-center text-destructive"><Trash2 className="size-3.5" /></button>
+        {/* Atalhos */}
+        <div className="grid grid-cols-4 gap-2">
+          <ShortcutTile to="/app/financas/planejamento" icon={Target} label="Planejamento" />
+          <ShortcutTile to="/app/financas/projecao" icon={ChartLine} label="Projeção" />
+          <ShortcutTile to="/app/financas/simular" icon={Sparkles} label="Simular" />
+          <ShortcutTile to="/app/categorias" icon={PieChart} label="Categorias" />
+        </div>
+
+        {/* Contas */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">Contas</h3>
+            <Link to="/app/contas" className="text-xs text-primary font-medium">Ver todas</Link>
+          </div>
+          {accounts.isLoading ? (
+            <Skeleton className="h-24 rounded-2xl" />
+          ) : accounts.data && accounts.data.length > 0 ? (
+            <Card className="rounded-2xl divide-y divide-border shadow-card overflow-hidden">
+              {accounts.data.slice(0, 5).map((a: any) => (
+                <div key={a.id} className="px-4 py-3 flex items-center gap-3">
+                  <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Wallet className="size-4" />
                   </div>
-                ))}
-              </Card>
-            )}
-          </TabsContent>
-          <TabsContent value="charts" className="mt-4 space-y-4">
-            {summary.byCat.length > 0 && (
-              <Card className="rounded-3xl p-5 shadow-card">
-                <h3 className="font-semibold mb-3 text-sm">Despesas por categoria</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie data={summary.byCat} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={40}>
-                      {summary.byCat.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(v: any) => formatBRL(Number(v))} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-1.5 mt-2">
-                  {summary.byCat.map((c, i) => (
-                    <div key={c.name} className="flex items-center gap-2 text-xs">
-                      <div className="size-2.5 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-                      <span className="flex-1 truncate">{c.name}</span>
-                      <span className="font-medium">{formatBRL(c.value)}</span>
-                    </div>
-                  ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{a.name || "Conta"}</div>
+                    <div className="text-xs text-muted-foreground truncate">{a.type ?? "conta"} · atualizada {new Date(a.updated_at).toLocaleDateString("pt-BR")}</div>
+                  </div>
+                  <div className={`text-sm font-semibold ${Number(a.balance) < 0 ? "text-destructive" : ""}`}>
+                    {hideOrShow(Number(a.balance ?? 0), hidden)}
+                  </div>
                 </div>
-              </Card>
-            )}
-            {summary.days.length > 0 && (
-              <Card className="rounded-3xl p-5 shadow-card">
-                <h3 className="font-semibold mb-3 text-sm">Evolução (14 dias)</h3>
-                <ResponsiveContainer width="100%" height={180}>
-                  <LineChart data={summary.days}>
-                    <XAxis dataKey="date" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={10} tickLine={false} axisLine={false} width={40} />
-                    <Tooltip formatter={(v: any) => formatBRL(Number(v))} />
-                    <Line type="monotone" dataKey="value" stroke="#FF6B57" strokeWidth={2.5} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-            {summary.byCat.length > 0 && (
-              <Card className="rounded-3xl p-5 shadow-card">
-                <h3 className="font-semibold mb-3 text-sm">Categorias (barras)</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={summary.byCat}>
-                    <XAxis dataKey="name" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={10} tickLine={false} axisLine={false} width={40} />
-                    <Tooltip formatter={(v: any) => formatBRL(Number(v))} />
-                    <Bar dataKey="value" fill="#FF6B57" radius={[8, 8, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+              ))}
+              <div className="px-4 py-3 flex items-center justify-between text-sm">
+                <span className="font-medium">Total em contas</span>
+                <span className="font-bold">{hideOrShow(accountsTotal.data ?? 0, hidden)}</span>
+              </div>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl p-4 shadow-card">
+              <EmptyState icon={Wallet} title="Sem contas" description="Cadastre suas contas para começar" />
+            </Card>
+          )}
+          <Button asChild variant="outline" className="w-full mt-2 rounded-2xl">
+            <Link to="/app/contas"><Plus className="size-4 mr-1" /> Adicionar conta</Link>
+          </Button>
+        </section>
+
+        {/* Cartões */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">Cartões de crédito</h3>
+            <Link to="/app/cartoes" className="text-xs text-primary font-medium">Gerenciar</Link>
+          </div>
+          <div className="flex gap-2 mb-2">
+            <button onClick={() => setInvoiceTab("open")} className={`text-xs px-3 py-1.5 rounded-full font-medium ${invoiceTab === "open" ? "bg-primary text-white" : "bg-accent text-foreground"}`}>Faturas abertas</button>
+            <button onClick={() => setInvoiceTab("closed")} className={`text-xs px-3 py-1.5 rounded-full font-medium ${invoiceTab === "closed" ? "bg-primary text-white" : "bg-accent text-foreground"}`}>Fechadas</button>
+          </div>
+          {cardsList.length === 0 ? (
+            <Card className="rounded-2xl p-4 shadow-card">
+              <EmptyState icon={CreditCard} title="Sem cartões" description="Adicione um cartão para acompanhar faturas" />
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {(invoiceTab === "open" ? openInvoices : cardsList).map((c: any) => {
+                const inv = cardInvoices.data?.[c.id];
+                const used = inv?.total ?? 0;
+                const limit = Number(c.limit_amount ?? 0);
+                const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
+                const available = Math.max(0, limit - used);
+                return (
+                  <Card key={c.id} className="rounded-2xl p-4 shadow-card">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="size-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: c.color + "22", color: c.color }}>
+                        <CreditCard className="size-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{c.name}</div>
+                        <div className="text-xs text-muted-foreground">{c.bank || "Cartão"} · fecha dia {c.closing_day} · vence {c.due_day}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold">{hideOrShow(used, hidden)}</div>
+                        <div className="text-[11px] text-muted-foreground">Fatura</div>
+                      </div>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between mt-1 text-[11px] text-muted-foreground">
+                      <span>{Math.round(pct)}% do limite</span>
+                      <span>Disponível: {hideOrShow(available, hidden)}</span>
+                    </div>
+                    {inv && inv.installments > 0 && (
+                      <div className="text-[11px] text-muted-foreground mt-1">{inv.installments} parceladas no mês</div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Despesas por categoria */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">Despesas por categoria</h3>
+          </div>
+          {expenses.isLoading ? (
+            <Skeleton className="h-20 rounded-2xl" />
+          ) : byCatSorted.length === 0 ? (
+            <Card className="rounded-2xl p-4 shadow-card">
+              <EmptyState icon={PieChart} title="Nada gasto no mês" description="Adicione uma despesa para acompanhar" />
+            </Card>
+          ) : (
+            <Card className="rounded-2xl divide-y divide-border shadow-card overflow-hidden">
+              {byCatSorted.slice(0, 8).map((row) => (
+                <div key={row.id} className="px-4 py-3 flex items-center gap-3">
+                  <div
+                    className="size-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: (row.cat?.color ?? "#FF6B57") + "22", color: row.cat?.color ?? "#FF6B57" }}
+                  >
+                    <PieChart className="size-4" />
+                  </div>
+                  <div className="flex-1 min-w-0 text-sm truncate">{row.cat?.name ?? "Sem categoria"}</div>
+                  <div className="text-sm font-semibold">{hideOrShow(row.total, hidden)}</div>
+                </div>
+              ))}
+            </Card>
+          )}
+        </section>
       </div>
     </>
+  );
+}
+
+function ShortcutTile({ to, icon: Icon, label }: { to: any; icon: any; label: string }) {
+  return (
+    <Link to={to} className="rounded-2xl bg-accent hover:bg-accent/70 p-3 flex flex-col items-center gap-1 text-center">
+      <Icon className="size-5 text-primary" />
+      <span className="text-[11px] font-medium">{label}</span>
+    </Link>
   );
 }
