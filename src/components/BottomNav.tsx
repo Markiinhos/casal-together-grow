@@ -1,45 +1,121 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, User, Plus, Heart, MoreHorizontal } from "lucide-react";
+import { Home, ArrowRightLeft, Plus, Target, MoreHorizontal, TrendingUp, TrendingDown, CreditCard, ArrowLeftRight } from "lucide-react";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import { useState } from "react";
 
-type NavItem = { to: string; icon: typeof Home; label: string; exact?: boolean; primary?: boolean };
+type NavItem = { to: string; icon: any; label: string; exact?: boolean; primary?: boolean };
+
 const items: NavItem[] = [
-  { to: "/app", icon: Home, label: "Início", exact: true },
-  { to: "/app/meu", icon: User, label: "Meu" },
-  { to: "/app/adicionar", icon: Plus, label: "Adicionar", primary: true },
-  { to: "/app/nosso", icon: Heart, label: "Nosso" },
+  { to: "/app", icon: Home, label: "Principal", exact: true },
+  { to: "/app/financas", icon: ArrowRightLeft, label: "Transações", exact: false },
+  { to: "#", icon: Plus, label: "", primary: true },
+  { to: "/app/financas/planejamento", icon: Target, label: "Planejamento" },
   { to: "/app/mais", icon: MoreHorizontal, label: "Mais" },
 ];
 
 export function BottomNav() {
   const { pathname } = useLocation();
+  const [open, setOpen] = useState(false);
+
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)]">
-      <div className="max-w-md mx-auto grid grid-cols-5 px-2 py-2">
-        {items.map(({ to, icon: Icon, label, primary, exact }) => {
-          const active = exact ? pathname === to : pathname.startsWith(to);
-          if (primary) {
+    <>
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)] rounded-t-2xl shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+        <div className="max-w-md mx-auto grid grid-cols-5 px-1 py-1 relative">
+          {items.map((item) => {
+            const { to, icon: Icon, label, primary, exact } = item;
+            const active = exact ? pathname === to : pathname.startsWith(to) && to !== "#";
+            
+            if (primary) {
+              return (
+                <Drawer key="primary-action" open={open} onOpenChange={setOpen}>
+                  <DrawerTrigger asChild>
+                    <button className="flex flex-col items-center justify-center relative outline-none focus:outline-none">
+                      <div className="absolute -top-7 size-14 rounded-full gradient-coral shadow-lg flex items-center justify-center text-white active:scale-95 transition-transform">
+                        <Icon className="size-8" strokeWidth={2.5} />
+                      </div>
+                    </button>
+                  </DrawerTrigger>
+
+                  <DrawerContent className="max-w-md mx-auto outline-none">
+                    <DrawerHeader>
+                      <DrawerTitle>Ações Rápidas</DrawerTitle>
+                    </DrawerHeader>
+                    <div className="p-4 grid grid-cols-4 gap-4 pb-12">
+                      <Link 
+                        to="/app/adicionar" 
+                        onClick={() => setOpen(false)}
+                        className="flex flex-col items-center gap-2"
+                      >
+                        <div className="size-12 rounded-full bg-success/10 text-success flex items-center justify-center">
+                          <TrendingUp className="size-6" />
+                        </div>
+                        <span className="text-[11px] font-medium text-center">Receita</span>
+                      </Link>
+
+                      <Link 
+                        to="/app/adicionar" 
+                        onClick={() => setOpen(false)}
+                        className="flex flex-col items-center gap-2"
+                      >
+                        <div className="size-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+                          <TrendingDown className="size-6" />
+                        </div>
+                        <span className="text-[11px] font-medium text-center">Despesa</span>
+                      </Link>
+
+                      <Link 
+                        to="/app/adicionar" 
+                        onClick={() => setOpen(false)}
+                        className="flex flex-col items-center gap-2"
+                      >
+                        <div className="size-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                          <ArrowLeftRight className="size-6" />
+                        </div>
+                        <span className="text-[11px] font-medium text-center">Transferência</span>
+                      </Link>
+
+                      <Link 
+                        to="/app/adicionar" 
+                        onClick={() => setOpen(false)}
+                        className="flex flex-col items-center gap-2"
+                      >
+                        <div className="size-12 rounded-full bg-accent-purple/10 text-accent-purple flex items-center justify-center">
+                          <CreditCard className="size-6" />
+                        </div>
+                        <span className="text-[11px] font-medium text-center">Despesa Cartão</span>
+                      </Link>
+                    </div>
+                  </DrawerContent>
+                </Drawer>
+              );
+            }
             return (
-              <Link key={to} to={to} className="flex items-center justify-center">
-                <div className="-mt-6 size-14 rounded-full gradient-coral shadow-soft flex items-center justify-center text-white">
-                  <Icon className="size-7" strokeWidth={2.5} />
+              <Link
+                key={to}
+                to={to}
+                className={`flex flex-col items-center justify-center gap-1 py-2 rounded-xl transition-colors active:bg-accent/50 ${
+                  active ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <div className={`transition-all duration-300 ${active ? "opacity-100 scale-110" : "opacity-80 scale-100"}`}>
+                   <Icon className="size-6" strokeWidth={active ? 2.5 : 2} />
                 </div>
+                <span className={`text-[10px] sm:text-[11px] max-w-full truncate px-1 transition-all duration-300 ${active ? "font-bold" : "font-medium"}`}>
+                  {label}
+                </span>
               </Link>
             );
-          }
-          return (
-            <Link
-              key={to}
-              to={to}
-              className={`flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl transition-colors ${
-                active ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
-              <Icon className="size-5" strokeWidth={active ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">{label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+          })}
+        </div>
+      </nav>
+      {/* Padding space element to avoid content being hidden by nav */}
+      <div className="h-20 w-full md:hidden" />
+    </>
   );
 }
