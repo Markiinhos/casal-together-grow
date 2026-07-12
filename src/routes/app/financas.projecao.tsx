@@ -112,6 +112,14 @@ function ProjecaoPage() {
     // Calc chart info
     const finalChartData = [];
     let running = currentBalanceAccum;
+    let totalFutureDebt = 0;
+    
+    for (const t of upc) {
+       if (t.type === "expense") {
+          totalFutureDebt += t.projectedAmount;
+       }
+    }
+
     for (let i = 0; i < months; i++) {
         const m = addMonths(now, i);
         const l = format(m, "MMM/yy", { locale: ptBR });
@@ -122,15 +130,29 @@ function ProjecaoPage() {
             balance: parseFloat(running.toFixed(2)),
             income: parseFloat(dict.income.toFixed(2)),
             expense: parseFloat(dict.expense.toFixed(2)),
+            debt: parseFloat(dict.expense.toFixed(2)), // Representing monthly debt obligation
         });
     }
 
+    // Budget Health: What % of future income is eaten by future expenses?
+    const totalFutureIncome = finalChartData.reduce((acc, c) => acc + c.income, 0);
+    const healthRatio = totalFutureIncome > 0 ? (totalFutureDebt / totalFutureIncome) * 100 : 0;
+    
+    // Status text based on health
+    let healthStatus = "Excelente";
+    if (healthRatio > 50) healthStatus = "Atenção";
+    if (healthRatio > 80) healthStatus = "Crítico";
+    if (totalFutureIncome === 0 && totalFutureDebt > 0) healthStatus = "Sem Receita";
+
     return { 
         chartData: finalChartData, 
-        upcoming: upc.slice(0, 15), // only top 15 next 
+        upcoming: upc.slice(0, 15), 
         currentBalance: currentBalanceAccum,
         projectedBalance: running,
-        isHealthy: running >= 0
+        isHealthy: running >= 0,
+        totalFutureDebt,
+        healthRatio,
+        healthStatus
     };
   }, [tx, cards, monthsToProject]);
 
@@ -162,16 +184,48 @@ function ProjecaoPage() {
         ) : (
             <>
                 <div className="grid grid-cols-2 gap-3">
-                    <Card className="rounded-3xl p-4 shadow-card flex flex-col justify-center">
-                        <p className="text-xs text-muted-foreground mb-1">Saldo Atual</p>
-                        <p className={`text-lg font-bold ${currentBalance >= 0 ? "text-success" : "text-destructive"}`}>
+                    <Card className="rounded-3xl p-4 shadow-card flex flex-col justify-center border-l-4 border-l-primary relative overflow-hidden group">
+                        <div className="absolute -right-4 -top-4 opacity-5 group-hover:scale-125 transition-transform duration-500">
+                           <Wallet className="size-20" />
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-1 relative z-10">Saldo Atual</p>
+                        <p className={`text-lg font-bold relative z-10 ${currentBalance >= 0 ? "text-success" : "text-destructive"}`}>
                             {formatBRL(currentBalance)}
                         </p>
                     </Card>
-                    <Card className="rounded-3xl p-4 shadow-card flex flex-col justify-center">
-                        <p className="text-xs text-muted-foreground mb-1">Fim do Período</p>
-                        <p className={`text-lg font-bold ${projectedBalance >= 0 ? "text-success" : "text-destructive"}`}>
+                    <Card className="rounded-3xl p-4 shadow-card flex flex-col justify-center border-l-4 border-l-blue-500 relative overflow-hidden group">
+                        <div className="absolute -right-4 -top-4 opacity-5 group-hover:scale-125 transition-transform duration-500">
+                           <TrendingUp className="size-20" />
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-1 relative z-10">Fim do Período</p>
+                        <p className={`text-lg font-bold relative z-10 ${projectedBalance >= 0 ? "text-success" : "text-destructive"}`}>
                             {formatBRL(projectedBalance)}
+                        </p>
+                    </Card>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <Card className="rounded-3xl p-4 shadow-card flex flex-col justify-center bg-destructive/5 border-destructive/20 border">
+                        <p className="text-xs text-muted-foreground mb-1">Dívida Futura (Total)</p>
+                        <p className="text-lg font-bold text-destructive">
+                            {formatBRL(totalFutureDebt)}
+                        </p>
+                    </Card>
+                    <Card className={`rounded-3xl p-4 shadow-card flex flex-col justify-center border ${
+                        healthStatus === "Excelente" ? "bg-success/5 border-success/20" : 
+                        healthStatus === "Atenção" ? "bg-warning/10 border-warning/30" : 
+                        "bg-destructive/10 border-destructive/30"
+                    }`}>
+                        <p className="text-xs text-muted-foreground mb-1 flex justify-between items-center">
+                          Saúde Orçamentária
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                             healthStatus === "Excelente" ? "bg-success/20 text-success" : 
+                             healthStatus === "Atenção" ? "bg-warning/30 text-warning-foreground" : 
+                             "bg-destructive/20 text-destructive"
+                          }`}>{healthStatus}</span>
+                        </p>
+                        <p className="text-sm font-medium mt-1">
+                            Comprometimento: <span className="font-bold">{healthRatio.toFixed(0)}%</span>
                         </p>
                     </Card>
                 </div>
@@ -188,16 +242,27 @@ function ProjecaoPage() {
                                 <YAxis fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${v}`} />
                                 <Tooltip
                                     formatter={(value: number) => formatBRL(value)}
-                                    contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+                                    contentStyle={{ borderRadius: "12px", border: "1px solid var(--border)", boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)", backgroundColor: "var(--background)" }}
                                 />
                                 <ReferenceLine y={0} stroke={isHealthy ? "#34D399" : "#F25542"} strokeDasharray="3 3" opacity={0.4} />
                                 <Line 
+                                    name="Saldo"
                                     type="monotone" 
                                     dataKey="balance" 
                                     stroke={isHealthy ? "#34D399" : "#F25542"} 
                                     strokeWidth={3} 
                                     dot={{ r: 4, fill: "var(--background)", strokeWidth: 2 }} 
                                     activeDot={{ r: 6 }} 
+                                />
+                                <Line 
+                                    name="Dívida"
+                                    type="monotone" 
+                                    dataKey="debt" 
+                                    stroke="#F25542" 
+                                    strokeWidth={2} 
+                                    strokeDasharray="5 5"
+                                    dot={false}
+                                    activeDot={{ r: 4 }} 
                                 />
                             </LineChart>
                         </ResponsiveContainer>

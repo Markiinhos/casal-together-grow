@@ -258,7 +258,10 @@ export type Database = {
           created_at: string
           icon: string
           id: string
+          is_archived: boolean
+          is_default: boolean
           name: string
+          sort_order: number
           type: string
           updated_at: string
           user_id: string
@@ -270,7 +273,10 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          is_archived?: boolean
+          is_default?: boolean
           name: string
+          sort_order?: number
           type: string
           updated_at?: string
           user_id: string
@@ -282,7 +288,10 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          is_archived?: boolean
+          is_default?: boolean
           name?: string
+          sort_order?: number
           type?: string
           updated_at?: string
           user_id?: string
@@ -2203,6 +2212,53 @@ export type Database = {
             referencedRelation: "meal_plans"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      subcategories: {
+        Row: {
+          category_id: string
+          color: string | null
+          created_at: string
+          created_by: string
+          icon: string | null
+          id: string
+          is_archived: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          color?: string | null
+          created_at?: string
+          created_by: string
+          icon?: string | null
+          id?: string
+          is_archived?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          color?: string | null
+          created_at?: string
+          created_by?: string
+          icon?: string | null
+          id?: string
+          is_archived?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subcategories_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          }
         ]
       }
       synced_cards: {
