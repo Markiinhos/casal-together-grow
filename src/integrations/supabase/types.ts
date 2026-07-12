@@ -1613,6 +1613,154 @@ export type Database = {
           },
         ]
       }
+      monthly_budget_allocations: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          plan_id: string
+          planned_amount: number
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          plan_id: string
+          planned_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          plan_id?: string
+          planned_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_budget_allocations_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_budget_allocations_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_financial_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monthly_financial_plans: {
+        Row: {
+          couple_id: string | null
+          created_at: string
+          created_by: string
+          distribute_all: boolean
+          edit_policy: string
+          expected_income: number
+          id: string
+          notes: string | null
+          planned_goals: number
+          planned_reserve: number
+          reference_month: string
+          spending_limit: number
+          status: string
+          suggested_percentage: number
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          couple_id?: string | null
+          created_at?: string
+          created_by: string
+          distribute_all?: boolean
+          edit_policy?: string
+          expected_income?: number
+          id?: string
+          notes?: string | null
+          planned_goals?: number
+          planned_reserve?: number
+          reference_month: string
+          spending_limit?: number
+          status?: string
+          suggested_percentage?: number
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          couple_id?: string | null
+          created_at?: string
+          created_by?: string
+          distribute_all?: boolean
+          edit_policy?: string
+          expected_income?: number
+          id?: string
+          notes?: string | null
+          planned_goals?: number
+          planned_reserve?: number
+          reference_month?: string
+          spending_limit?: number
+          status?: string
+          suggested_percentage?: number
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_financial_plans_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monthly_plan_history: {
+        Row: {
+          action: string
+          changed_by: string
+          created_at: string
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          plan_id: string
+        }
+        Insert: {
+          action: string
+          changed_by: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          plan_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string
+          created_at?: string
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_plan_history_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_financial_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           body: string | null
@@ -2144,6 +2292,7 @@ export type Database = {
           description: string | null
           id: string
           imported_from: string | null
+          is_card_payment: boolean
           note: string | null
           pluggy_transaction_id: string | null
           responsible_user_id: string | null
@@ -2165,6 +2314,7 @@ export type Database = {
           description?: string | null
           id?: string
           imported_from?: string | null
+          is_card_payment?: boolean
           note?: string | null
           pluggy_transaction_id?: string | null
           responsible_user_id?: string | null
@@ -2186,6 +2336,7 @@ export type Database = {
           description?: string | null
           id?: string
           imported_from?: string | null
+          is_card_payment?: boolean
           note?: string | null
           pluggy_transaction_id?: string | null
           responsible_user_id?: string | null
@@ -2532,6 +2683,8 @@ export type Database = {
         }
         Returns: undefined
       }
+      can_access_plan: { Args: { _plan_id: string }; Returns: boolean }
+      can_edit_plan: { Args: { _plan_id: string }; Returns: boolean }
       current_couple_id: { Args: never; Returns: string }
       is_couple_member: { Args: { _couple_id: string }; Returns: boolean }
       join_couple_by_code: { Args: { _code: string }; Returns: string }
