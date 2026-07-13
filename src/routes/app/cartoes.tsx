@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { CreditCard, Plus, Trash2, ChevronDown, ShoppingBag, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
+import { InvoicePaymentDrawer } from "@/components/InvoicePaymentDrawer";
 import { Link } from "@tanstack/react-router";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
 
@@ -65,6 +66,24 @@ function CardsPage() {
     enabled: !!user,
   });
 
+  const { data: invoices = [] } = useQuery({
+    queryKey: ["card-invoices"],
+    queryFn: async () => {
+      const { data } = await supabase.from("card_invoices").select("*").order("reference_month", { ascending: true });
+      return (data ?? []) as any[];
+    },
+    enabled: !!user,
+  });
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ["fin-accounts", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("bank_accounts").select("*").order("name");
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
   const { data: cats = [] } = useQuery({
     queryKey: ["cats-exp", coupleId, user?.id],
     queryFn: async () => {
@@ -78,12 +97,19 @@ function CardsPage() {
   useEffect(() => {
     const ch = supabase
       .channel("cards-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () =>
-        qc.invalidateQueries({ queryKey: ["card-purchases"] }),
-      )
-      .on("postgres_changes", { event: "*", schema: "public", table: "installments" }, () =>
-        qc.invalidateQueries({ queryKey: ["card-purchases"] }),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
+        qc.invalidateQueries({ queryKey: ["card-purchases"] });
+        qc.invalidateQueries({ queryKey: ["card-invoices"] });
+        qc.invalidateQueries({ queryKey: ["recent-txs"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "installments" }, () => {
+        qc.invalidateQueries({ queryKey: ["card-purchases"] });
+        qc.invalidateQueries({ queryKey: ["card-invoices"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "card_invoices" }, () => {
+        qc.invalidateQueries({ queryKey: ["card-invoices"] });
+        qc.invalidateQueries({ queryKey: ["card-purchases"] });
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
@@ -147,13 +173,59 @@ function CardsPage() {
         m.used += v;
       }
     }
+    
+    // Set activeInv using card_invoices or synthesize from computed bill
+    for (const card of cards) {
+      if (!map[card.id]) continue;
+      const cardInvs = invoices.filter(i => i.card_id === card.id);
+      // Find oldest active or current month's invoice
+      let activeInv = cardInvs.find(i => ["open", "due", "overdue", "partially_paid"].includes(i.status));
+      if (!activeInv) activeInv = cardInvs.find(i => i.reference_month === thisMonth) || (cardInvs.length > 0 ? cardInvs[cardInvs.length - 1] : null);
+      
+      // Synthesize a virtual invoice when no card_invoices exist but there's a bill
+      if (!activeInv && map[card.id].currentBill > 0) {
+        activeInv = {
+          id: null, // marks it as synthetic — no RPC to call
+          card_id: card.id,
+          reference_month: thisMonth,
+          total_amount: map[card.id].currentBill,
+          paid_amount: 0,
+          status: "open",
+          due_date: `${thisMonth}-${String(card.due_day ?? 10).padStart(2, "0")}`,
+          _synthetic: true,
+        };
+      }
+      
+      map[card.id].activeInv = activeInv;
+    }
+    
     return map;
-  }, [cards, purchases]);
+  }, [cards, purchases, invoices]);
+
+  const [payDrawerOpen, setPayDrawerOpen] = useState(false);
+  const [selectedInvoiceInfo, setSelectedInvoiceInfo] = useState<{ inv: any; card: any } | null>(null);
+
+  function handleOpenPay(inv: any, card: any) {
+    setSelectedInvoiceInfo({ inv, card });
+    setPayDrawerOpen(true);
+  }
 
   return (
     <>
       <AppHeader title="Cartões" subtitle="Faturas, parcelas e análises" />
       <div className="px-4 py-4 space-y-4 pb-24">
+        {selectedInvoiceInfo && (
+          <InvoicePaymentDrawer
+            open={payDrawerOpen}
+            onOpenChange={setPayDrawerOpen}
+            card={selectedInvoiceInfo.card}
+            invoiceTotal={selectedInvoiceInfo.inv.total_amount}
+            paidAmount={selectedInvoiceInfo.inv.paid_amount}
+            invoiceId={selectedInvoiceInfo.inv.id}
+            refMonth={new Date(selectedInvoiceInfo.inv.reference_month + "-01T12:00:00")}
+            accounts={accounts}
+          />
+        )}
         <div className="grid grid-cols-2 gap-2">
           <Dialog open={openCard} onOpenChange={setOpenCard}>
             <DialogTrigger asChild>
@@ -194,10 +266,14 @@ function CardsPage() {
               </Card>
             ) : (
               cards.map((c) => {
-                const m = cardMetrics[c.id] ?? { used: 0, currentBill: 0, installmentsCount: 0, remainingTotal: 0, lastPurchase: null, byCategory: {} };
+                const m = cardMetrics[c.id] ?? { used: 0, currentBill: 0, installmentsCount: 0, remainingTotal: 0, lastPurchase: null, byCategory: {}, activeInv: null };
                 const limit = Number(c.limit_amount) || 0;
                 const pct = limit > 0 ? Math.min(100, (m.used / limit) * 100) : 0;
                 const topCat = Object.entries(m.byCategory).sort((a: any, b: any) => b[1] - a[1])[0];
+                const invObj = m.activeInv;
+                const openStatuses = ["open", "due", "overdue", "partially_paid"];
+                const isPaid = invObj?.status === "paid" || invObj?.status === "closed";
+
                 return (
                   <Card key={c.id} className="rounded-3xl overflow-hidden shadow-soft border-0">
                     <div className="p-5 text-white" style={{ background: `linear-gradient(135deg, ${c.color}, ${c.color}cc)` }}>
@@ -219,9 +295,35 @@ function CardsPage() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-px bg-border">
-                      <div className="bg-card p-3">
-                        <div className="text-[10px] text-muted-foreground uppercase">Fatura atual</div>
-                        <div className="font-semibold text-sm">{formatBRL(m.currentBill)}</div>
+                      <div className="bg-card p-3 flex flex-col justify-between">
+                        <div>
+                          <div className="text-[10px] text-muted-foreground uppercase">{invObj ? `Fatura (${invObj.reference_month.split("-").reverse().join("/")})` : "Fatura atual"}</div>
+                          <div className="font-semibold text-sm">{formatBRL(invObj?.total_amount ?? m.currentBill)}</div>
+                          {invObj && (
+                             <div className="text-[10px] mt-0.5">
+                               Status: 
+                               <span className={openStatuses.includes(invObj.status) ? "text-orange-500 font-medium ml-1" : "text-success font-medium ml-1"}>
+                                 {invObj.status}
+                               </span>
+                             </div>
+                          )}
+                        </div>
+                        {invObj && (
+                          <div className="mt-2 flex gap-1.5">
+                            <Link to={`/app/cartoes/$cardId/faturas`} params={{ cardId: c.id }} className="flex-1">
+                              <Button variant="outline" size="sm" className="w-full text-xs h-7 px-0 rounded-lg">Detalhes</Button>
+                            </Link>
+                            {!isPaid && (
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleOpenPay(invObj, c)}
+                                className="flex-1 text-[11px] h-7 px-0 rounded-lg gradient-coral text-white border-0 shadow-none"
+                              >
+                                Fatura Paga
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="bg-card p-3">
                         <div className="text-[10px] text-muted-foreground uppercase">Restante parcelas</div>
@@ -249,19 +351,62 @@ function CardsPage() {
             <PurchasesList purchases={purchases} cards={cards} />
           </TabsContent>
 
-          <TabsContent value="bills" className="mt-4">
+          <TabsContent value="bills" className="mt-4 space-y-4">
+            {/* Per-card invoice summary with pay buttons */}
+            {cards.length > 0 && (
+              <div className="space-y-3">
+                {cards.map((c) => {
+                  const m = cardMetrics[c.id] ?? { currentBill: 0, activeInv: null };
+                  const inv = m.activeInv;
+                  const billAmount = inv?.total_amount ?? m.currentBill;
+                  const paidAmt = inv?.paid_amount ?? 0;
+                  const remaining = billAmount - paidAmt;
+                  const isInvPaid = inv?.status === "paid" || inv?.status === "closed";
+                  const refLabel = inv?.reference_month
+                    ? new Date(inv.reference_month + "-01T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+                    : new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+                  return (
+                    <Card key={c.id} className="rounded-2xl shadow-card overflow-hidden">
+                      <div className="px-4 py-3 flex items-center gap-3" style={{ borderLeft: `4px solid ${c.color}` }}>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm">{c.name}</div>
+                          <div className="text-xs text-muted-foreground capitalize">{refLabel} · Vence dia {c.due_day}</div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-sm">{formatBRL(billAmount)}</div>
+                          {paidAmt > 0 && !isInvPaid && (
+                            <div className="text-[10px] text-success">Pago: {formatBRL(paidAmt)}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="px-4 pb-3 flex gap-2">
+                        <Link to={`/app/cartoes/$cardId/faturas`} params={{ cardId: c.id }} className="flex-1">
+                          <Button variant="outline" size="sm" className="w-full text-xs h-8 rounded-xl">
+                            <Wallet className="size-3.5 mr-1" /> Detalhes
+                          </Button>
+                        </Link>
+                        {!isInvPaid && remaining > 0 && inv && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenPay(inv, c)}
+                            className="flex-1 text-xs h-8 rounded-xl gradient-coral text-white border-0"
+                          >
+                            <CreditCard className="size-3.5 mr-1" /> Fatura Paga
+                          </Button>
+                        )}
+                        {isInvPaid && (
+                          <div className="flex-1 flex items-center justify-center text-xs text-success font-medium gap-1">
+                            ✓ Paga
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
             <FutureBills purchases={purchases} cards={cards} />
-            
-            <div className="mt-4 pt-4 border-t border-border/50 text-center">
-               <p className="text-xs text-muted-foreground mb-2">Para fechar e pagar faturas com histórico, use a nova versão de controle de faturas.</p>
-               {cards.length > 0 && (
-                 <Link to="/app/cartoes/$cardId/faturas" params={{ cardId: cards[0].id }}>
-                   <Button variant="outline" size="sm" className="rounded-xl">
-                     <Wallet className="size-4 mr-1.5" /> Acessar Faturas
-                   </Button>
-                 </Link>
-               )}
-            </div>
           </TabsContent>
 
           <TabsContent value="history" className="mt-4">

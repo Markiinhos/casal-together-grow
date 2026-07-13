@@ -43,6 +43,7 @@ interface InvoicePaymentDrawerProps {
 
 const KEYS = [
   "home-tx",
+  "recent-txs",
   "fin-income",
   "fin-expenses",
   "fin-invoices",

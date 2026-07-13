@@ -38,12 +38,14 @@ interface TransactionEditDrawerProps {
 
 const QUERY_KEYS_TO_INVALIDATE = [
   "home-tx",
+  "recent-txs",
   "fin-income",
   "fin-expenses",
   "fin-invoices",
   "fin-accounts",
   "fin-accounts-total",
   "card-purchases",
+  "card-invoices",
   "cards",
   "subscriptions",
   "tx-projecao",

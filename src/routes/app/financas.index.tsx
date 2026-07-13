@@ -20,6 +20,7 @@ import {
   formatBRL, hideOrShow, monthLabel, monthRange,
 } from "@/lib/finance";
 import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
+import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
 import { ListIcon } from "lucide-react";
 
 export const Route = createFileRoute("/app/financas/")({
@@ -148,6 +149,7 @@ function FinancasCentral() {
   const openInvoices = cardsList; // todas aparecem em "abertas"; "fechadas" é view alternativa
   const [invoiceTab, setInvoiceTab] = useState<"open" | "closed">("open");
   const [editTxId, setEditTxId] = useState<string | null>(null);
+  const [isEditCardTx, setIsEditCardTx] = useState(false);
 
   const byCatSorted = useMemo(() => {
     const map = expenses.data?.byCategory ?? {};
@@ -361,7 +363,14 @@ function FinancasCentral() {
               {recentTransactions.data!.map((t: any) => {
                 const insts = t.installments?.length ?? 0;
                 return (
-                  <div key={t.id} onClick={() => setEditTxId(t.id)} className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                  <div 
+                    key={t.id} 
+                    onClick={() => {
+                       setEditTxId(t.id);
+                       setIsEditCardTx(!!t.credit_card_id);
+                    }} 
+                    className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                  >
                     <div
                       className="size-9 rounded-xl flex items-center justify-center shrink-0"
                       style={{ background: (t.categories?.color ?? "#94a3b8") + "22", color: t.categories?.color ?? "#94a3b8" }}
@@ -388,8 +397,13 @@ function FinancasCentral() {
       </div>
 
       <TransactionEditDrawer
-        transactionId={editTxId}
-        open={!!editTxId}
+        transactionId={!isEditCardTx ? editTxId : null}
+        open={!!editTxId && !isEditCardTx}
+        onOpenChange={(op) => !op && setEditTxId(null)}
+      />
+      <CardPurchaseEditDrawer
+        purchaseId={isEditCardTx ? editTxId : null}
+        open={!!editTxId && isEditCardTx}
         onOpenChange={(op) => !op && setEditTxId(null)}
       />
     </>

@@ -43,12 +43,14 @@ type EditScope = "single" | "future" | "all";
 
 const KEYS = [
   "home-tx",
+  "recent-txs",
   "fin-income",
   "fin-expenses",
   "fin-invoices",
   "fin-accounts",
   "fin-accounts-total",
   "card-purchases",
+  "card-invoices",
   "cards",
   "tx-projecao",
   "plans",

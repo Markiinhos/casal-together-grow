@@ -49,6 +49,16 @@ interface Cat {
   subcategories?: Subcat[];
 }
 
+function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
+  const keys = [
+    "cats", "cats-exp", "cats-edit", "home-tx", "fin-income",
+    "fin-expenses", "fin-invoices", "transaction-form-options",
+    "financial-categories", "monthly-plans", "tx-projecao", "plans",
+    "subscriptions"
+  ];
+  keys.forEach(k => qc.invalidateQueries({ queryKey: [k] }));
+}
+
 function CatPage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
@@ -61,13 +71,12 @@ function CatPage() {
   const [editingSub, setEditingSub] = useState<{ sub: Subcat | null; catId: string } | null>(null);
 
   const { data: cats = [] } = useQuery({
-    queryKey: ["cats"],
+    queryKey: ["cats", coupleId, user?.id],
     queryFn: async () => {
-      // The RLS policy should automatically filter out what the user can't see, 
-      // but to be safe we can let it query.
       const { data, error } = await supabase
         .from("categories")
-        .select("*, subcategories(*)")
+        .select("*, subcategories:categories(*)")
+        .is("parent_id", null)
         .order("sort_order")
         .order("name");
       if (error) console.error("[cats] load", error);
@@ -76,23 +85,27 @@ function CatPage() {
     enabled: !!user,
   });
 
-  async function del(id: string) {
+  async function del(cat: Cat) {
+    if (cat.is_default) {
+      toast.error("Não é possível excluir categorias padrão.");
+      return;
+    }
     if (!confirm("Excluir categoria?")) return;
-    const { error } = await supabase.from("categories").delete().eq("id", id);
+    const { error } = await supabase.from("categories").delete().eq("id", cat.id);
     if (error) toast.error(error.message);
     else {
       toast.success("Excluída");
-      qc.invalidateQueries({ queryKey: ["cats"] });
+      invalidateAll(qc);
     }
   }
 
-  async function delSub(id: string) {
+  async function delSub(sub: Subcat) {
     if (!confirm("Excluir subcategoria?")) return;
-    const { error } = await supabase.from("categories").delete().eq("id", id);
+    const { error } = await supabase.from("categories").delete().eq("id", sub.id);
     if (error) toast.error(error.message);
     else {
       toast.success("Subcategoria excluída");
-      qc.invalidateQueries({ queryKey: ["cats"] });
+      invalidateAll(qc);
     }
   }
 
@@ -124,7 +137,7 @@ function CatPage() {
             {editingSub && (
                <SubcatForm
                  key={editingSub.sub?.id ?? "newSub"}
-                 catId={editingSub.catId}
+                 parentCat={cats.find(c => c.id === editingSub.catId)!}
                  editing={editingSub.sub}
                  onDone={() => { setOpenSub(false); setEditingSub(null); }}
                />
@@ -152,16 +165,16 @@ function CatPage() {
                     </div>
                     <div className="text-[11px] text-muted-foreground capitalize mt-0.5">{c.type}</div>
                   </div>
-                  {!c.is_default && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditing(c); }} className="size-8 rounded-lg text-muted-foreground">
-                        <Pencil className="size-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); del(c.id); }} className="size-8 rounded-lg text-destructive">
+                  <div className="flex items-center gap-1 opacity-100 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setEditing(c); }} className="size-8 rounded-lg text-muted-foreground">
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    {!c.is_default && (
+                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); del(c); }} className="size-8 rounded-lg text-destructive">
                         <Trash2 className="size-3.5" />
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   <ChevronDown className="size-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180 ml-2" />
                 </Collapsible.Trigger>
                 
@@ -176,7 +189,7 @@ function CatPage() {
                           <Button variant="ghost" size="icon" onClick={() => { setEditingSub({ sub, catId: c.id }); setOpenSub(true); }} className="size-7 rounded-md">
                             <Pencil className="size-3 text-muted-foreground" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => delSub(sub.id)} className="size-7 rounded-md hover:bg-destructive/10 text-destructive">
+                          <Button variant="ghost" size="icon" onClick={() => delSub(sub)} className="size-7 rounded-md hover:bg-destructive/10 text-destructive">
                             <Trash2 className="size-3" />
                           </Button>
                         </div>
@@ -212,16 +225,45 @@ function CatForm({ editing, coupleId, onDone }: { editing: Cat | null; coupleId:
     if (!user) return;
     setSaving(true);
     
-    // Se for privado, força null no couple_id pra policy deixar inserir como privado
+    const cleanedName = name.trim();
+    if (!cleanedName) {
+      toast.error("Nome inválido.");
+      setSaving(false);
+      return;
+    }
+
     const actualCoupleId = visibility === "shared" ? coupleId : null;
     
+    // Check duplicate
+    let q = supabase
+       .from("categories")
+       .select("id")
+       .eq("name", cleanedName)
+       .eq("visibility", visibility)
+       .is("parent_id", null);
+       
+    if (visibility === 'shared' && actualCoupleId) {
+       q = q.eq("couple_id", actualCoupleId);
+    } else {
+       q = q.eq("user_id", user.id);
+    }
+    
+    const { data: existing } = await q.maybeSingle();
+
+    if (existing && existing.id !== editing?.id) {
+       toast.error("Já existe uma categoria com esse nome.");
+       setSaving(false);
+       return;
+    }
+    
     const payload = { 
-       name, 
+       name: cleanedName, 
        type, 
        color, 
        icon,
        visibility,
-       is_archived
+       is_archived,
+       updated_at: new Date().toISOString()
     };
     
     let error;
@@ -237,20 +279,20 @@ function CatForm({ editing, coupleId, onDone }: { editing: Cat | null; coupleId:
     setSaving(false);
     if (error) {
       console.error("[cats] save", error);
-      toast.error(error.message);
+      toast.error("Não foi possível salvar a categoria. Tente novamente.");
     } else {
-      toast.success(editing ? "Atualizada!" : "Criada!");
-      qc.invalidateQueries({ queryKey: ["cats"] });
+      toast.success(editing ? "Atualizada!" : "Categoria criada com sucesso.");
+      invalidateAll(qc);
       onDone();
     }
   }
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <div><Label>Nome</Label><Input required value={name} onChange={(e) => setName(e.target.value)} /></div>
+      <div><Label>Nome</Label><Input required disabled={editing?.is_default} value={name} onChange={(e) => setName(e.target.value)} /></div>
       <div>
         <Label>Tipo</Label>
-        <Select value={type} onValueChange={setType}>
+        <Select disabled={editing?.is_default} value={type} onValueChange={setType}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="expense">Despesa</SelectItem>
@@ -286,7 +328,7 @@ function CatForm({ editing, coupleId, onDone }: { editing: Cat | null; coupleId:
       {coupleId && (
         <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border border-border/50">
            <div className="space-y-0.5"><div className="text-sm font-medium">Compartilhado</div><div className="text-xs text-muted-foreground">Visível para o parceiro</div></div>
-           <Switch checked={visibility === "shared"} onCheckedChange={(c) => setVisibility(c ? "shared" : "private")} />
+           <Switch disabled={editing?.is_default} checked={visibility === "shared"} onCheckedChange={(c) => setVisibility(c ? "shared" : "private")} />
         </div>
       )}
       
@@ -304,7 +346,7 @@ function CatForm({ editing, coupleId, onDone }: { editing: Cat | null; coupleId:
   );
 }
 
-function SubcatForm({ catId, editing, onDone }: { catId: string; editing: Subcat | null; onDone: () => void }) {
+function SubcatForm({ parentCat, editing, onDone }: { parentCat: Cat; editing: Subcat | null; onDone: () => void }) {
   const [name, setName] = useState(editing?.name ?? "");
   const [color, setColor] = useState(editing?.color ?? "");
   const [is_archived, setIsArchived] = useState(editing?.is_archived ?? false);
@@ -316,25 +358,59 @@ function SubcatForm({ catId, editing, onDone }: { catId: string; editing: Subcat
     e.preventDefault();
     if (!user) return;
     setSaving(true);
+    
+    const cleanedName = name.trim();
+    if (!cleanedName) {
+      toast.error("Nome inválido.");
+      setSaving(false);
+      return;
+    }
+    
+    // Check duplicate
+    let q = supabase
+       .from("categories")
+       .select("id")
+       .eq("name", cleanedName)
+       .eq("visibility", parentCat.visibility)
+       .eq("parent_id", parentCat.id);
+       
+    if (parentCat.visibility === 'shared' && parentCat.couple_id) {
+       q = q.eq("couple_id", parentCat.couple_id);
+    } else {
+       q = q.eq("user_id", user.id);
+    }
+    
+    const { data: existing } = await q.maybeSingle();
+
+    if (existing && existing.id !== editing?.id) {
+       toast.error("Já existe uma subcategoria com esse nome.");
+       setSaving(false);
+       return;
+    }
+    
     let error;
     if (editing) {
-      ({ error } = await supabase.from("categories").update({ name, color: color || "#7B61FF", is_archived }).eq("id", editing.id));
+      ({ error } = await supabase.from("categories").update({ name: cleanedName, color: color || "#7B61FF", is_archived, updated_at: new Date().toISOString() }).eq("id", editing.id));
     } else {
       ({ error } = await supabase.from("categories").insert({
-        name, color: color || "#7B61FF", is_archived,
-        parent_id: catId, user_id: user.id, type: "expense", visibility: "private",
+        name: cleanedName, color: color || "#7B61FF", is_archived,
+        parent_id: parentCat.id, 
+        user_id: user.id, 
+        type: parentCat.type, 
+        visibility: parentCat.visibility,
+        couple_id: parentCat.couple_id
       }));
     }
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      console.error("[subcats] save error:", error);
+      toast.error("Não foi possível salvar a subcategoria. Tente novamente.");
     } else {
-      toast.success(editing ? "Atualizada!" : "Criada!");
-      qc.invalidateQueries({ queryKey: ["cats"] });
+      toast.success(editing ? "Atualizada!" : "Subcategoria criada com sucesso.");
+      invalidateAll(qc);
       onDone();
     }
   }
-
 
   return (
     <form onSubmit={submit} className="space-y-4">
