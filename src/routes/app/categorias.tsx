@@ -88,13 +88,14 @@ function CatPage() {
 
   async function delSub(id: string) {
     if (!confirm("Excluir subcategoria?")) return;
-    const { error } = await supabase.from("subcategories").delete().eq("id", id);
+    const { error } = await supabase.from("categories").delete().eq("id", id);
     if (error) toast.error(error.message);
     else {
       toast.success("Subcategoria excluída");
       qc.invalidateQueries({ queryKey: ["cats"] });
     }
   }
+
 
   return (
     <>
@@ -315,12 +316,14 @@ function SubcatForm({ catId, editing, onDone }: { catId: string; editing: Subcat
     e.preventDefault();
     if (!user) return;
     setSaving(true);
-    const payload = { name, color: color || null, is_archived };
     let error;
     if (editing) {
-      ({ error } = await supabase.from("subcategories").update(payload).eq("id", editing.id));
+      ({ error } = await supabase.from("categories").update({ name, color: color || "#7B61FF", is_archived }).eq("id", editing.id));
     } else {
-      ({ error } = await supabase.from("subcategories").insert({ ...payload, category_id: catId, created_by: user.id }));
+      ({ error } = await supabase.from("categories").insert({
+        name, color: color || "#7B61FF", is_archived,
+        parent_id: catId, user_id: user.id, type: "expense", visibility: "private",
+      }));
     }
     setSaving(false);
     if (error) {
@@ -331,6 +334,7 @@ function SubcatForm({ catId, editing, onDone }: { catId: string; editing: Subcat
       onDone();
     }
   }
+
 
   return (
     <form onSubmit={submit} className="space-y-4">
