@@ -362,27 +362,32 @@ function FinancasCentral() {
             <Card className="rounded-2xl divide-y divide-border shadow-card overflow-hidden">
               {recentTransactions.data!.map((t: any) => {
                 const insts = t.installments?.length ?? 0;
+                const isPayment = t.is_card_payment;
                 return (
                   <div 
                     key={t.id} 
                     onClick={() => {
+                       if (isPayment) {
+                         // TODO: Could open a specific read-only modal for invoice payments
+                         return;
+                       }
                        setEditTxId(t.id);
                        setIsEditCardTx(!!t.credit_card_id);
                     }} 
-                    className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                    className={`px-4 py-3 flex items-center gap-3 transition-colors ${isPayment ? "cursor-default" : "cursor-pointer hover:bg-muted/30"}`}
                   >
                     <div
-                      className="size-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: (t.categories?.color ?? "#94a3b8") + "22", color: t.categories?.color ?? "#94a3b8" }}
+                      className={isPayment ? "size-9 rounded-xl flex items-center justify-center shrink-0 bg-primary/10 text-primary" : "size-9 rounded-xl flex items-center justify-center shrink-0"}
+                      style={!isPayment ? { background: (t.categories?.color ?? "#94a3b8") + "22", color: t.categories?.color ?? "#94a3b8" } : undefined}
                     >
-                      <ListIcon className="size-4" />
+                      {isPayment ? <Wallet className="size-4" /> : <ListIcon className="size-4" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{t.description || t.categories?.name || "Lançamento"}</div>
+                      <div className="text-sm font-medium truncate">{isPayment ? t.description || "Pagamento de fatura" : t.description || t.categories?.name || "Lançamento"}</div>
                       <div className="text-xs text-muted-foreground truncate">
                          {new Date(t.date).toLocaleDateString("pt-BR")}
-                         {insts > 1 && ` · ${insts}x`}
-                         {t.credit_card_id && ` · Cartão`}
+                         {insts > 1 && !isPayment && ` · ${insts}x`}
+                         {t.credit_card_id && !isPayment && ` · Cartão`}
                       </div>
                     </div>
                     <div className={`text-sm font-semibold ${t.type === "income" ? "text-success" : ""}`}>

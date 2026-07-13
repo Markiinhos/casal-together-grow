@@ -75,9 +75,10 @@ export function InvoicePaymentDrawer({
   const remaining = invoiceTotal - paidAmount;
 
   const [payAmount, setPayAmount] = useState(String(remaining));
-  const [payDate, setPayDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
+  const [payDate, setPayDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
   const [accountId, setAccountId] = useState("");
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [saving, setSaving] = useState(false);
@@ -85,7 +86,7 @@ export function InvoicePaymentDrawer({
   const [showUndo, setShowUndo] = useState(false);
 
   const handlePay = useCallback(async () => {
-    if (!user || !card) return;
+    if (!user || !card || saving) return;
     setSaving(true);
     try {
       const val =
@@ -95,6 +96,7 @@ export function InvoicePaymentDrawer({
 
       if (val <= 0) {
         toast.error("Informe um valor válido");
+        setSaving(false); // Must unlock immediately on error
         return;
       }
 
@@ -104,6 +106,7 @@ export function InvoicePaymentDrawer({
           _invoice_id: invoiceId,
           _payment_amount: val,
           _payment_date: payDate,
+          _account_id: accountId || null,
         });
         if (error) throw error;
       } else {

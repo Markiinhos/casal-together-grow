@@ -59,6 +59,7 @@ function CardsPage() {
         .from("transactions")
         .select("*, categories(name,color,icon), installments(*)")
         .not("credit_card_id", "is", null)
+        .eq("is_card_payment", false)
         .order("date", { ascending: false });
       const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
       return (data ?? []) as any[];
@@ -588,10 +589,16 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
   const [catId, setCatId] = useState("all");
   const [period, setPeriod] = useState("90");
 
+  const [status, setStatus] = useState<"ativas" | "quitadas" | "all">("ativas");
+
   const filtered = useMemo(() => {
     const cutoff = period === "all" ? null : new Date(Date.now() - Number(period) * 86400000);
     return purchases.filter((p) => {
       const insts = p.installments?.length ?? 0;
+      const isQuitada = insts > 1 && p.installments.every((i: any) => i.paid);
+      
+      if (status === "ativas" && isQuitada) return false;
+      if (status === "quitadas" && !isQuitada) return false;
       if (type === "parceladas" && insts <= 1) return false;
       if (type === "avista" && insts > 1) return false;
       if (cardId !== "all" && p.credit_card_id !== cardId) return false;
@@ -599,7 +606,7 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
       if (cutoff && new Date(p.date) < cutoff) return false;
       return true;
     });
-  }, [purchases, type, cardId, catId, period]);
+  }, [purchases, type, cardId, catId, period, status]);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -610,7 +617,15 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
         open={!!selectedId}
         onOpenChange={(op) => !op && setSelectedId(null)}
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ativas">Ativas e Pendentes</SelectItem>
+            <SelectItem value="quitadas">Quitadas</SelectItem>
+            <SelectItem value="all">Todas</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={type} onValueChange={(v) => setType(v as any)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
