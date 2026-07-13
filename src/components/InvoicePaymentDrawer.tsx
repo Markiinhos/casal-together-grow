@@ -100,9 +100,9 @@ export function InvoicePaymentDrawer({
       if (invoiceId) {
         // Call the existing RPC
         const { error } = await supabase.rpc("mark_card_invoice_paid", {
-          p_invoice_id: invoiceId,
-          p_amount: val,
-          p_date: payDate,
+          _invoice_id: invoiceId,
+          _payment_amount: val,
+          _payment_date: payDate,
         });
         if (error) throw error;
       } else {
@@ -172,7 +172,7 @@ export function InvoicePaymentDrawer({
             status: "cancelled",
             updated_at: new Date().toISOString(),
             updated_by: user.id,
-          })
+          } as any)
           .eq("id", payTxs[0].id);
       }
 

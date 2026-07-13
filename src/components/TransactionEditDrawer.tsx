@@ -176,7 +176,7 @@ export function TransactionEditDrawer({
 
         const { error } = await supabase
           .from("transactions")
-          .update(payload)
+          .update(payload as any)
           .eq("id", transactionId);
 
         if (error) {
@@ -228,7 +228,7 @@ export function TransactionEditDrawer({
             status: "cancelled",
             updated_at: new Date().toISOString(),
             updated_by: user.id,
-          })
+          } as any)
           .eq("id", transactionId);
         if (error) throw error;
         toast.success("Lançamento cancelado (preserva histórico)");

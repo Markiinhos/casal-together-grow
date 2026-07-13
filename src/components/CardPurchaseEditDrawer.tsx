@@ -175,7 +175,7 @@ export function CardPurchaseEditDrawer({
 
         const { error } = await supabase
           .from("transactions")
-          .update(payload)
+          .update(payload as any)
           .eq("id", purchaseId);
         if (error) throw error;
 
@@ -252,7 +252,7 @@ export function CardPurchaseEditDrawer({
             status: "cancelled",
             updated_at: new Date().toISOString(),
             updated_by: user.id,
-          })
+          } as any)
           .eq("id", purchaseId);
         toast.success("Compra cancelada (parcelas pagas preservadas)");
       } else {

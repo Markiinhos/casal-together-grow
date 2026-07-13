@@ -54,7 +54,9 @@ import { Route as AppFinancasAssinaturasNovaRouteImport } from './routes/app/fin
 import { Route as AppFinancasAssinaturasIdRouteImport } from './routes/app/financas.assinaturas.$id'
 import { Route as AppCasaComprasNovaRouteImport } from './routes/app/casa/compras.nova'
 import { Route as AppCasaComprasIdRouteImport } from './routes/app/casa/compras.$id'
+import { Route as AppCartoesCardIdFaturasRouteImport } from './routes/app/cartoes.$cardId.faturas'
 import { Route as ApiPublicHooksSyncInstitutionsRouteImport } from './routes/api/public/hooks/sync-institutions'
+import { Route as AppCartoesCardIdFaturasInvoiceIdRouteImport } from './routes/app/cartoes.$cardId.faturas.$invoiceId'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -287,11 +289,22 @@ const AppCasaComprasIdRoute = AppCasaComprasIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppCasaComprasRoute,
 } as any)
+const AppCartoesCardIdFaturasRoute = AppCartoesCardIdFaturasRouteImport.update({
+  id: '/$cardId/faturas',
+  path: '/$cardId/faturas',
+  getParentRoute: () => AppCartoesRoute,
+} as any)
 const ApiPublicHooksSyncInstitutionsRoute =
   ApiPublicHooksSyncInstitutionsRouteImport.update({
     id: '/api/public/hooks/sync-institutions',
     path: '/api/public/hooks/sync-institutions',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const AppCartoesCardIdFaturasInvoiceIdRoute =
+  AppCartoesCardIdFaturasInvoiceIdRouteImport.update({
+    id: '/$invoiceId',
+    path: '/$invoiceId',
+    getParentRoute: () => AppCartoesCardIdFaturasRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -306,7 +319,7 @@ export interface FileRoutesByFullPath {
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/cardapio': typeof AppCardapioRoute
-  '/app/cartoes': typeof AppCartoesRoute
+  '/app/cartoes': typeof AppCartoesRouteWithChildren
   '/app/casal': typeof AppCasalRoute
   '/app/categorias': typeof AppCategoriasRoute
   '/app/compras': typeof AppComprasRoute
@@ -332,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/app/financas/': typeof AppFinancasIndexRoute
   '/app/mais/': typeof AppMaisIndexRoute
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
+  '/app/cartoes/$cardId/faturas': typeof AppCartoesCardIdFaturasRouteWithChildren
   '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
   '/app/financas/assinaturas/$id': typeof AppFinancasAssinaturasIdRoute
@@ -341,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/app/casa/compras/': typeof AppCasaComprasIndexRoute
   '/app/financas/assinaturas/': typeof AppFinancasAssinaturasIndexRoute
   '/app/financas/planejamento/': typeof AppFinancasPlanejamentoIndexRoute
+  '/app/cartoes/$cardId/faturas/$invoiceId': typeof AppCartoesCardIdFaturasInvoiceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -351,7 +366,7 @@ export interface FileRoutesByTo {
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/cardapio': typeof AppCardapioRoute
-  '/app/cartoes': typeof AppCartoesRoute
+  '/app/cartoes': typeof AppCartoesRouteWithChildren
   '/app/casal': typeof AppCasalRoute
   '/app/categorias': typeof AppCategoriasRoute
   '/app/compras': typeof AppComprasRoute
@@ -376,6 +391,7 @@ export interface FileRoutesByTo {
   '/app/financas': typeof AppFinancasIndexRoute
   '/app/mais': typeof AppMaisIndexRoute
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
+  '/app/cartoes/$cardId/faturas': typeof AppCartoesCardIdFaturasRouteWithChildren
   '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
   '/app/financas/assinaturas/$id': typeof AppFinancasAssinaturasIdRoute
@@ -385,6 +401,7 @@ export interface FileRoutesByTo {
   '/app/casa/compras': typeof AppCasaComprasIndexRoute
   '/app/financas/assinaturas': typeof AppFinancasAssinaturasIndexRoute
   '/app/financas/planejamento': typeof AppFinancasPlanejamentoIndexRoute
+  '/app/cartoes/$cardId/faturas/$invoiceId': typeof AppCartoesCardIdFaturasInvoiceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -399,7 +416,7 @@ export interface FileRoutesById {
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/cardapio': typeof AppCardapioRoute
-  '/app/cartoes': typeof AppCartoesRoute
+  '/app/cartoes': typeof AppCartoesRouteWithChildren
   '/app/casal': typeof AppCasalRoute
   '/app/categorias': typeof AppCategoriasRoute
   '/app/compras': typeof AppComprasRoute
@@ -425,6 +442,7 @@ export interface FileRoutesById {
   '/app/financas/': typeof AppFinancasIndexRoute
   '/app/mais/': typeof AppMaisIndexRoute
   '/api/public/hooks/sync-institutions': typeof ApiPublicHooksSyncInstitutionsRoute
+  '/app/cartoes/$cardId/faturas': typeof AppCartoesCardIdFaturasRouteWithChildren
   '/app/casa/compras/$id': typeof AppCasaComprasIdRoute
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
   '/app/financas/assinaturas/$id': typeof AppFinancasAssinaturasIdRoute
@@ -434,6 +452,7 @@ export interface FileRoutesById {
   '/app/casa/compras/': typeof AppCasaComprasIndexRoute
   '/app/financas/assinaturas/': typeof AppFinancasAssinaturasIndexRoute
   '/app/financas/planejamento/': typeof AppFinancasPlanejamentoIndexRoute
+  '/app/cartoes/$cardId/faturas/$invoiceId': typeof AppCartoesCardIdFaturasInvoiceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -475,6 +494,7 @@ export interface FileRouteTypes {
     | '/app/financas/'
     | '/app/mais/'
     | '/api/public/hooks/sync-institutions'
+    | '/app/cartoes/$cardId/faturas'
     | '/app/casa/compras/$id'
     | '/app/casa/compras/nova'
     | '/app/financas/assinaturas/$id'
@@ -484,6 +504,7 @@ export interface FileRouteTypes {
     | '/app/casa/compras/'
     | '/app/financas/assinaturas/'
     | '/app/financas/planejamento/'
+    | '/app/cartoes/$cardId/faturas/$invoiceId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -519,6 +540,7 @@ export interface FileRouteTypes {
     | '/app/financas'
     | '/app/mais'
     | '/api/public/hooks/sync-institutions'
+    | '/app/cartoes/$cardId/faturas'
     | '/app/casa/compras/$id'
     | '/app/casa/compras/nova'
     | '/app/financas/assinaturas/$id'
@@ -528,6 +550,7 @@ export interface FileRouteTypes {
     | '/app/casa/compras'
     | '/app/financas/assinaturas'
     | '/app/financas/planejamento'
+    | '/app/cartoes/$cardId/faturas/$invoiceId'
   id:
     | '__root__'
     | '/'
@@ -567,6 +590,7 @@ export interface FileRouteTypes {
     | '/app/financas/'
     | '/app/mais/'
     | '/api/public/hooks/sync-institutions'
+    | '/app/cartoes/$cardId/faturas'
     | '/app/casa/compras/$id'
     | '/app/casa/compras/nova'
     | '/app/financas/assinaturas/$id'
@@ -576,6 +600,7 @@ export interface FileRouteTypes {
     | '/app/casa/compras/'
     | '/app/financas/assinaturas/'
     | '/app/financas/planejamento/'
+    | '/app/cartoes/$cardId/faturas/$invoiceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -904,12 +929,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCasaComprasIdRouteImport
       parentRoute: typeof AppCasaComprasRoute
     }
+    '/app/cartoes/$cardId/faturas': {
+      id: '/app/cartoes/$cardId/faturas'
+      path: '/$cardId/faturas'
+      fullPath: '/app/cartoes/$cardId/faturas'
+      preLoaderRoute: typeof AppCartoesCardIdFaturasRouteImport
+      parentRoute: typeof AppCartoesRoute
+    }
     '/api/public/hooks/sync-institutions': {
       id: '/api/public/hooks/sync-institutions'
       path: '/api/public/hooks/sync-institutions'
       fullPath: '/api/public/hooks/sync-institutions'
       preLoaderRoute: typeof ApiPublicHooksSyncInstitutionsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/cartoes/$cardId/faturas/$invoiceId': {
+      id: '/app/cartoes/$cardId/faturas/$invoiceId'
+      path: '/$invoiceId'
+      fullPath: '/app/cartoes/$cardId/faturas/$invoiceId'
+      preLoaderRoute: typeof AppCartoesCardIdFaturasInvoiceIdRouteImport
+      parentRoute: typeof AppCartoesCardIdFaturasRoute
     }
   }
 }
@@ -960,6 +999,33 @@ const AppMaisRouteRouteWithChildren = AppMaisRouteRoute._addFileChildren(
   AppMaisRouteRouteChildren,
 )
 
+interface AppCartoesCardIdFaturasRouteChildren {
+  AppCartoesCardIdFaturasInvoiceIdRoute: typeof AppCartoesCardIdFaturasInvoiceIdRoute
+}
+
+const AppCartoesCardIdFaturasRouteChildren: AppCartoesCardIdFaturasRouteChildren =
+  {
+    AppCartoesCardIdFaturasInvoiceIdRoute:
+      AppCartoesCardIdFaturasInvoiceIdRoute,
+  }
+
+const AppCartoesCardIdFaturasRouteWithChildren =
+  AppCartoesCardIdFaturasRoute._addFileChildren(
+    AppCartoesCardIdFaturasRouteChildren,
+  )
+
+interface AppCartoesRouteChildren {
+  AppCartoesCardIdFaturasRoute: typeof AppCartoesCardIdFaturasRouteWithChildren
+}
+
+const AppCartoesRouteChildren: AppCartoesRouteChildren = {
+  AppCartoesCardIdFaturasRoute: AppCartoesCardIdFaturasRouteWithChildren,
+}
+
+const AppCartoesRouteWithChildren = AppCartoesRoute._addFileChildren(
+  AppCartoesRouteChildren,
+)
+
 interface AppRouteRouteChildren {
   AppCasaRouteRoute: typeof AppCasaRouteRouteWithChildren
   AppMaisRouteRoute: typeof AppMaisRouteRouteWithChildren
@@ -968,7 +1034,7 @@ interface AppRouteRouteChildren {
   AppAdicionarRoute: typeof AppAdicionarRoute
   AppAgendaRoute: typeof AppAgendaRoute
   AppCardapioRoute: typeof AppCardapioRoute
-  AppCartoesRoute: typeof AppCartoesRoute
+  AppCartoesRoute: typeof AppCartoesRouteWithChildren
   AppCasalRoute: typeof AppCasalRoute
   AppCategoriasRoute: typeof AppCategoriasRoute
   AppComprasRoute: typeof AppComprasRoute
@@ -1002,7 +1068,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppAdicionarRoute: AppAdicionarRoute,
   AppAgendaRoute: AppAgendaRoute,
   AppCardapioRoute: AppCardapioRoute,
-  AppCartoesRoute: AppCartoesRoute,
+  AppCartoesRoute: AppCartoesRouteWithChildren,
   AppCasalRoute: AppCasalRoute,
   AppCategoriasRoute: AppCategoriasRoute,
   AppComprasRoute: AppComprasRoute,
@@ -1053,3 +1119,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
