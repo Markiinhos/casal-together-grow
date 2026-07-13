@@ -258,10 +258,7 @@ export type Database = {
           created_at: string
           icon: string
           id: string
-          is_archived: boolean
-          is_default: boolean
           name: string
-          sort_order: number
           type: string
           updated_at: string
           user_id: string
@@ -273,10 +270,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
-          is_archived?: boolean
-          is_default?: boolean
           name: string
-          sort_order?: number
           type: string
           updated_at?: string
           user_id: string
@@ -288,10 +282,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
-          is_archived?: boolean
-          is_default?: boolean
           name?: string
-          sort_order?: number
           type?: string
           updated_at?: string
           user_id?: string
@@ -1935,160 +1926,6 @@ export type Database = {
           },
         ]
       }
-      subscription_history: {
-        Row: {
-          action: string
-          changed_by: string
-          created_at: string
-          id: string
-          new_values: Json | null
-          old_values: Json | null
-          subscription_id: string
-        }
-        Insert: {
-          action: string
-          changed_by: string
-          created_at?: string
-          id?: string
-          new_values?: Json | null
-          old_values?: Json | null
-          subscription_id: string
-        }
-        Update: {
-          action?: string
-          changed_by?: string
-          created_at?: string
-          id?: string
-          new_values?: Json | null
-          old_values?: Json | null
-          subscription_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subscription_history_subscription_id_fkey"
-            columns: ["subscription_id"]
-            isOneToOne: false
-            referencedRelation: "subscriptions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      subscriptions: {
-        Row: {
-          account_id: string | null
-          amount: number
-          amount_after_trial: number | null
-          auto_renew: boolean
-          billing_day: number | null
-          billing_frequency: string
-          billing_interval: number
-          card_id: string | null
-          category_id: string | null
-          couple_id: string | null
-          created_at: string
-          created_by: string
-          currency: string
-          description: string | null
-          end_date: string | null
-          icon: string | null
-          id: string
-          last_charged_at: string | null
-          last_generated_transaction_id: string | null
-          metadata: Json
-          name: string
-          next_billing_date: string
-          payment_method: string | null
-          renewal_date: string | null
-          responsible_user_id: string | null
-          start_date: string | null
-          status: string
-          trial_enabled: boolean
-          trial_end_date: string | null
-          updated_at: string
-          url: string | null
-          user_id: string
-          visibility: string
-        }
-        Insert: {
-          account_id?: string | null
-          amount: number
-          amount_after_trial?: number | null
-          auto_renew?: boolean
-          billing_day?: number | null
-          billing_frequency?: string
-          billing_interval?: number
-          card_id?: string | null
-          category_id?: string | null
-          couple_id?: string | null
-          created_at?: string
-          created_by: string
-          currency?: string
-          description?: string | null
-          end_date?: string | null
-          icon?: string | null
-          id?: string
-          last_charged_at?: string | null
-          last_generated_transaction_id?: string | null
-          metadata?: Json
-          name: string
-          next_billing_date: string
-          payment_method?: string | null
-          renewal_date?: string | null
-          responsible_user_id?: string | null
-          start_date?: string | null
-          status?: string
-          trial_enabled?: boolean
-          trial_end_date?: string | null
-          updated_at?: string
-          url?: string | null
-          user_id: string
-          visibility?: string
-        }
-        Update: {
-          account_id?: string | null
-          amount?: number
-          amount_after_trial?: number | null
-          auto_renew?: boolean
-          billing_day?: number | null
-          billing_frequency?: string
-          billing_interval?: number
-          card_id?: string | null
-          category_id?: string | null
-          couple_id?: string | null
-          created_at?: string
-          created_by?: string
-          currency?: string
-          description?: string | null
-          end_date?: string | null
-          icon?: string | null
-          id?: string
-          last_charged_at?: string | null
-          last_generated_transaction_id?: string | null
-          metadata?: Json
-          name?: string
-          next_billing_date?: string
-          payment_method?: string | null
-          renewal_date?: string | null
-          responsible_user_id?: string | null
-          start_date?: string | null
-          status?: string
-          trial_enabled?: boolean
-          trial_end_date?: string | null
-          updated_at?: string
-          url?: string | null
-          user_id?: string
-          visibility?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subscriptions_couple_id_fkey"
-            columns: ["couple_id"]
-            isOneToOne: false
-            referencedRelation: "couples"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       recipes: {
         Row: {
           couple_id: string | null
@@ -2366,53 +2203,6 @@ export type Database = {
             referencedRelation: "meal_plans"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      subcategories: {
-        Row: {
-          category_id: string
-          color: string | null
-          created_at: string
-          created_by: string
-          icon: string | null
-          id: string
-          is_archived: boolean
-          name: string
-          sort_order: number
-          updated_at: string
-        }
-        Insert: {
-          category_id: string
-          color?: string | null
-          created_at?: string
-          created_by: string
-          icon?: string | null
-          id?: string
-          is_archived?: boolean
-          name: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Update: {
-          category_id?: string
-          color?: string | null
-          created_at?: string
-          created_by?: string
-          icon?: string | null
-          id?: string
-          is_archived?: boolean
-          name?: string
-          sort_order?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "subcategories_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          }
         ]
       }
       synced_cards: {
@@ -2898,10 +2688,6 @@ export type Database = {
       current_couple_id: { Args: never; Returns: string }
       is_couple_member: { Args: { _couple_id: string }; Returns: boolean }
       join_couple_by_code: { Args: { _code: string }; Returns: string }
-      process_subscription_charges: {
-        Args: Record<PropertyKey, never>
-        Returns: { subscription_id: string, transaction_id: string | null, status: string }[]
-      }
     }
     Enums: {
       [_ in never]: never
