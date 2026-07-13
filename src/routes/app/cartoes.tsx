@@ -42,7 +42,7 @@ function CardsPage() {
   const [openCard, setOpenCard] = useState(false);
   const [openPurchase, setOpenPurchase] = useState(false);
 
-  const { data: cards = [] } = useQuery({
+  const { data: cards = [], isLoading: isLoadingCards } = useQuery({
     queryKey: ["cards", coupleId, user?.id],
     queryFn: async () => {
       const q = supabase.from("credit_cards").select("*").order("created_at");
@@ -260,7 +260,12 @@ function CardsPage() {
           </TabsList>
 
           <TabsContent value="cards" className="mt-4 space-y-3">
-            {cards.length === 0 ? (
+            {isLoadingCards ? (
+              <div className="space-y-4">
+                <div className="h-48 bg-muted animate-pulse rounded-3xl" />
+                <div className="h-48 bg-muted animate-pulse rounded-3xl" />
+              </div>
+            ) : cards.length === 0 ? (
               <Card className="rounded-2xl p-4 shadow-card">
                 <EmptyState icon={CreditCard} title="Sem cartões" description="Cadastre seus cartões para acompanhar faturas e parcelas." />
               </Card>
@@ -319,7 +324,7 @@ function CardsPage() {
                                 onClick={() => handleOpenPay(invObj, c)}
                                 className="flex-1 text-[11px] h-7 px-0 rounded-lg gradient-coral text-white border-0 shadow-none"
                               >
-                                Fatura Paga
+                                Pagar fatura
                               </Button>
                             )}
                           </div>
@@ -391,7 +396,7 @@ function CardsPage() {
                             onClick={() => handleOpenPay(inv, c)}
                             className="flex-1 text-xs h-8 rounded-xl gradient-coral text-white border-0"
                           >
-                            <CreditCard className="size-3.5 mr-1" /> Fatura Paga
+                            <CreditCard className="size-3.5 mr-1" /> Marcar como paga
                           </Button>
                         )}
                         {isInvPaid && (
@@ -649,24 +654,37 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
           {filtered.map((p) => {
             const insts = p.installments?.length ?? 0;
             const cardName = cards.find((c) => c.id === p.credit_card_id)?.name ?? "—";
+            const isQuitada = insts > 1 && p.installments.every((i: any) => i.paid);
+            const isCancelled = p.status === "cancelled";
+            
             return (
               <div 
                 key={p.id} 
-                className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                className={`px-4 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
+                  isCancelled ? "opacity-40" : 
+                  isQuitada ? "opacity-60 bg-muted/20" : 
+                  "hover:bg-muted/30"
+                }`}
                 onClick={() => setSelectedId(p.id)}
               >
-                <div className="size-9 rounded-xl bg-accent/40 flex items-center justify-center shrink-0">
+                <div className={`size-9 rounded-xl flex items-center justify-center shrink-0 ${isCancelled ? "bg-muted text-muted-foreground" : "bg-accent/40"}`}>
                   <ShoppingBag className="size-4 text-foreground/70" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{p.description || p.categories?.name || "Compra"}</div>
+                  <div className={`text-sm font-medium truncate ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
+                    {p.description || p.categories?.name || "Compra"}
+                    {isCancelled && <span className="ml-2 text-[10px] bg-muted px-1.5 py-0.5 rounded uppercase no-underline">Cancelada</span>}
+                    {isQuitada && !isCancelled && <span className="ml-2 text-[10px] bg-success/10 text-success px-1.5 py-0.5 rounded uppercase no-underline">Quitada</span>}
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(p.date).toLocaleDateString("pt-BR")} · {cardName}
                     {insts > 1 && <> · {insts}x</>}
                     {p.categories?.name && <> · {p.categories.name}</>}
                   </div>
                 </div>
-                <div className="text-sm font-semibold">{formatBRL(Number(p.amount))}</div>
+                <div className={`text-sm font-semibold ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
+                  {formatBRL(Number(p.amount))}
+                </div>
               </div>
             );
           })}

@@ -81,11 +81,9 @@ export function CardPurchaseEditDrawer({
       if (!purchaseId) return null;
       const { data, error } = await supabase
         .from("transactions")
-        .select(
-          "*, categories(name,color,icon), credit_cards(name,closing_day,color), installments(*)"
-        )
+        .select("*, installments(*)")
         .eq("id", purchaseId)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data as any;
     },

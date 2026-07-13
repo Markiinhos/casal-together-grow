@@ -182,40 +182,19 @@ export async function fetchCardInvoice(cardId: string, closing: number, ref: Dat
   count: number;
   installments: number;
 }> {
-  // Compras à vista com data no ciclo da fatura
-  // Ciclo do mês ref: do dia (closing) do mês (ref-1) até dia (closing-1) do mês (ref)
-  const cycleStart = new Date(ref.getFullYear(), ref.getMonth() - 1, closing);
-  const cycleEnd = new Date(ref.getFullYear(), ref.getMonth(), closing - 1);
-  const cs = cycleStart.toISOString().slice(0, 10);
-  const ce = cycleEnd.toISOString().slice(0, 10);
-
-  const [txCash, txInst] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("amount")
-      .eq("credit_card_id", cardId)
-      .eq("type", "expense")
-      .is("total_installments", null)
-      .gte("date", cs)
-      .lte("date", ce),
-    supabase
-      .from("installments")
-      .select("amount,due_date,transactions!inner(credit_card_id)")
-      .gte("due_date", monthRange(ref).start)
-      .lte("due_date", monthRange(ref).end),
-  ]);
-
-  const cashTotal = (txCash.data ?? []).reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const cashCount = (txCash.data ?? []).length;
-  const instMatched = ((txInst.data ?? []) as any[]).filter(
-    (i) => i.transactions?.credit_card_id === cardId,
-  );
-  const instTotal = instMatched.reduce((s, i) => s + Number(i.amount), 0);
+  // Busca da nova tabela card_invoices usando o reference_month correspondente
+  const refString = new Date(ref.getFullYear(), ref.getMonth(), 1).toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("card_invoices")
+    .select("total_amount")
+    .eq("card_id", cardId)
+    .eq("reference_month", refString)
+    .maybeSingle();
 
   return {
-    total: cashTotal + instTotal,
-    count: cashCount + instMatched.length,
-    installments: instMatched.length,
+    total: Number(data?.total_amount ?? 0),
+    count: 0,
+    installments: 0,
   };
 }
 

@@ -2559,6 +2559,7 @@ export type Database = {
       }
       transactions: {
         Row: {
+          account_id: string | null
           amount: number
           attachment_url: string | null
           category_id: string | null
@@ -2581,6 +2582,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          account_id?: string | null
           amount: number
           attachment_url?: string | null
           category_id?: string | null
@@ -2603,6 +2605,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          account_id?: string | null
           amount?: number
           attachment_url?: string | null
           category_id?: string | null

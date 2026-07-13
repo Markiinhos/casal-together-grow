@@ -116,10 +116,12 @@ export function InvoicesPage() {
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
                       isPaid ? "bg-success/20 text-success" : 
                       inv.status === "overdue" ? "bg-destructive/20 text-destructive" :
+                      inv.status === "due" ? "bg-yellow-500/20 text-yellow-600" :
                       inv.status === "partially_paid" ? "bg-orange-500/20 text-orange-600" :
+                      inv.status === "closed" ? "bg-blue-500/20 text-blue-600" :
                       "bg-primary/20 text-primary"
                     }`}>
-                      {isPaid ? "Paga" : inv.status === "overdue" ? "Atrasada" : inv.status === "partially_paid" ? "Pag. Parcial" : "Aberta"}
+                      {isPaid ? "Paga" : inv.status === "overdue" ? "Atrasada" : inv.status === "due" ? "Vence Hoje" : inv.status === "closed" ? "Fechada" : inv.status === "partially_paid" ? "Pag. Parcial" : "Pendente"}
                     </span>
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
@@ -142,7 +144,7 @@ export function InvoicesPage() {
                   className={`flex-1 rounded-xl ${isPaid ? "bg-muted text-muted-foreground" : "gradient-coral text-white border-0"}`} 
                   onClick={() => handleOpenPay(inv)}
                 >
-                  <CreditCard className="size-4 mr-2" /> {isPaid ? "Ver Pgto" : "Pagar"}
+                  <CreditCard className="size-4 mr-2" /> {isPaid ? "Ver Pgto" : inv.status === "partially_paid" ? "Pagar restante" : "Marcar como paga"}
                 </Button>
               </div>
             </Card>
