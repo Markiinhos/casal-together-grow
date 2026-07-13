@@ -19,6 +19,8 @@ import {
   fetchAccountsTotal, fetchMonthExpenses, fetchMonthIncome, fetchCardInvoice,
   formatBRL, hideOrShow, monthLabel, monthRange,
 } from "@/lib/finance";
+import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
+import { ListIcon } from "lucide-react";
 
 export const Route = createFileRoute("/app/financas/")({
   component: FinancasCentral,
@@ -110,6 +112,19 @@ function FinancasCentral() {
     enabled: !!user,
   });
 
+  const recentTransactions = useQuery({
+    queryKey: ["recent-txs", space, coupleId, user?.id],
+    queryFn: async () => {
+      let q: any = supabase.from("transactions").select("*, categories(name,color,icon), installments(*)").order("date", { ascending: false }).limit(6);
+      if (space === "private") q = q.eq("visibility", "private").eq("user_id", user!.id);
+      else if (coupleId) q = q.eq("visibility", "shared").eq("couple_id", coupleId);
+      else q = q.eq("visibility", "shared").eq("user_id", user!.id);
+      const { data } = await q;
+      return (data ?? []) as any[];
+    },
+    enabled: !!user,
+  });
+
   // Realtime — invalida no update
   useEffect(() => {
     if (!user) return;
@@ -118,6 +133,7 @@ function FinancasCentral() {
         qc.invalidateQueries({ queryKey: ["fin-income"] });
         qc.invalidateQueries({ queryKey: ["fin-expenses"] });
         qc.invalidateQueries({ queryKey: ["fin-invoices"] });
+        qc.invalidateQueries({ queryKey: ["recent-txs"] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "bank_accounts" }, () => {
         qc.invalidateQueries({ queryKey: ["fin-accounts"] });
@@ -131,6 +147,7 @@ function FinancasCentral() {
   const cardsList = cards.data ?? [];
   const openInvoices = cardsList; // todas aparecem em "abertas"; "fechadas" é view alternativa
   const [invoiceTab, setInvoiceTab] = useState<"open" | "closed">("open");
+  const [editTxId, setEditTxId] = useState<string | null>(null);
 
   const byCatSorted = useMemo(() => {
     const map = expenses.data?.byCategory ?? {};
@@ -327,7 +344,54 @@ function FinancasCentral() {
             </Card>
           )}
         </section>
+
+        {/* Lançamentos Recentes */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold">Lançamentos recentes</h3>
+          </div>
+          {recentTransactions.isLoading ? (
+            <Skeleton className="h-20 rounded-2xl" />
+          ) : (recentTransactions.data ?? []).length === 0 ? (
+            <Card className="rounded-2xl p-4 shadow-card">
+              <EmptyState icon={ListIcon} title="Sem lançamentos" description="Nada lançado recentemente." />
+            </Card>
+          ) : (
+            <Card className="rounded-2xl divide-y divide-border shadow-card overflow-hidden">
+              {recentTransactions.data!.map((t: any) => {
+                const insts = t.installments?.length ?? 0;
+                return (
+                  <div key={t.id} onClick={() => setEditTxId(t.id)} className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                    <div
+                      className="size-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: (t.categories?.color ?? "#94a3b8") + "22", color: t.categories?.color ?? "#94a3b8" }}
+                    >
+                      <ListIcon className="size-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{t.description || t.categories?.name || "Lançamento"}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                         {new Date(t.date).toLocaleDateString("pt-BR")}
+                         {insts > 1 && ` · ${insts}x`}
+                         {t.credit_card_id && ` · Cartão`}
+                      </div>
+                    </div>
+                    <div className={`text-sm font-semibold ${t.type === "income" ? "text-success" : ""}`}>
+                      {t.type === "income" ? "+" : "-"} {hideOrShow(Number(t.amount), hidden)}
+                    </div>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+        </section>
       </div>
+
+      <TransactionEditDrawer
+        transactionId={editTxId}
+        open={!!editTxId}
+        onOpenChange={(op) => !op && setEditTxId(null)}
+      />
     </>
   );
 }

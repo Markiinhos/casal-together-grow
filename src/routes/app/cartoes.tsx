@@ -18,6 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
 import { CreditCard, Plus, Trash2, ChevronDown, ShoppingBag, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
+import { Link } from "@tanstack/react-router";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
 
 export const Route = createFileRoute("/app/cartoes")({ component: CardsPage });
@@ -249,6 +251,17 @@ function CardsPage() {
 
           <TabsContent value="bills" className="mt-4">
             <FutureBills purchases={purchases} cards={cards} />
+            
+            <div className="mt-4 pt-4 border-t border-border/50 text-center">
+               <p className="text-xs text-muted-foreground mb-2">Para fechar e pagar faturas com histórico, use a nova versão de controle de faturas.</p>
+               {cards.length > 0 && (
+                 <Link to="/app/cartoes/$cardId/faturas" params={{ cardId: cards[0].id }}>
+                   <Button variant="outline" size="sm" className="rounded-xl">
+                     <Wallet className="size-4 mr-1.5" /> Acessar Faturas
+                   </Button>
+                 </Link>
+               )}
+            </div>
           </TabsContent>
 
           <TabsContent value="history" className="mt-4">
@@ -438,8 +451,15 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
     });
   }, [purchases, type, cardId, catId, period]);
 
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
   return (
     <div className="space-y-3">
+      <CardPurchaseEditDrawer
+        purchaseId={selectedId}
+        open={!!selectedId}
+        onOpenChange={(op) => !op && setSelectedId(null)}
+      />
       <div className="grid grid-cols-2 gap-2">
         <Select value={type} onValueChange={(v) => setType(v as any)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
@@ -485,7 +505,11 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
             const insts = p.installments?.length ?? 0;
             const cardName = cards.find((c) => c.id === p.credit_card_id)?.name ?? "—";
             return (
-              <div key={p.id} className="px-4 py-3 flex items-center gap-3">
+              <div 
+                key={p.id} 
+                className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => setSelectedId(p.id)}
+              >
                 <div className="size-9 rounded-xl bg-accent/40 flex items-center justify-center shrink-0">
                   <ShoppingBag className="size-4 text-foreground/70" />
                 </div>

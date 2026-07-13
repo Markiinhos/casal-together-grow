@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, AlertTriangle } from "lucide-react";
 import { formatBRL, monthLabel, daysRemaining, safePercent, budgetStatus, fetchMonthExpenses } from "@/lib/finance";
+import { fetchSubscriptions, buildSummary } from "@/lib/subscriptions";
 import { useSpace } from "@/lib/space";
 
 export const Route = createFileRoute("/app/financas/planejamento/$id")({
@@ -45,6 +46,15 @@ function PlanDetail() {
     queryKey: ["plan-expenses", id, plan.data?.reference_month, space, coupleId, user?.id],
     queryFn: () => fetchMonthExpenses(refDate, { space, userId: user!.id, coupleId }),
     enabled: !!user && !!plan.data,
+  });
+  
+  const subs = useQuery({
+    queryKey: ["plan-subs", space, coupleId, user?.id],
+    queryFn: async () => {
+      const allSubs = await fetchSubscriptions({ space, userId: user!.id, coupleId });
+      return buildSummary(allSubs);
+    },
+    enabled: !!user,
   });
 
   if (plan.isLoading) return <><PageHeader title="Planejamento" fallbackRoute="/app/financas/planejamento" /><div className="p-4"><Skeleton className="h-40 rounded-2xl" /></div></>;
@@ -132,6 +142,21 @@ function PlanDetail() {
             </div>
           )}
         </section>
+
+        {subs.data && (
+            <section>
+              <h3 className="font-semibold mb-2">Assinaturas Ativas</h3>
+              <Card className="rounded-2xl p-4 shadow-card flex items-center justify-between">
+                 <div>
+                    <p className="font-medium text-sm">Custo Mensal Fixo</p>
+                    <p className="text-xs text-muted-foreground">{subs.data.activeCount} assinaturas em andamento</p>
+                 </div>
+                 <div className="text-right">
+                    <p className="font-bold">{formatBRL(subs.data.monthlyTotal)}</p>
+                 </div>
+              </Card>
+            </section>
+        )}
 
         <Button asChild variant="outline" className="w-full rounded-2xl">
           <Link to="/app/financas/planejamento/novo" search={{ id: p.id }}>Editar planejamento</Link>

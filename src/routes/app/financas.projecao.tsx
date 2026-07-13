@@ -11,8 +11,8 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
-import { TrendingUp, TrendingDown, CalendarDays, Wallet, RefreshCw } from "lucide-react";
-import { format, addMonths, startOfMonth, isAfter, isValid } from "date-fns";
+import { TrendingUp, TrendingDown, CalendarDays, Wallet, RefreshCw, RefreshCcw } from "lucide-react";
+import { format, addMonths, startOfMonth, isAfter, isValid, addDays, addYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 
@@ -61,6 +61,17 @@ function ProjecaoPage() {
         return [];
       }
       return data ?? [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const { data: subs = [], isLoading: isSubsLoading } = useQuery({
+    queryKey: ["subs-projecao", space, coupleId, user?.id],
+    queryFn: async () => {
+      let q: any = supabase.from("subscriptions").select("*, categories(name,color,icon)").eq("status", "active");
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
+      return (data ?? []) as any[];
     },
     enabled: !!user?.id,
   });
@@ -134,6 +145,49 @@ function ProjecaoPage() {
       }
     }
 
+    // Include subscriptions
+    for (const sub of subs) {
+      if (!sub.next_billing_date || !sub.amount) continue;
+      const amt = Number(sub.amount);
+      if (amt <= 0) continue;
+      
+      let currentDate = new Date(sub.next_billing_date + "T12:00:00");
+      for (let i = 0; i < months; i++) {
+        if (!isValid(currentDate)) break;
+        
+        const m = addMonths(now, i);
+        if (currentDate <= m && (sub.billing_frequency === "monthly" || i === 0)) {
+           // We simplify adding subscriptions based on their frequency
+           const lbl = format(currentDate, "MMM/yy", { locale: ptBR });
+           if (dataByMonth[lbl]) {
+               dataByMonth[lbl].expense += amt;
+           }
+           
+           if (isAfter(currentDate, now)) {
+               upc.push({
+                   ...sub,
+                   type: "expense",
+                   description: sub.name,
+                   isSubscription: true,
+                   projectedAmount: amt,
+                   projectedDate: new Date(currentDate)
+               });
+           }
+        }
+        
+        // increment currentDate
+        if (sub.billing_frequency === "monthly") {
+           currentDate = addMonths(currentDate, sub.billing_interval || 1);
+        } else if (sub.billing_frequency === "annual") {
+           currentDate = addYears(currentDate, sub.billing_interval || 1);
+        } else if (sub.billing_frequency === "weekly") {
+           currentDate = addDays(currentDate, 7 * (sub.billing_interval || 1));
+        } else {
+           break;
+        }
+      }
+    }
+
     upc.sort((a, b) => {
         if (!isValid(a.projectedDate) || !isValid(b.projectedDate)) return 0;
         return a.projectedDate.getTime() - b.projectedDate.getTime();
@@ -183,9 +237,9 @@ function ProjecaoPage() {
         healthRatio: _healthRatio,
         healthStatus: _healthStatus
     };
-  }, [tx, cards, monthsToProject]);
+  }, [tx, cards, subs, monthsToProject]);
 
-  if (!user || isProfileLoading || isLoadingTx || isLoadingCards) {
+  if (!user || isProfileLoading || isLoadingTx || isLoadingCards || isSubsLoading) {
       return (
           <>
              <PageHeader title="Projeção Financeira" subtitle="Carregando dados..." fallbackRoute="/app/financas" />
@@ -399,6 +453,12 @@ function ProjecaoPage() {
                                     <>
                                         <span>•</span>
                                         <Wallet className="size-3" />
+                                    </>
+                                )}
+                                {u.isSubscription && (
+                                    <>
+                                        <span>•</span>
+                                        <RefreshCcw className="size-3 text-primary" />
                                     </>
                                 )}
                             </div>

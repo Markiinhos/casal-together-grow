@@ -1,16 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile, useCouple, usePartner } from "@/lib/hooks";
 import { useSpace, applySpaceFilter } from "@/lib/space";
 import { formatBRL } from "@/lib/couple";
+import { fetchMonthExpenses, fetchMonthIncome, fetchAccountsTotal } from "@/lib/finance";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CoupleAvatar } from "@/components/CouplePhotoUploader";
 import { FinanceInsights } from "@/components/FinanceInsights";
+import { buildSummary, fetchSubscriptions, monthlyEquivalent } from "@/lib/subscriptions";
 import {
   TrendingUp,
   TrendingDown,
@@ -21,6 +25,7 @@ import {
   UserPlus,
   Activity,
   Droplet,
+  RefreshCw,
 } from "lucide-react";
 
 export const Route = createFileRoute("/app/")({
@@ -34,24 +39,61 @@ function HomePage() {
   const { data: partner } = usePartner();
   const { space } = useSpace();
   const coupleId = profile?.couple_id ?? null;
+  const qc = useQueryClient();
 
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-    .toISOString()
-    .slice(0, 10);
+  const ref = new Date();
+  const opts = { space, userId: user?.id ?? "", coupleId };
+  const monthKey = `${ref.getFullYear()}-${ref.getMonth()}`;
 
-  const { data: txSummary } = useQuery({
-    queryKey: ["home-tx", space, coupleId, user?.id, monthStart],
+  const { data: txSummary, isLoading: isTxLoading } = useQuery({
+    queryKey: ["home-tx", monthKey, space, coupleId, user?.id],
     queryFn: async () => {
-      let q: any = supabase.from("transactions").select("type,amount").gte("date", monthStart);
-      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
-      const { data } = await q;
-      let income = 0,
-        expense = 0;
-      (data ?? []).forEach((t: any) => {
-        if (t.type === "income") income += Number(t.amount);
-        if (t.type === "expense") expense += Number(t.amount);
-      });
-      return { income, expense, balance: income - expense };
+      const [expData, incomeTotal, accountsBalance] = await Promise.all([
+        fetchMonthExpenses(ref, opts),
+        fetchMonthIncome(ref, opts),
+        fetchAccountsTotal(opts),
+      ]);
+      return {
+        income: incomeTotal,
+        expense: expData.total,
+        balance: incomeTotal - expData.total,
+        accountBalance: accountsBalance,
+      };
+    },
+    enabled: !!user,
+  });
+
+  // Realtime cache invalidation for financial data
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase.channel("home-finance-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
+        qc.invalidateQueries({ queryKey: ["home-tx"] });
+        qc.invalidateQueries({ queryKey: ["fin-income"] });
+        qc.invalidateQueries({ queryKey: ["fin-expenses"] });
+        qc.invalidateQueries({ queryKey: ["fin-invoices"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "installments" }, () => {
+        qc.invalidateQueries({ queryKey: ["home-tx"] });
+        qc.invalidateQueries({ queryKey: ["fin-expenses"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "bank_accounts" }, () => {
+        qc.invalidateQueries({ queryKey: ["home-tx"] });
+        qc.invalidateQueries({ queryKey: ["fin-accounts"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, () => {
+        qc.invalidateQueries({ queryKey: ["home-tx"] });
+        qc.invalidateQueries({ queryKey: ["subscriptions"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [user, qc]);
+
+  const { data: subsData } = useQuery({
+    queryKey: ["home-subs", space, coupleId, user?.id],
+    queryFn: async () => {
+      const subs = await fetchSubscriptions({ space, userId: user!.id, coupleId });
+      return buildSummary(subs);
     },
     enabled: !!user,
   });
@@ -214,27 +256,80 @@ function HomePage() {
               Ver tudo
             </Link>
           </div>
-          <div className="text-3xl font-bold mb-1">{formatBRL(txSummary?.balance ?? 0)}</div>
-          <p className="text-xs text-muted-foreground mb-4">Saldo atual</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-success/10 p-3">
-              <div className="flex items-center gap-1.5 text-success mb-1">
-                <TrendingUp className="size-4" />
-                <span className="text-xs font-medium">Receitas</span>
+          {isTxLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-9 w-40 rounded-xl" />
+              <Skeleton className="h-4 w-24 rounded" />
+              <div className="grid grid-cols-2 gap-3">
+                <Skeleton className="h-16 rounded-2xl" />
+                <Skeleton className="h-16 rounded-2xl" />
               </div>
-              <div className="font-semibold text-sm">{formatBRL(txSummary?.income ?? 0)}</div>
             </div>
-            <div className="rounded-2xl bg-destructive/10 p-3">
-              <div className="flex items-center gap-1.5 text-destructive mb-1">
-                <TrendingDown className="size-4" />
-                <span className="text-xs font-medium">Despesas</span>
+          ) : (
+            <>
+              <div className="text-3xl font-bold mb-1">{formatBRL(txSummary?.balance ?? 0)}</div>
+              <p className="text-xs text-muted-foreground mb-4">Saldo do mês</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-success/10 p-3">
+                  <div className="flex items-center gap-1.5 text-success mb-1">
+                    <TrendingUp className="size-3.5" />
+                    <span className="text-[11px] font-medium">Receitas</span>
+                  </div>
+                  <div className="font-semibold text-sm">{formatBRL(txSummary?.income ?? 0)}</div>
+                </div>
+                <div className="rounded-2xl bg-destructive/10 p-3">
+                  <div className="flex items-center gap-1.5 text-destructive mb-1">
+                    <TrendingDown className="size-3.5" />
+                    <span className="text-[11px] font-medium">Despesas</span>
+                  </div>
+                  <div className="font-semibold text-sm">{formatBRL(txSummary?.expense ?? 0)}</div>
+                </div>
+                <div className="rounded-2xl bg-accent-purple/10 p-3">
+                  <div className="flex items-center gap-1.5 text-accent-purple mb-1">
+                    <Target className="size-3.5" />
+                    <span className="text-[11px] font-medium">Contas</span>
+                  </div>
+                  <div className="font-semibold text-sm">{formatBRL(txSummary?.accountBalance ?? 0)}</div>
+                </div>
               </div>
-              <div className="font-semibold text-sm">{formatBRL(txSummary?.expense ?? 0)}</div>
-            </div>
-          </div>
+            </>
+          )}
         </Card>
 
         {!isPrivate && <FinanceInsights />}
+
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">Assinaturas</h3>
+            <Link to="/app/financas/assinaturas" className="text-xs text-primary font-medium">
+              Ver tudo
+            </Link>
+          </div>
+          {subsData ? (
+            <Card className="rounded-2xl p-4 shadow-card grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[11px] text-muted-foreground font-medium">Custo mensal</p>
+                <p className="text-lg font-bold">{formatBRL(subsData.monthlyTotal)}</p>
+                <p className="text-[10px] text-muted-foreground">{subsData.activeCount} ativas</p>
+              </div>
+              <div className="border-l pl-4 border-border/50">
+                <p className="text-[11px] text-muted-foreground font-medium">Próxima</p>
+                {subsData.nextCharge ? (
+                  <>
+                    <p className="text-sm font-semibold truncate">{subsData.nextCharge.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(subsData.nextCharge.date + "T12:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-1">Nenhuma</p>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <Card className="rounded-2xl p-4 shadow-card">
+               <EmptyState icon={RefreshCw} title="Assinaturas" description="Carregando..." />
+            </Card>
+          )}
+        </section>
 
         {isPrivate && (
           <section>
