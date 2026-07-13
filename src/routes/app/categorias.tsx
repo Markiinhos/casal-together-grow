@@ -88,13 +88,14 @@ function CatPage() {
 
   async function delSub(id: string) {
     if (!confirm("Excluir subcategoria?")) return;
-    const { error } = await supabase.from("subcategories").delete().eq("id", id);
+    const { error } = await supabase.from("categories").delete().eq("id", id);
     if (error) toast.error(error.message);
     else {
       toast.success("Subcategoria excluída");
       qc.invalidateQueries({ queryKey: ["cats"] });
     }
   }
+
 
   return (
     <>
