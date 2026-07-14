@@ -3009,6 +3009,10 @@ export type Database = {
           reference_month: string
         }[]
       }
+      undo_card_invoice_payment: {
+        Args: { _invoice_id: string; _payment_transaction_id?: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
