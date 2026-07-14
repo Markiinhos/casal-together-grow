@@ -2,7 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { formatBRL } from "@/lib/utils";
+import { formatBRL } from "@/lib/finance";
 import { getLocalISODate } from "@/lib/date-utils";
 import { CreditCard, Calendar, Trash2 } from "lucide-react";
 import { toast } from "sonner";
