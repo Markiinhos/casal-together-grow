@@ -1,5 +1,13 @@
 import { useMemo } from "react";
-const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+const monthKey = (d: string | Date) => {
+  if (typeof d === "string") {
+    // Expected "YYYY-MM-DD" or similar
+    const parts = d.split("-");
+    if (parts.length >= 2) return `${parts[0]}-${parts[1]}`;
+  }
+  const dt = typeof d === "string" ? new Date(d) : d;
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+};
 
 /**
  * Hook centralizado para calcular as métricas de cartões de crédito.
@@ -44,7 +52,7 @@ export function useCardMetrics(cards: any[], purchases: any[], invoices: any[]) 
         m.installmentsCount++;
         for (const i of insts) {
           const v = Number(i.amount);
-          const mk = monthKey(new Date(i.due_date));
+          const mk = monthKey(i.due_date);
           m.monthly[mk] = (m.monthly[mk] ?? 0) + v;
           if (!i.paid) {
             m.used += v;
@@ -54,7 +62,7 @@ export function useCardMetrics(cards: any[], purchases: any[], invoices: any[]) 
         }
       } else {
         const v = Number(p.amount);
-        const mk = monthKey(new Date(p.date));
+        const mk = monthKey(p.date);
         m.monthly[mk] = (m.monthly[mk] ?? 0) + v;
         if (mk === thisMonth) m.currentBill += v;
         m.used += v;

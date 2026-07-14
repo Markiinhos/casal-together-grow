@@ -101,7 +101,6 @@ function FinancasCentral() {
         .from("transactions")
         .select("*, categories(name,color,icon), installments(*)")
         .not("credit_card_id", "is", null)
-        .eq("is_card_payment", false)
         .order("date", { ascending: false });
       const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
       return (data ?? []) as any[];

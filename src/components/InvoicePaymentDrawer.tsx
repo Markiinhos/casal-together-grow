@@ -75,10 +75,7 @@ export function InvoicePaymentDrawer({
   const remaining = invoiceTotal - paidAmount;
 
   const [payAmount, setPayAmount] = useState(String(remaining));
-  const [payDate, setPayDate] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  });
+  const [payDate, setPayDate] = useState(() => getLocalISODate());
   const [accountId, setAccountId] = useState("");
   const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
   const [saving, setSaving] = useState(false);
@@ -96,37 +93,24 @@ export function InvoicePaymentDrawer({
 
       if (val <= 0) {
         toast.error("Informe um valor válido");
-        setSaving(false); // Must unlock immediately on error
+        setSaving(false);
         return;
       }
 
-      if (invoiceId) {
-        // Call the existing RPC
-        const { error } = await supabase.rpc("mark_card_invoice_paid", {
-          _invoice_id: invoiceId,
-          _payment_amount: val,
-          _payment_date: payDate,
-          _account_id: accountId || undefined,
-        });
-        if (error) throw error;
-      } else {
-        // Fallback: create payment transaction manually
-        const { error: txError } = await supabase
-          .from("transactions")
-          .insert({
-            user_id: user.id,
-            couple_id: card.couple_id ?? null,
-            type: "expense",
-            amount: val,
-            description: `Pagamento fatura ${card.name} - ${refMonth.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}`,
-            date: payDate,
-            credit_card_id: card.id,
-            is_card_payment: true,
-            visibility: card.visibility ?? "shared",
-            account_id: accountId || null,
-          } as any);
-        if (txError) throw txError;
+      if (!invoiceId) {
+        toast.error("Fatura não existe no banco de dados. Cadastre uma compra primeiro.");
+        setSaving(false);
+        return;
       }
+
+      // Call the existing RPC
+      const { error } = await supabase.rpc("mark_card_invoice_paid", {
+        _invoice_id: invoiceId,
+        _payment_amount: val,
+        _payment_date: payDate,
+        _account_id: accountId || undefined,
+      });
+      if (error) throw error;
 
       const label =
         paymentType === "full" || val >= remaining
