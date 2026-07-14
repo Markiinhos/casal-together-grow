@@ -225,6 +225,7 @@ export function TransactionEditDrawer({
       totalInstallments,
       visibility,
       notes,
+      accountId,
       qc,
       onOpenChange,
     ]
