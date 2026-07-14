@@ -251,12 +251,14 @@ export const deletePluggyConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { connectionId: string }) => data)
   .handler(async ({ data, context }) => {
-    const { supabase } = context as any;
+    const { supabase, userId } = context as any;
     const { data: conn } = await supabase
       .from("bank_connections")
-      .select("pluggy_item_id")
+      .select("pluggy_item_id, user_id")
       .eq("id", data.connectionId)
+      .eq("user_id", userId)
       .single();
+    if (!conn) throw new Error("Conexão não encontrada ou sem permissão");
     if (conn?.pluggy_item_id) {
       try {
         const client = await getPluggyClient();
