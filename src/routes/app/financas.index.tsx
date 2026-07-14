@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { useCardMetrics } from "@/hooks/useCardMetrics";
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Wallet, CreditCard,
   TrendingUp, TrendingDown, Plus, ChartLine, Sparkles, PieChart,
@@ -20,6 +21,7 @@ import {
   formatBRL, hideOrShow, monthLabel, monthRange,
 } from "@/lib/finance";
 import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
+import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
 import { ListIcon } from "lucide-react";
 
@@ -83,20 +85,28 @@ function FinancasCentral() {
     enabled: !!user,
   });
 
-  // Fatura por cartão
-  const cardInvoices = useQuery({
-    queryKey: ["fin-invoices", monthKey, cards.data?.map((c: any) => c.id).join(",")],
+  const { data: invoices = [] } = useQuery({
+    queryKey: ["card-invoices"],
     queryFn: async () => {
-      const list = cards.data ?? [];
-      const res: Record<string, { total: number; count: number; installments: number }> = {};
-      await Promise.all(
-        list.map(async (c: any) => {
-          res[c.id] = await fetchCardInvoice(c.id, Number(c.closing_day ?? 1), ref);
-        }),
-      );
-      return res;
+      const { data } = await supabase.from("card_invoices").select("*").order("reference_month", { ascending: true });
+      return (data ?? []) as any[];
     },
-    enabled: !!cards.data && cards.data.length > 0,
+    enabled: !!user,
+  });
+
+  const { data: purchases = [] } = useQuery({
+    queryKey: ["card-purchases", coupleId, user?.id],
+    queryFn: async () => {
+      const q = supabase
+        .from("transactions")
+        .select("*, categories(name,color,icon), installments(*)")
+        .not("credit_card_id", "is", null)
+        .eq("is_card_payment", false)
+        .order("date", { ascending: false });
+      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
+      return (data ?? []) as any[];
+    },
+    enabled: !!user,
   });
 
   // Categorias
@@ -150,6 +160,9 @@ function FinancasCentral() {
   const [invoiceTab, setInvoiceTab] = useState<"open" | "closed">("open");
   const [editTxId, setEditTxId] = useState<string | null>(null);
   const [isEditCardTx, setIsEditCardTx] = useState(false);
+  const [paymentTxId, setPaymentTxId] = useState<string | null>(null);
+
+  const cardMetrics = useCardMetrics(cardsList, purchases, invoices);
 
   const byCatSorted = useMemo(() => {
     const map = expenses.data?.byCategory ?? {};
@@ -281,8 +294,9 @@ function FinancasCentral() {
           ) : (
             <div className="space-y-2">
               {(invoiceTab === "open" ? openInvoices : cardsList).map((c: any) => {
-                const inv = cardInvoices.data?.[c.id];
-                const used = inv?.total ?? 0;
+                const m = cardMetrics[c.id];
+                const inv = m?.activeInv;
+                const used = inv?.total_amount ?? m?.currentBill ?? 0;
                 const limit = Number(c.limit_amount ?? 0);
                 const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
                 const available = Math.max(0, limit - used);
@@ -298,7 +312,7 @@ function FinancasCentral() {
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold">{hideOrShow(used, hidden)}</div>
-                        <div className="text-[11px] text-muted-foreground">Fatura</div>
+                        <div className="text-[11px] text-muted-foreground">Fatura {inv?.status === "paid" ? "Paga" : ""}</div>
                       </div>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -308,8 +322,8 @@ function FinancasCentral() {
                       <span>{Math.round(pct)}% do limite</span>
                       <span>Disponível: {hideOrShow(available, hidden)}</span>
                     </div>
-                    {inv && inv.installments > 0 && (
-                      <div className="text-[11px] text-muted-foreground mt-1">{inv.installments} parceladas no mês</div>
+                    {m && m.installmentsCount > 0 && (
+                      <div className="text-[11px] text-muted-foreground mt-1">{m.installmentsCount} parceladas no mês</div>
                     )}
                   </Card>
                 );
@@ -368,7 +382,7 @@ function FinancasCentral() {
                     key={t.id} 
                     onClick={() => {
                        if (isPayment) {
-                         // TODO: Could open a specific read-only modal for invoice payments
+                         setPaymentTxId(t.id);
                          return;
                        }
                        setEditTxId(t.id);
@@ -410,6 +424,11 @@ function FinancasCentral() {
         purchaseId={isEditCardTx ? editTxId : null}
         open={!!editTxId && isEditCardTx}
         onOpenChange={(op) => !op && setEditTxId(null)}
+      />
+      <InvoicePaymentDetailsDrawer
+        paymentId={paymentTxId}
+        open={!!paymentTxId}
+        onOpenChange={(op) => !op && setPaymentTxId(null)}
       />
     </>
   );

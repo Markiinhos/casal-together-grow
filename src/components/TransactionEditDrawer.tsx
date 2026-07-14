@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { getLocalISODate } from "@/lib/date-utils";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Trash2, Loader2, AlertTriangle } from "lucide-react";
@@ -141,7 +142,7 @@ export function TransactionEditDrawer({
       setDescription(tx.description ?? "");
       setAmount(String(tx.amount ?? ""));
       setType(tx.type ?? "expense");
-      setDate(tx.date ?? new Date().toISOString().slice(0, 10));
+      setDate(tx.date ?? getLocalISODate());
       setCategoryId(tx.category_id ?? "");
       setCreditCardId(tx.credit_card_id ?? "");
       setTotalInstallments(

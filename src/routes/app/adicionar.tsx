@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { getLocalISODate } from "@/lib/date-utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AppHeader } from "@/components/AppHeader";
@@ -184,7 +185,7 @@ function TxForm({ type }: { type: "income" | "expense" }) {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(getLocalISODate());
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { data: profile } = useProfile();
@@ -324,7 +325,7 @@ function TaskForm() {
 
 function EventForm() {
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(getLocalISODate());
   const [time, setTime] = useState("");
   const [recurrence, setRecurrence] = useState("none");
   const [loading, setLoading] = useState(false);

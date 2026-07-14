@@ -1,13 +1,14 @@
 // Helpers financeiros — cálculos e queries reutilizáveis
 import { supabase } from "@/integrations/supabase/client";
 import type { Space } from "@/lib/space";
+import { getLocalISODate } from "./date-utils";
 
 export function monthRange(ref: Date): { start: string; end: string; startDate: Date; endDate: Date } {
   const start = new Date(ref.getFullYear(), ref.getMonth(), 1);
   const end = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
   return {
-    start: start.toISOString().slice(0, 10),
-    end: end.toISOString().slice(0, 10),
+    start: getLocalISODate(start),
+    end: getLocalISODate(end),
     startDate: start,
     endDate: end,
   };
@@ -18,7 +19,7 @@ export function monthLabel(ref: Date): string {
 }
 
 export function firstOfMonth(ref: Date): string {
-  return new Date(ref.getFullYear(), ref.getMonth(), 1).toISOString().slice(0, 10);
+  return getLocalISODate(new Date(ref.getFullYear(), ref.getMonth(), 1));
 }
 
 export function daysRemaining(ref: Date): number {
@@ -183,7 +184,7 @@ export async function fetchCardInvoice(cardId: string, closing: number, ref: Dat
   installments: number;
 }> {
   // Busca da nova tabela card_invoices usando o reference_month correspondente
-  const refString = new Date(ref.getFullYear(), ref.getMonth(), 1).toISOString().slice(0, 10);
+  const refString = getLocalISODate(new Date(ref.getFullYear(), ref.getMonth(), 1));
   const { data } = await supabase
     .from("card_invoices")
     .select("total_amount")

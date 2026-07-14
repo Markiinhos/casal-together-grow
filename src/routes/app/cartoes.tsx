@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
+import { getLocalISODate } from "@/lib/date-utils";
 import { CreditCard, Plus, Trash2, ChevronDown, ShoppingBag, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
@@ -130,78 +131,7 @@ function CardsPage() {
   }
 
   // Compute per-card metrics from purchases/installments
-  const cardMetrics = useMemo(() => {
-    const today = new Date();
-    const thisMonth = monthKey(today);
-    const map: Record<string, any> = {};
-    for (const card of cards) {
-      map[card.id] = {
-        used: 0, // unpaid installments total
-        currentBill: 0, // installments due this month, unpaid
-        installmentsCount: 0,
-        remainingTotal: 0,
-        monthly: {} as Record<string, number>,
-        lastPurchase: null as any,
-        byCategory: {} as Record<string, number>,
-      };
-    }
-    for (const p of purchases as any[]) {
-      const cid = p.credit_card_id;
-      if (!cid || !map[cid]) continue;
-      const m = map[cid];
-      if (!m.lastPurchase || new Date(p.date) > new Date(m.lastPurchase.date)) m.lastPurchase = p;
-      const catName = p.categories?.name || "Outros";
-      m.byCategory[catName] = (m.byCategory[catName] ?? 0) + Number(p.amount);
-      const insts = p.installments ?? [];
-      if (insts.length > 0) {
-        m.installmentsCount++;
-        for (const i of insts) {
-          const v = Number(i.amount);
-          const mk = monthKey(i.due_date);
-          m.monthly[mk] = (m.monthly[mk] ?? 0) + v;
-          if (!i.paid) {
-            m.used += v;
-            m.remainingTotal += v;
-            if (mk === thisMonth) m.currentBill += v;
-          }
-        }
-      } else {
-        // À vista — conta no mês da compra
-        const v = Number(p.amount);
-        const mk = monthKey(p.date);
-        m.monthly[mk] = (m.monthly[mk] ?? 0) + v;
-        if (mk === thisMonth) m.currentBill += v;
-        m.used += v;
-      }
-    }
-    
-    // Set activeInv using card_invoices or synthesize from computed bill
-    for (const card of cards) {
-      if (!map[card.id]) continue;
-      const cardInvs = invoices.filter(i => i.card_id === card.id);
-      // Find oldest active or current month's invoice
-      let activeInv = cardInvs.find(i => ["open", "due", "overdue", "partially_paid"].includes(i.status));
-      if (!activeInv) activeInv = cardInvs.find(i => i.reference_month === thisMonth) || (cardInvs.length > 0 ? cardInvs[cardInvs.length - 1] : null);
-      
-      // Synthesize a virtual invoice when no card_invoices exist but there's a bill
-      if (!activeInv && map[card.id].currentBill > 0) {
-        activeInv = {
-          id: null, // marks it as synthetic — no RPC to call
-          card_id: card.id,
-          reference_month: thisMonth,
-          total_amount: map[card.id].currentBill,
-          paid_amount: 0,
-          status: "open",
-          due_date: `${thisMonth}-${String(card.due_day ?? 10).padStart(2, "0")}`,
-          _synthetic: true,
-        };
-      }
-      
-      map[card.id].activeInv = activeInv;
-    }
-    
-    return map;
-  }, [cards, purchases, invoices]);
+  const cardMetrics = useCardMetrics(cards, purchases, invoices);
 
   const [payDrawerOpen, setPayDrawerOpen] = useState(false);
   const [selectedInvoiceInfo, setSelectedInvoiceInfo] = useState<{ inv: any; card: any } | null>(null);
@@ -519,10 +449,12 @@ function FutureBills({ purchases, cards }: { purchases: any[]; cards: any[] }) {
     }
     const filtered = cardId === "all" ? purchases : purchases.filter((p) => p.credit_card_id === cardId);
     for (const p of filtered) {
+      if (p.status === "cancelled" || p.is_card_payment) continue;
       const cardName = cards.find((c) => c.id === p.credit_card_id)?.name ?? "Cartão";
       const insts = p.installments ?? [];
       if (insts.length > 0) {
         for (const i of insts) {
+          if (i.paid) continue;
           const mk = monthKey(i.due_date);
           const slot = items.find((it) => it.key === mk);
           if (slot) {
@@ -795,7 +727,7 @@ function PurchaseForm({ cards, cats, onDone }: { cards: any[]; cats: any[]; onDo
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [installments, setInstallments] = useState("1");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(getLocalISODate());
   const [cardId, setCardId] = useState(cards[0]?.id ?? "");
   const [catId, setCatId] = useState<string>("");
 
