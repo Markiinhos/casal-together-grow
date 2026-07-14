@@ -106,6 +106,7 @@ export function TransactionEditDrawer({
   const [totalInstallments, setTotalInstallments] = useState("");
   const [visibility, setVisibility] = useState<"private" | "shared">("shared");
   const [notes, setNotes] = useState("");
+  const [accountId, setAccountId] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -136,6 +137,19 @@ export function TransactionEditDrawer({
     enabled: !!user && open,
   });
 
+  // Accounts
+  const { data: accounts = [] } = useQuery({
+    queryKey: ["accounts-edit", coupleId, user?.id],
+    queryFn: async () => {
+      const q = supabase.from("bank_accounts").select("*").eq("hidden", false).order("name");
+      const { data } = coupleId
+        ? await q.eq("couple_id", coupleId)
+        : await q.eq("user_id", user!.id);
+      return (data ?? []) as any[];
+    },
+    enabled: !!user && open,
+  });
+
   // Populate form when tx loads
   useEffect(() => {
     if (tx) {
@@ -150,6 +164,7 @@ export function TransactionEditDrawer({
       );
       setVisibility(tx.visibility ?? "shared");
       setNotes(tx.notes ?? "");
+      setAccountId(tx.account_id ?? "");
       setConfirmDelete(false);
     }
   }, [tx]);
@@ -173,8 +188,8 @@ export function TransactionEditDrawer({
             : null,
           visibility,
           notes: notes || null,
+          account_id: accountId || null,
           updated_at: new Date().toISOString(),
-          updated_by: user.id,
         };
 
         const { error } = await supabase
@@ -210,6 +225,7 @@ export function TransactionEditDrawer({
       totalInstallments,
       visibility,
       notes,
+      accountId,
       qc,
       onOpenChange,
     ]
