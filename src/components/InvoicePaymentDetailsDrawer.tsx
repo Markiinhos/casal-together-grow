@@ -7,7 +7,7 @@ import { getLocalISODate } from "@/lib/date-utils";
 import { CreditCard, Calendar, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
-import { useCouple } from "@/hooks/useCouple";
+import { useAuth } from "@/lib/auth";
 
 export function InvoicePaymentDetailsDrawer({ 
   paymentId, 
@@ -19,7 +19,7 @@ export function InvoicePaymentDetailsDrawer({
   onOpenChange: (open: boolean) => void; 
 }) {
   const qc = useQueryClient();
-  const { user } = useCouple();
+  const { user } = useAuth();
   const [deleting, setDeleting] = useState(false);
 
   const { data: tx, isLoading } = useQuery({
