@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
 import { useCardMetrics } from "@/hooks/useCardMetrics";
 import { InvoicePaymentDrawer } from "@/components/InvoicePaymentDrawer";
+import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Link } from "@tanstack/react-router";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
 
@@ -61,7 +63,6 @@ function CardsPage() {
         .from("transactions")
         .select("*, categories(name,color,icon), installments(*)")
         .not("credit_card_id", "is", null)
-        .eq("is_card_payment", false)
         .order("date", { ascending: false });
       const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
       return (data ?? []) as any[];
@@ -541,15 +542,24 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
     });
   }, [purchases, type, cardId, catId, period, status]);
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<{ id: string, type: 'payment' | 'purchase' | 'transaction' } | null>(null);
 
   return (
     <div className="space-y-3">
-      <CardPurchaseEditDrawer
-        purchaseId={selectedId}
-        open={!!selectedId}
-        onOpenChange={(op) => !op && setSelectedId(null)}
-      />
+      {/* Modais encapsulados em ErrorBoundary local */}
+      <ErrorBoundary>
+        <CardPurchaseEditDrawer
+          purchaseId={selectedRecord?.type === 'purchase' ? selectedRecord.id : null}
+          open={selectedRecord?.type === 'purchase'}
+          onOpenChange={(op) => !op && setSelectedRecord(null)}
+        />
+        <InvoicePaymentDetailsDrawer
+          paymentId={selectedRecord?.type === 'payment' ? selectedRecord.id : null}
+          open={selectedRecord?.type === 'payment'}
+          onOpenChange={(op) => !op && setSelectedRecord(null)}
+        />
+        {/* TransactionEditDrawer pode ser adicionado aqui caso haja outros tipos, mas por padrão vamos usar purchase para compras normais */}
+      </ErrorBoundary>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
         <Select value={status} onValueChange={(v) => setStatus(v as any)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
@@ -613,7 +623,10 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
                   isQuitada ? "opacity-60 bg-muted/20" : 
                   "hover:bg-muted/30"
                 }`}
-                onClick={() => setSelectedId(p.id)}
+                onClick={() => {
+                  const type = p.is_card_payment ? 'payment' : 'purchase';
+                  setSelectedRecord({ id: p.id, type });
+                }}
               >
                 <div className={`size-9 rounded-xl flex items-center justify-center shrink-0 ${isCancelled ? "bg-muted text-muted-foreground" : "bg-accent/40"}`}>
                   <ShoppingBag className="size-4 text-foreground/70" />
@@ -625,7 +638,7 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
                     {isQuitada && !isCancelled && <span className="ml-2 text-[10px] bg-success/10 text-success px-1.5 py-0.5 rounded uppercase no-underline">Quitada</span>}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(p.date).toLocaleDateString("pt-BR")} · {cardName}
+                    {new Date(p.date + "T12:00:00").toLocaleDateString("pt-BR")} · {cardName}
                     {insts > 1 && <> · {insts}x</>}
                     {p.categories?.name && <> · {p.categories.name}</>}
                   </div>

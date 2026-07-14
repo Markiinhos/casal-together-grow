@@ -71,17 +71,26 @@ export function useCardMetrics(cards: any[], purchases: any[], invoices: any[]) 
       if (!activeInv) {
         activeInv = cardInvs.find(i => i.reference_month?.startsWith(thisMonth)) || (cardInvs.length > 0 ? cardInvs[cardInvs.length - 1] : null);
       }
+
+      if (activeInv) {
+        const dueDateObj = new Date(activeInv.due_date + "T23:59:59");
+        if (today > dueDateObj && activeInv.paid_amount < activeInv.total_amount && ["open", "due"].includes(activeInv.status)) {
+          activeInv = { ...activeInv, status: "overdue" };
+        }
+      }
       
       // Se não tem fatura no banco, mas tem fatura calculada (virtual)
       if (!activeInv && map[card.id].currentBill > 0) {
+        const dueStr = `${thisMonth}-${String(card.due_day ?? 10).padStart(2, "0")}`;
+        const dueDateObj = new Date(dueStr + "T23:59:59");
         activeInv = {
           id: null,
           card_id: card.id,
           reference_month: `${thisMonth}-01`,
           total_amount: map[card.id].currentBill,
           paid_amount: 0,
-          status: "open",
-          due_date: `${thisMonth}-${String(card.due_day ?? 10).padStart(2, "0")}`,
+          status: today > dueDateObj ? "overdue" : "open",
+          due_date: dueStr,
           _synthetic: true,
         };
       }

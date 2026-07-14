@@ -363,6 +363,9 @@ export function TransactionEditDrawer({
                         {c.name}
                       </SelectItem>
                     ))}
+                  {categoryId && !categories.find((c: any) => c.id === categoryId && (c.type === type || c.type === "other")) && (
+                    <SelectItem value={categoryId}>Categoria Oculta/Excluída</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -382,6 +385,32 @@ export function TransactionEditDrawer({
                         {c.name}
                       </SelectItem>
                     ))}
+                    {creditCardId && !cards.find((c: any) => c.id === creditCardId) && (
+                      <SelectItem value={creditCardId}>Cartão Excluído</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Conta */}
+            {(!creditCardId || type !== "expense") && (
+              <div>
+                <Label className="text-xs">Conta origem/destino</Label>
+                <Select value={accountId} onValueChange={setAccountId}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione a conta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhuma</SelectItem>
+                    {accounts.map((a: any) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                    {accountId && !accounts.find((a: any) => a.id === accountId) && (
+                      <SelectItem value={accountId}>Conta Excluída</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
