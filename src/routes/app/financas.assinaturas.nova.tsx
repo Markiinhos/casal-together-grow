@@ -36,8 +36,8 @@ function NewSubPage() {
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] = useState<BillingFrequency>("monthly");
   const [interval, setInterval] = useState("1");
-  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
-  const [nextBilling, setNextBilling] = useState(new Date().toISOString().slice(0, 10));
+  const [startDate, setStartDate] = useState(getLocalISODate(new Date()));
+  const [nextBilling, setNextBilling] = useState(getLocalISODate(new Date()));
   const [billingDay, setBillingDay] = useState("");
   const [renewalDate, setRenewalDate] = useState("");
   const [endDate, setEndDate] = useState("");

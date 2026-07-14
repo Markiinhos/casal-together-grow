@@ -234,7 +234,7 @@ function ItemDetail() {
         type: "expense",
         amount,
         description: item.title,
-        date: new Date().toISOString().slice(0, 10),
+        date: getLocalISODate(new Date()),
         visibility: item.visibility,
         note: `Origem: compras da casa (${item.id})`,
       }).select().single();

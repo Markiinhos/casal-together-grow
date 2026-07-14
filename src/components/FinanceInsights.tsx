@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { formatBRL } from "@/lib/couple";
 import { Sparkles, TrendingDown } from "lucide-react";
+import { getLocalISODate } from "@/lib/date-utils";
+
 
 export function FinanceInsights() {
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);

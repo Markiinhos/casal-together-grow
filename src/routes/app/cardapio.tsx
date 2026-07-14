@@ -55,7 +55,7 @@ function PlannerTab() {
   const [weekRef, setWeekRef] = useState(() => startOfWeek(new Date()));
   const [open, setOpen] = useState(false);
 
-  const weekStart = weekRef.toISOString().slice(0, 10);
+  const weekStart = getLocalISODate(weekRef);
   const weekEnd = new Date(weekRef.getTime() + 6 * 86400000).toISOString().slice(0, 10);
 
   const { data: plans = [] } = useQuery({

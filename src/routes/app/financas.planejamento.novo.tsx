@@ -15,6 +15,8 @@ import { Switch } from "@/components/ui/switch";
 import { formatBRL, monthLabel, firstOfMonth } from "@/lib/finance";
 import { AlertTriangle, Check } from "lucide-react";
 import { toast } from "sonner";
+import { getLocalISODate } from "@/lib/date-utils";
+
 
 type Search = { id?: string; month?: string };
 

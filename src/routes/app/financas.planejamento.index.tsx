@@ -52,7 +52,7 @@ function PlanList() {
         user_id: user!.id,
         couple_id: space === "shared" ? coupleId : null,
         visibility: space,
-        reference_month: nextMonth.toISOString().slice(0, 10),
+        reference_month: getLocalISODate(nextMonth),
         expected_income: src.expected_income,
         suggested_percentage: src.suggested_percentage,
         spending_limit: src.spending_limit,

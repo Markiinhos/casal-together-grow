@@ -96,7 +96,7 @@ function SubDetailPage() {
       if (!sub || !user) throw new Error("Missing data");
       const updates: any = { status: newStatus };
       if (resumeDate) updates.next_billing_date = resumeDate;
-      if (newStatus === "canceled") updates.end_date = new Date().toISOString().slice(0, 10);
+      if (newStatus === "canceled") updates.end_date = getLocalISODate(new Date());
       const { error } = await supabase.from("subscriptions").update(updates).eq("id", sub.id);
       if (error) throw error;
       await supabase.from("subscription_history").insert({
@@ -327,7 +327,7 @@ function SubDetailPage() {
             )}
             {sub.status === "paused" && (
               <Button variant="outline" className="rounded-xl text-xs h-10" onClick={() => {
-                const resumeDate = new Date().toISOString().slice(0, 10);
+                const resumeDate = getLocalISODate(new Date());
                 updateStatus.mutate({ newStatus: "active", resumeDate });
               }} disabled={updateStatus.isPending}>
                 <Play className="size-3.5 mr-1" /> Reativar

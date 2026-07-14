@@ -117,7 +117,7 @@ function HomePage() {
   const { data: upcomingEvents } = useQuery({
     queryKey: ["home-events", space, coupleId, user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getLocalISODate(new Date());
       let q: any = supabase
         .from("events")
         .select("*")
@@ -148,7 +148,7 @@ function HomePage() {
   });
 
   // Private-only widgets
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalISODate(new Date());
   const { data: waterToday } = useQuery({
     queryKey: ["home-water", user?.id, today],
     queryFn: async () => {

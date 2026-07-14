@@ -58,7 +58,7 @@ function SubsPage() {
     let list = [...subs];
     const now = new Date();
     const in7Days = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
-    const today = now.toISOString().slice(0, 10);
+    const today = getLocalISODate(now);
 
     switch (filter) {
       case "active": list = list.filter(s => s.status === "active"); break;

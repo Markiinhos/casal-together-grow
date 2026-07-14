@@ -282,12 +282,12 @@ export function InvoicePaymentDrawer({
           {accounts.length > 0 && (
             <div>
               <Label className="text-xs">Conta utilizada</Label>
-              <Select value={accountId} onValueChange={setAccountId}>
+              <Select value={accountId || "none"} onValueChange={(v) => setAccountId(v === "none" ? "" : v)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Selecione (opcional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {accounts.map((a: any) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.name}

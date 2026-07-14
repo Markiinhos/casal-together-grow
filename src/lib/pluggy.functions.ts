@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getLocalISODate } from "@/lib/date-utils";
+
 
 // Pluggy SDK is dynamically imported inside handlers so the client bundle stays clean.
 

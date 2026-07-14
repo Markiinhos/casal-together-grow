@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/saude")({ component: HealthPage });
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => getLocalISODate(new Date());
 
 function HealthPage() {
   return (

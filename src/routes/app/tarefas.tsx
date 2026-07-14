@@ -51,7 +51,7 @@ function TasksPage() {
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalISODate(new Date());
   const partition = useMemo(() => {
     const pending: any[] = [], done: any[] = [], overdue: any[] = [];
     for (const t of tasks as any[]) {

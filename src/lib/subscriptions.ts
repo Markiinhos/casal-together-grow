@@ -252,7 +252,7 @@ export function buildSummary(subs: Subscription[]): SubSummary {
   }
 
   // Find next upcoming charge
-  const now = new Date().toISOString().slice(0, 10);
+  const now = getLocalISODate(new Date());
   let nextCharge: SubSummary["nextCharge"] = null;
   for (const s of active) {
     if (s.next_billing_date >= now) {
@@ -303,7 +303,7 @@ export function projectSubscriptionsForMonth(
 
     // Collect all charges within the month
     while (cursor <= endD) {
-      const dateStr = cursor.toISOString().slice(0, 10);
+      const dateStr = getLocalISODate(cursor);
       if (dateStr >= start && dateStr <= end) {
         const amt = getEffectiveAmount(sub);
         result.push({ name: sub.name, amount: amt, date: dateStr });

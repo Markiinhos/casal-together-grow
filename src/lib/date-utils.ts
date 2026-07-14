@@ -6,7 +6,7 @@
 
 /**
  * Retorna a data atual no formato YYYY-MM-DD com base no fuso local do usuário.
- * Equivalente seguro para new Date().toISOString().slice(0, 10).
+ * Equivalente seguro para getLocalISODate(new Date()).
  */
 export function getLocalISODate(dateObj: Date = new Date()): string {
   const yyyy = dateObj.getFullYear();

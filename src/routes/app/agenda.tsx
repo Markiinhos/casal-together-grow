@@ -112,7 +112,7 @@ function AgendaPage() {
 
 function EventForm({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(getLocalISODate(new Date()));
   const [time, setTime] = useState("");
   const [recurrence, setRecurrence] = useState("none");
   const { user } = useAuth();

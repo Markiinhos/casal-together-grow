@@ -360,12 +360,12 @@ export function CardPurchaseEditDrawer({
 
             <div>
               <Label className="text-xs">Cartão</Label>
-              <Select value={cardId} onValueChange={setCardId}>
+              <Select value={cardId || "none"} onValueChange={(v) => setCardId(v === "none" ? "" : v)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  {!cardId && <SelectItem value="">Selecione</SelectItem>}
+                  <SelectItem value="none">Selecione</SelectItem>
                   {cards.map((c: any) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
@@ -380,12 +380,12 @@ export function CardPurchaseEditDrawer({
 
             <div>
               <Label className="text-xs">Categoria</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
+              <Select value={categoryId || "none"} onValueChange={(v) => setCategoryId(v === "none" ? "" : v)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Opcional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhuma</SelectItem>
+                  <SelectItem value="none">Nenhuma</SelectItem>
                   {cats.map((c: any) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}

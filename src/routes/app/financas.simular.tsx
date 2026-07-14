@@ -81,7 +81,7 @@ function SimulatePage() {
   const [installments, setInstallments] = useState<number>(search.installments ?? 1);
   const [interestEnabled, setInterestEnabled] = useState(false);
   const [interestRate, setInterestRate] = useState<string>("");
-  const [purchaseDate, setPurchaseDate] = useState<string>(() => search.date ?? new Date().toISOString().slice(0, 10));
+  const [purchaseDate, setPurchaseDate] = useState<string>(() => search.date ?? getLocalISODate(new Date()));
   const [firstPaymentDate, setFirstPaymentDate] = useState<string>("");
   const [category, setCategory] = useState<string>("Outros");
   const [cardId, setCardId] = useState<string | null>(null);

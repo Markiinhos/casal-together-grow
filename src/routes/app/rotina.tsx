@@ -25,11 +25,11 @@ const PERIODS = [
   { value: "evening", label: "Noite", icon: Moon, color: "text-accent-purple bg-accent-purple/10" },
 ] as const;
 
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { return getLocalISODate(new Date()); }
 function startOfWeek(d = new Date()) {
   const x = new Date(d); const day = x.getDay();
   x.setDate(x.getDate() - day); x.setHours(0,0,0,0);
-  return x.toISOString().slice(0, 10);
+  return getLocalISODate(x);
 }
 function startOfMonth(d = new Date()) {
   return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
@@ -91,7 +91,7 @@ function TodayTab() {
       const { data } = await supabase.from("habit_logs").select("date").eq("user_id", user!.id).order("date", { ascending: false }).limit(60);
       const set = new Set((data ?? []).map((l: any) => l.date));
       let s = 0; const d = new Date();
-      while (set.has(d.toISOString().slice(0,10))) { s++; d.setDate(d.getDate() - 1); }
+      while (set.has(getLocalISODate(d))) { s++; d.setDate(d.getDate() - 1); }
       return s;
     },
     enabled: !!user,
