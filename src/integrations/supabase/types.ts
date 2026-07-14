@@ -2629,6 +2629,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transactions_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -2984,6 +2991,10 @@ export type Database = {
           subscription_id: string
           transaction_id: string
         }[]
+      }
+      recalculate_card_invoice_totals: {
+        Args: { p_invoice_id: string }
+        Returns: undefined
       }
       resolve_card_invoice_cycle: {
         Args: {
