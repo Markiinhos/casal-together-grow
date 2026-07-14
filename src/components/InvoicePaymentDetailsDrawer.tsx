@@ -43,10 +43,8 @@ export function InvoicePaymentDetailsDrawer({
     try {
       setDeleting(true);
       // O banco deve ter triggers para reverter o status da fatura se a transação for deletada,
-      // ou apenas deletamos a transação e o "recalculate" cuida do resto (o update que muda is_card_payment
-      // pode ser problemático, então é mais fácil hard-delete ou marcar como cancelled e disparar recalculate)
-      
-      const { error } = await supabase.from("transactions").update({ status: "cancelled" }).eq("id", tx.id);
+      // ou o usuário precisa rodar uma reavaliação. Mas o hard delete é seguro aqui.
+      const { error } = await supabase.from("transactions").delete().eq("id", tx.id);
       if (error) throw error;
       
       // Recalcular fatura atual

@@ -245,24 +245,14 @@ export function CardPurchaseEditDrawer({
     if (!user || !purchaseId) return;
     setDeleting(true);
     try {
-      if (hasPaid) {
-        await supabase
-          .from("transactions")
-          .update({
-            status: "cancelled",
-            updated_at: new Date().toISOString(),
-            updated_by: user.id,
-          } as any)
-          .eq("id", purchaseId);
-        toast.success("Compra cancelada (parcelas pagas preservadas)");
-      } else {
-        // Delete installments first
-        await supabase
-          .from("installments")
-          .delete()
-          .eq("transaction_id", purchaseId);
-        await supabase.from("transactions").delete().eq("id", purchaseId);
-        toast.success("Compra excluída!");
+      // Delete installments first
+      await supabase
+        .from("installments")
+        .delete()
+        .eq("transaction_id", purchaseId);
+      const { error } = await supabase.from("transactions").delete().eq("id", purchaseId);
+      if (error) throw error;
+      toast.success("Compra excluída com sucesso!");
       }
       invalidateAll(qc);
       onOpenChange(false);

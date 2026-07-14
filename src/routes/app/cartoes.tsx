@@ -449,7 +449,7 @@ function FutureBills({ purchases, cards }: { purchases: any[]; cards: any[] }) {
     }
     const filtered = cardId === "all" ? purchases : purchases.filter((p) => p.credit_card_id === cardId);
     for (const p of filtered) {
-      if (p.status === "cancelled" || p.is_card_payment) continue;
+      if (p.is_card_payment) continue;
       const cardName = cards.find((c) => c.id === p.credit_card_id)?.name ?? "Cartão";
       const insts = p.installments ?? [];
       if (insts.length > 0) {
@@ -602,7 +602,7 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
             const insts = p.installments?.length ?? 0;
             const cardName = cards.find((c) => c.id === p.credit_card_id)?.name ?? "—";
             const isQuitada = insts > 1 && p.installments.every((i: any) => i.paid);
-            const isCancelled = p.status === "cancelled";
+            const isCancelled = false; // transactions are hard-deleted
             
             return (
               <div 

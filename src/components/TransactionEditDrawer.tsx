@@ -224,26 +224,19 @@ export function TransactionEditDrawer({
       const hasInstallments = tx?.installments && tx.installments.length > 0;
 
       if (hasInstallments) {
-        // Soft delete — mark as cancelled
-        const { error } = await supabase
-          .from("transactions")
-          .update({
-            status: "cancelled",
-            updated_at: new Date().toISOString(),
-            updated_by: user.id,
-          } as any)
-          .eq("id", transactionId);
-        if (error) throw error;
-        toast.success("Lançamento cancelado (preserva histórico)");
-      } else {
-        // Hard delete
-        const { error } = await supabase
-          .from("transactions")
+        // Delete installments first
+        await supabase
+          .from("installments")
           .delete()
-          .eq("id", transactionId);
-        if (error) throw error;
-        toast.success("Lançamento excluído!");
+          .eq("transaction_id", transactionId);
       }
+      
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", transactionId);
+      if (error) throw error;
+      toast.success("Lançamento excluído!");
 
       invalidateAll(qc);
       onOpenChange(false);

@@ -169,14 +169,10 @@ export function InvoicePaymentDrawer({
         .limit(1);
 
       if (payTxs && payTxs.length > 0) {
-        // Cancel the payment transaction
+        // Hard delete the payment transaction
         await supabase
           .from("transactions")
-          .update({
-            status: "cancelled",
-            updated_at: new Date().toISOString(),
-            updated_by: user.id,
-          } as any)
+          .delete()
           .eq("id", payTxs[0].id);
       }
 
