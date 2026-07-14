@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { SpaceOpts } from "./finance";
 import { monthRange } from "./finance";
+import { getLocalISODate } from "./date-utils";
 
 // ── Types ─────────────────────────────────────────────────
 

@@ -90,13 +90,14 @@ function HomePage() {
     return () => { supabase.removeChannel(ch); };
   }, [user, qc]);
 
-  const { data: subsData } = useQuery({
+  const { data: subsData, isPending: subsLoading, isError: subsError, refetch: subsRefetch } = useQuery({
     queryKey: ["home-subs", space, coupleId, user?.id],
     queryFn: async () => {
       const subs = await fetchSubscriptions({ space, userId: user!.id, coupleId });
       return buildSummary(subs);
     },
     enabled: !!user,
+    retry: 1,
   });
 
   const { data: goals } = useQuery({
@@ -306,7 +307,33 @@ function HomePage() {
               Ver tudo
             </Link>
           </div>
-          {subsData ? (
+          {subsLoading ? (
+            <Card className="rounded-2xl p-4 shadow-card">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-20 rounded" />
+                  <Skeleton className="h-6 w-28 rounded-lg" />
+                  <Skeleton className="h-3 w-14 rounded" />
+                </div>
+                <div className="space-y-2 pl-4 border-l border-border/50">
+                  <Skeleton className="h-3 w-16 rounded" />
+                  <Skeleton className="h-4 w-24 rounded" />
+                  <Skeleton className="h-3 w-20 rounded" />
+                </div>
+              </div>
+            </Card>
+          ) : subsError ? (
+            <Card className="rounded-2xl p-4 shadow-card text-center space-y-2">
+              <p className="text-xs text-muted-foreground">Não foi possível carregar as assinaturas.</p>
+              <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={() => subsRefetch()}>
+                <RefreshCw className="size-3 mr-1" /> Tentar novamente
+              </Button>
+            </Card>
+          ) : !subsData || subsData.activeCount === 0 ? (
+            <Card className="rounded-2xl p-4 shadow-card">
+              <EmptyState icon={RefreshCw} title="Sem assinaturas" description="Nenhuma assinatura cadastrada." />
+            </Card>
+          ) : (
             <Card className="rounded-2xl p-4 shadow-card grid grid-cols-2 gap-4">
               <div>
                 <p className="text-[11px] text-muted-foreground font-medium">Custo mensal</p>
@@ -324,10 +351,6 @@ function HomePage() {
                   <p className="text-sm text-muted-foreground mt-1">Nenhuma</p>
                 )}
               </div>
-            </Card>
-          ) : (
-            <Card className="rounded-2xl p-4 shadow-card">
-               <EmptyState icon={RefreshCw} title="Assinaturas" description="Carregando..." />
             </Card>
           )}
         </section>
