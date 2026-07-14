@@ -253,7 +253,6 @@ export function CardPurchaseEditDrawer({
       const { error } = await supabase.from("transactions").delete().eq("id", purchaseId);
       if (error) throw error;
       toast.success("Compra excluída com sucesso!");
-      }
       invalidateAll(qc);
       onOpenChange(false);
     } catch (err: any) {

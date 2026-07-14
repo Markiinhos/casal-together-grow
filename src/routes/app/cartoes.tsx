@@ -20,6 +20,7 @@ import { getLocalISODate } from "@/lib/date-utils";
 import { CreditCard, Plus, Trash2, ChevronDown, ShoppingBag, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
+import { useCardMetrics } from "@/hooks/useCardMetrics";
 import { InvoicePaymentDrawer } from "@/components/InvoicePaymentDrawer";
 import { Link } from "@tanstack/react-router";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";

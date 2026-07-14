@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { monthKey } from "@/lib/space";
+const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
 /**
  * Hook centralizado para calcular as métricas de cartões de crédito.

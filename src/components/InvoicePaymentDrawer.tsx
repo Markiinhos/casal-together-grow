@@ -106,7 +106,7 @@ export function InvoicePaymentDrawer({
           _invoice_id: invoiceId,
           _payment_amount: val,
           _payment_date: payDate,
-          _account_id: accountId || null,
+          _account_id: accountId || undefined,
         });
         if (error) throw error;
       } else {
