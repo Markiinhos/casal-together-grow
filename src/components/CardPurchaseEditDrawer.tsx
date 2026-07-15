@@ -369,12 +369,12 @@ export function CardPurchaseEditDrawer({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Selecione</SelectItem>
-                  {cards.map((c: any) => (
+                  {cards.filter((c: any) => c.id).map((c: any) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>
                   ))}
-                  {cardId && !cards.find((c: any) => c.id === cardId) && (
+                  {!!cardId && !cards.find((c: any) => c.id === cardId) && (
                     <SelectItem value={cardId}>Cartão Excluído</SelectItem>
                   )}
                 </SelectContent>
@@ -389,12 +389,12 @@ export function CardPurchaseEditDrawer({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nenhuma</SelectItem>
-                  {cats.map((c: any) => (
+                  {cats.filter((c: any) => c.id).map((c: any) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>
                   ))}
-                  {categoryId && !cats.find((c: any) => c.id === categoryId) && (
+                  {!!categoryId && !cats.find((c: any) => c.id === categoryId) && (
                     <SelectItem value={categoryId}>Categoria Desconhecida</SelectItem>
                   )}
                 </SelectContent>

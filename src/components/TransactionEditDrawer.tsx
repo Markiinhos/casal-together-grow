@@ -372,14 +372,14 @@ export function TransactionEditDrawer({
                   {categories
                     .filter(
                       (c: any) =>
-                        c.type === type || c.type === "other"
+                        c.id && (c.type === type || c.type === "other")
                     )
                     .map((c: any) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
                       </SelectItem>
                     ))}
-                  {categoryId && !categories.find((c: any) => c.id === categoryId && (c.type === type || c.type === "other")) && (
+                  {!!categoryId && !categories.find((c: any) => c.id === categoryId && (c.type === type || c.type === "other")) && (
                     <SelectItem value={categoryId}>Categoria Oculta/Excluída</SelectItem>
                   )}
                 </SelectContent>
@@ -396,12 +396,12 @@ export function TransactionEditDrawer({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhum (à vista)</SelectItem>
-                    {cards.map((c: any) => (
+                    {cards.filter((c: any) => c.id).map((c: any) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
                       </SelectItem>
                     ))}
-                    {creditCardId && !cards.find((c: any) => c.id === creditCardId) && (
+                    {!!creditCardId && !cards.find((c: any) => c.id === creditCardId) && (
                       <SelectItem value={creditCardId}>Cartão Excluído</SelectItem>
                     )}
                   </SelectContent>
@@ -419,12 +419,12 @@ export function TransactionEditDrawer({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Nenhuma</SelectItem>
-                    {accounts.map((a: any) => (
+                    {accounts.filter((a: any) => a.id).map((a: any) => (
                       <SelectItem key={a.id} value={a.id}>
                         {a.name}
                       </SelectItem>
                     ))}
-                    {accountId && !accounts.find((a: any) => a.id === accountId) && (
+                    {!!accountId && !accounts.find((a: any) => a.id === accountId) && (
                       <SelectItem value={accountId}>Conta Excluída</SelectItem>
                     )}
                   </SelectContent>
