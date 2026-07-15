@@ -163,7 +163,7 @@ export function TransactionEditDrawer({
         tx.total_installments ? String(tx.total_installments) : ""
       );
       setVisibility(tx.visibility ?? "shared");
-      setNotes(tx.notes ?? "");
+      setNotes(tx.note ?? "");
       setAccountId(tx.account_id ?? "");
       setConfirmDelete(false);
     }
@@ -181,14 +181,14 @@ export function TransactionEditDrawer({
           amount: parseFloat(amount.replace(",", ".")),
           type,
           date,
-          category_id: categoryId || null,
-          credit_card_id: creditCardId || null,
+          category_id: categoryId === "none" ? null : categoryId || null,
+          credit_card_id: creditCardId === "none" ? null : creditCardId || null,
           total_installments: totalInstallments
             ? parseInt(totalInstallments)
             : null,
           visibility,
-          notes: notes || null,
-          account_id: accountId || null,
+          note: notes || null,
+          account_id: accountId === "none" ? null : accountId || null,
           updated_at: new Date().toISOString(),
         };
 

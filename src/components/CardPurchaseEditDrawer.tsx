@@ -140,7 +140,7 @@ export function CardPurchaseEditDrawer({
       setCategoryId(tx.category_id ?? "");
       setInstallments(tx.total_installments ? String(tx.total_installments) : "1");
       setVisibility(tx.visibility ?? "shared");
-      setNotes(tx.notes ?? "");
+      setNotes(tx.note ?? "");
       setConfirmDelete(false);
       setEditScope("all");
     }
@@ -165,12 +165,11 @@ export function CardPurchaseEditDrawer({
           amount: totalAmt,
           date,
           credit_card_id: cardId || null,
-          category_id: categoryId || null,
+          category_id: categoryId === "none" ? null : categoryId || null,
           total_installments: numInst > 1 ? numInst : null,
           visibility,
-          notes: notes || null,
+          note: notes || null,
           updated_at: new Date().toISOString(),
-          updated_by: user.id,
         };
 
         const { error } = await supabase
@@ -179,8 +178,12 @@ export function CardPurchaseEditDrawer({
           .eq("id", purchaseId);
         if (error) throw error;
 
+        const amtChanged = tx.amount !== totalAmt;
+        const instChanged = tx.total_installments !== numInst;
+        const shouldUpdateInst = amtChanged || instChanged;
+
         // Recalculate installments if needed
-        if (numInst > 1 && existingInst.length > 0 && editScope !== "single") {
+        if (shouldUpdateInst && numInst > 1 && existingInst.length > 0 && editScope !== "single") {
           const sorted = [...existingInst].sort(
             (a, b) => a.installment_number - b.installment_number
           );

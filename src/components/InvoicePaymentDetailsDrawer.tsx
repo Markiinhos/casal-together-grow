@@ -108,7 +108,7 @@ export function InvoicePaymentDetailsDrawer({
                   <div>
                     <div className="font-semibold text-sm">Data do Pagamento</div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(tx.date).toLocaleDateString("pt-BR")}
+                      {new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR")}
                     </div>
                   </div>
                 </div>
