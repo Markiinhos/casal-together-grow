@@ -112,10 +112,12 @@ function FinancasCentral() {
   const categories = useQuery({
     queryKey: ["fin-cats", space, coupleId, user?.id],
     queryFn: async () => {
-      let q: any = supabase.from("categories").select("*").eq("type", "expense");
-      if (space === "private") q = q.eq("visibility", "private").eq("user_id", user!.id);
-      else if (coupleId) q = q.eq("visibility", "shared").eq("couple_id", coupleId);
-      else q = q.eq("visibility", "shared").eq("user_id", user!.id);
+      let q: any = supabase.from("categories").select("*");
+      if (coupleId) {
+        q = q.or(`couple_id.eq.${coupleId},user_id.eq.${user!.id}`);
+      } else {
+        q = q.eq("user_id", user!.id);
+      }
       const { data } = await q;
       return (data ?? []) as any[];
     },
