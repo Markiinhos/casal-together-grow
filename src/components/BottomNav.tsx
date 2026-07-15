@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, ArrowRightLeft, Plus, Target, MoreHorizontal, TrendingUp, TrendingDown, CreditCard, ArrowLeftRight } from "lucide-react";
+import { Home, ArrowRightLeft, Plus, Target, MoreHorizontal, TrendingUp, TrendingDown, CreditCard, ArrowLeftRight, Mic } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -8,6 +8,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useState } from "react";
+import { VoiceAssistantSheet } from "./VoiceAssistant/VoiceAssistantSheet";
 
 type NavItem = { to: string; icon: any; label: string; exact?: boolean; primary?: boolean };
 
@@ -38,9 +39,11 @@ export function BottomNav() {
   const { pathname } = useLocation();
   const activeIdx = useActiveTab(pathname);
   const [open, setOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   return (
     <>
+      <VoiceAssistantSheet open={voiceOpen} onOpenChange={setVoiceOpen} />
       <nav className="fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border pb-[env(safe-area-inset-bottom)] rounded-t-2xl shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
         <div className="max-w-md mx-auto grid grid-cols-5 px-1 py-1 relative">
           {items.map((item) => {
@@ -105,8 +108,18 @@ export function BottomNav() {
                         <div className="size-12 rounded-full bg-accent-purple/10 text-accent-purple flex items-center justify-center">
                           <CreditCard className="size-6" />
                         </div>
-                        <span className="text-[11px] font-medium text-center">Despesa Cartão</span>
+                        <span className="text-[11px] font-medium text-center">Fatura</span>
                       </Link>
+
+                      <button 
+                        onClick={() => { setOpen(false); setVoiceOpen(true); }}
+                        className="flex flex-col items-center gap-2 outline-none focus:outline-none"
+                      >
+                        <div className="size-12 rounded-full gradient-coral text-white flex items-center justify-center">
+                          <Mic className="size-6" />
+                        </div>
+                        <span className="text-[11px] font-medium text-center">Assistente</span>
+                      </button>
                     </div>
                   </DrawerContent>
                 </Drawer>

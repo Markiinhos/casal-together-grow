@@ -1,7 +1,7 @@
 import { getLocalISODate } from "@/lib/date-utils";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile, useCouple, usePartner } from "@/lib/hooks";
@@ -28,6 +28,8 @@ import {
   Droplet,
   RefreshCw,
 } from "lucide-react";
+import { VoiceAssistantButton } from "@/components/VoiceAssistant/VoiceAssistantButton";
+import { VoiceAssistantSheet } from "@/components/VoiceAssistant/VoiceAssistantSheet";
 
 export const Route = createFileRoute("/app/")({
   component: HomePage,
@@ -41,6 +43,7 @@ function HomePage() {
   const { space } = useSpace();
   const coupleId = profile?.couple_id ?? null;
   const qc = useQueryClient();
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const ref = new Date();
   const opts = { space, userId: user?.id ?? "", coupleId };
@@ -525,6 +528,11 @@ function HomePage() {
           )}
         </section>
       </div>
+
+      <div className="fixed bottom-24 right-4 z-50">
+        <VoiceAssistantButton onClick={() => setVoiceOpen(true)} />
+      </div>
+      <VoiceAssistantSheet open={voiceOpen} onOpenChange={setVoiceOpen} />
     </>
   );
 }
