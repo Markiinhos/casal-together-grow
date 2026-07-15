@@ -79,30 +79,28 @@ export async function fetchAccountsTotal(opts: SpaceOpts): Promise<number> {
  * Despesas contabilizadas do mês:
  * - Transações à vista (Pix/dinheiro/débito) na data da transação (sem credit_card_id)
  * - Parcelas do mês (installments.due_date) — inclui compras parceladas
- * - Compras no cartão à vista → vão para o mês da fatura (calculado via credit_card + closing_day)
+ * - Compras no cartão à vista → contabilizadas na data da transação
  * - EXCLUI transferências (type='transfer') e pagamentos de fatura (is_card_payment=true)
  */
-export async function fetchMonthExpenses(ref: Date, opts: SpaceOpts): Promise<{
-  total: number;
-  byCategory: Record<string, number>;
-}> {
+export async function getCategoryExpenses(ref: Date, opts: SpaceOpts): Promise<{ total: number; byCategory: Record<string, number> }> {
   const { start, end } = monthRange(ref);
   const byCategory: Record<string, number> = {};
   let total = 0;
 
-  // 1. Transações à vista (não cartão, não transfer, não pagamento de fatura)
+  // 1. Transações à vista (dinheiro ou cartão 1x)
   let q1: any = supabase
     .from("transactions")
-    .select("amount,category_id,credit_card_id,total_installments,type,is_card_payment,date,credit_cards(closing_day)")
+    .select("amount,category_id,is_card_payment")
     .eq("type", "expense")
-    .eq("is_card_payment", false)
-    .is("credit_card_id", null)
+    .is("is_card_payment", false)
     .is("total_installments", null)
     .gte("date", start)
     .lte("date", end);
+    
   if (opts.space === "private") q1 = q1.eq("visibility", "private").eq("user_id", opts.userId);
   else if (opts.coupleId) q1 = q1.eq("visibility", "shared").eq("couple_id", opts.coupleId);
   else q1 = q1.eq("visibility", "shared").eq("user_id", opts.userId);
+  
   const { data: cash } = await q1;
   for (const t of (cash ?? []) as any[]) {
     const v = Number(t.amount);
@@ -111,12 +109,13 @@ export async function fetchMonthExpenses(ref: Date, opts: SpaceOpts): Promise<{
     byCategory[k] = (byCategory[k] ?? 0) + v;
   }
 
-  // 2. Parcelas com due_date no mês
+  // 2. Parcelas
   let q2: any = supabase
     .from("installments")
-    .select("amount,due_date,transactions!inner(category_id,visibility,couple_id,user_id,type,is_card_payment)")
+    .select("amount,transactions!inner(category_id,visibility,couple_id,user_id,type,is_card_payment)")
     .gte("due_date", start)
     .lte("due_date", end);
+    
   const { data: inst } = await q2;
   for (const i of (inst ?? []) as any[]) {
     const tx = i.transactions;
@@ -132,31 +131,6 @@ export async function fetchMonthExpenses(ref: Date, opts: SpaceOpts): Promise<{
     total += v;
     const k = tx.category_id ?? "__none__";
     byCategory[k] = (byCategory[k] ?? 0) + v;
-  }
-
-  // 3. Compras no cartão à vista (credit_card_id não nulo, sem parcelas) → mês da fatura
-  let q3: any = supabase
-    .from("transactions")
-    .select("amount,category_id,date,credit_cards!inner(closing_day)")
-    .eq("type", "expense")
-    .eq("is_card_payment", false)
-    .not("credit_card_id", "is", null)
-    .is("total_installments", null);
-  if (opts.space === "private") q3 = q3.eq("visibility", "private").eq("user_id", opts.userId);
-  else if (opts.coupleId) q3 = q3.eq("visibility", "shared").eq("couple_id", opts.coupleId);
-  else q3 = q3.eq("visibility", "shared").eq("user_id", opts.userId);
-  const { data: cards } = await q3;
-  for (const t of (cards ?? []) as any[]) {
-    const closing = Number(t.credit_cards?.closing_day ?? 1);
-    const d = new Date(t.date + "T00:00:00");
-    // Fatura do mês seguinte se compra após o fechamento
-    const invMonth = new Date(d.getFullYear(), d.getMonth() + (d.getDate() >= closing ? 1 : 0), 1);
-    if (invMonth.getFullYear() === ref.getFullYear() && invMonth.getMonth() === ref.getMonth()) {
-      const v = Number(t.amount);
-      total += v;
-      const k = t.category_id ?? "__none__";
-      byCategory[k] = (byCategory[k] ?? 0) + v;
-    }
   }
 
   return { total, byCategory };

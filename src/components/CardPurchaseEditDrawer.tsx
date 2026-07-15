@@ -54,6 +54,15 @@ const KEYS = [
   "cards",
   "tx-projecao",
   "plans",
+  // Additional keys requested by user
+  "card-history",
+  "transactions",
+  "installments",
+  "category-expenses",
+  "monthly-financial-summary",
+  "finance-dashboard",
+  "monthly-plans",
+  "financial-projection",
 ];
 
 function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
@@ -93,10 +102,13 @@ export function CardPurchaseEditDrawer({
   const { data: cards = [] } = useQuery({
     queryKey: ["cards-edit", coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("credit_cards").select("*").order("name");
-      const { data } = coupleId
-        ? await q.eq("couple_id", coupleId)
-        : await q.eq("user_id", user!.id);
+      let q: any = supabase.from("credit_cards").select("*").order("name");
+      if (coupleId) {
+        q = q.or(`couple_id.eq.${coupleId},user_id.eq.${user!.id}`);
+      } else {
+        q = q.eq("user_id", user!.id);
+      }
+      const { data } = await q;
       return (data ?? []) as any[];
     },
     enabled: !!user && open,
@@ -105,14 +117,13 @@ export function CardPurchaseEditDrawer({
   const { data: cats = [] } = useQuery({
     queryKey: ["cats-exp-edit", coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase
-        .from("categories")
-        .select("*")
-        .eq("type", "expense")
-        .order("name");
-      const { data } = coupleId
-        ? await q.eq("couple_id", coupleId)
-        : await q.eq("user_id", user!.id);
+      let q: any = supabase.from("categories").select("*").order("name");
+      if (coupleId) {
+        q = q.or(`couple_id.eq.${coupleId},user_id.eq.${user!.id}`);
+      } else {
+        q = q.eq("user_id", user!.id);
+      }
+      const { data } = await q;
       return (data ?? []) as any[];
     },
     enabled: !!user && open,
@@ -159,24 +170,28 @@ export function CardPurchaseEditDrawer({
       if (!user || !purchaseId) return;
       setSaving(true);
       try {
-        // Update the main transaction
-        const payload: Record<string, any> = {
-          description,
-          amount: totalAmt,
-          date,
-          credit_card_id: cardId || null,
-          category_id: categoryId === "none" ? null : categoryId || null,
-          total_installments: numInst > 1 ? numInst : null,
-          visibility,
-          note: notes || null,
-          updated_at: new Date().toISOString(),
-        };
+        const payload: Record<string, any> = {};
+        if (description !== tx.description) payload.description = description;
+        if (totalAmt !== Number(tx.amount)) payload.amount = totalAmt;
+        if (date !== tx.date) payload.date = date;
+        const normalizedCard = cardId === "none" ? null : (cardId || null);
+        if (normalizedCard !== tx.credit_card_id) payload.credit_card_id = normalizedCard;
+        const normalizedCat = categoryId === "none" ? null : (categoryId || null);
+        if (normalizedCat !== tx.category_id) payload.category_id = normalizedCat;
+        const normalizedInst = numInst > 1 ? numInst : null;
+        if (normalizedInst !== tx.total_installments) payload.total_installments = normalizedInst;
+        if (visibility !== tx.visibility) payload.visibility = visibility;
+        const normalizedNotes = notes || null;
+        if (normalizedNotes !== tx.note) payload.note = normalizedNotes;
 
-        const { error } = await supabase
-          .from("transactions")
-          .update(payload as any)
-          .eq("id", purchaseId);
-        if (error) throw error;
+        if (Object.keys(payload).length > 0) {
+          payload.updated_at = new Date().toISOString();
+          const { error } = await supabase
+            .from("transactions")
+            .update(payload)
+            .eq("id", purchaseId);
+          if (error) throw error;
+        }
 
         const amtChanged = tx.amount !== totalAmt;
         const instChanged = tx.total_installments !== numInst;
@@ -239,6 +254,7 @@ export function CardPurchaseEditDrawer({
       editScope,
       existingInst,
       perInst,
+      tx,
       qc,
       onOpenChange,
     ]

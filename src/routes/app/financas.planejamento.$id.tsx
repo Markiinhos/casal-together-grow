@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, AlertTriangle } from "lucide-react";
-import { formatBRL, monthLabel, daysRemaining, safePercent, budgetStatus, fetchMonthExpenses } from "@/lib/finance";
+import { formatBRL, monthLabel, daysRemaining, safePercent, budgetStatus, getCategoryExpenses } from "@/lib/finance";
 import { fetchSubscriptions, buildSummary } from "@/lib/subscriptions";
 import { useSpace } from "@/lib/space";
 
@@ -44,7 +44,7 @@ function PlanDetail() {
 
   const expenses = useQuery({
     queryKey: ["plan-expenses", id, plan.data?.reference_month, space, coupleId, user?.id],
-    queryFn: () => fetchMonthExpenses(refDate, { space, userId: user!.id, coupleId }),
+    queryFn: () => getCategoryExpenses(refDate, { space, userId: user!.id, coupleId }),
     enabled: !!user && !!plan.data,
   });
   

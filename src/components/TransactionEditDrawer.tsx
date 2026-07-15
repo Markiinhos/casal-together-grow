@@ -53,6 +53,15 @@ const QUERY_KEYS_TO_INVALIDATE = [
   "plans",
   "cats",
   "cats-exp",
+  // Additional keys requested by user
+  "card-history",
+  "transactions",
+  "installments",
+  "category-expenses",
+  "monthly-financial-summary",
+  "finance-dashboard",
+  "monthly-plans",
+  "financial-projection",
 ];
 
 function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
@@ -124,27 +133,31 @@ export function TransactionEditDrawer({
     enabled: !!user && open,
   });
 
-  // Cards
   const { data: cards = [] } = useQuery({
     queryKey: ["cards-edit", coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("credit_cards").select("*").order("name");
-      const { data } = coupleId
-        ? await q.eq("couple_id", coupleId)
-        : await q.eq("user_id", user!.id);
+      let q: any = supabase.from("credit_cards").select("*").order("name");
+      if (coupleId) {
+        q = q.or(`couple_id.eq.${coupleId},user_id.eq.${user!.id}`);
+      } else {
+        q = q.eq("user_id", user!.id);
+      }
+      const { data } = await q;
       return (data ?? []) as any[];
     },
     enabled: !!user && open,
   });
 
-  // Accounts
   const { data: accounts = [] } = useQuery({
     queryKey: ["accounts-edit", coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("bank_accounts").select("*").eq("hidden", false).order("name");
-      const { data } = coupleId
-        ? await q.eq("couple_id", coupleId)
-        : await q.eq("user_id", user!.id);
+      let q: any = supabase.from("bank_accounts").select("*").eq("hidden", false).order("name");
+      if (coupleId) {
+        q = q.or(`couple_id.eq.${coupleId},user_id.eq.${user!.id}`);
+      } else {
+        q = q.eq("user_id", user!.id);
+      }
+      const { data } = await q;
       return (data ?? []) as any[];
     },
     enabled: !!user && open,
@@ -176,31 +189,42 @@ export function TransactionEditDrawer({
       if (!user || !transactionId) return;
       setSaving(true);
       try {
-        const payload: Record<string, any> = {
-          description,
-          amount: parseFloat(amount.replace(",", ".")),
-          type,
-          date,
-          category_id: categoryId === "none" ? null : categoryId || null,
-          credit_card_id: creditCardId === "none" ? null : creditCardId || null,
-          total_installments: totalInstallments
-            ? parseInt(totalInstallments)
-            : null,
-          visibility,
-          note: notes || null,
-          account_id: accountId === "none" ? null : accountId || null,
-          updated_at: new Date().toISOString(),
-        };
+        const payload: Record<string, any> = {};
+        if (description !== tx.description) payload.description = description;
+        const totalAmt = parseFloat(amount.replace(",", "."));
+        if (totalAmt !== Number(tx.amount)) payload.amount = totalAmt;
+        if (type !== tx.type) payload.type = type;
+        if (date !== tx.date) payload.date = date;
+        
+        const normalizedCat = categoryId === "none" ? null : (categoryId || null);
+        if (normalizedCat !== tx.category_id) payload.category_id = normalizedCat;
+        
+        const normalizedCard = creditCardId === "none" ? null : (creditCardId || null);
+        if (normalizedCard !== tx.credit_card_id) payload.credit_card_id = normalizedCard;
+        
+        const normalizedInst = totalInstallments ? parseInt(totalInstallments) : null;
+        if (normalizedInst !== tx.total_installments) payload.total_installments = normalizedInst;
+        
+        if (visibility !== tx.visibility) payload.visibility = visibility;
+        
+        const normalizedNotes = notes || null;
+        if (normalizedNotes !== tx.note) payload.note = normalizedNotes;
+        
+        const normalizedAcc = accountId === "none" ? null : (accountId || null);
+        if (normalizedAcc !== tx.account_id) payload.account_id = normalizedAcc;
 
-        const { error } = await supabase
-          .from("transactions")
-          .update(payload as any)
-          .eq("id", transactionId);
+        if (Object.keys(payload).length > 0) {
+          payload.updated_at = new Date().toISOString();
+          const { error } = await supabase
+            .from("transactions")
+            .update(payload)
+            .eq("id", transactionId);
 
-        if (error) {
-          console.error("[tx-edit] save error:", error);
-          toast.error(`Erro ao salvar: ${error.message}`);
-          return;
+          if (error) {
+            console.error("[tx-edit] save error:", error);
+            toast.error(`Erro ao salvar: ${error.message}`);
+            return;
+          }
         }
 
         toast.success("Lançamento atualizado!");
@@ -226,6 +250,7 @@ export function TransactionEditDrawer({
       visibility,
       notes,
       accountId,
+      tx,
       qc,
       onOpenChange,
     ]

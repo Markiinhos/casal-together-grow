@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useProfile, useCouple, usePartner } from "@/lib/hooks";
 import { useSpace, applySpaceFilter } from "@/lib/space";
 import { formatBRL } from "@/lib/couple";
-import { fetchMonthExpenses, fetchMonthIncome, fetchAccountsTotal } from "@/lib/finance";
+import { getCategoryExpenses, fetchMonthIncome, fetchAccountsTotal } from "@/lib/finance";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ function HomePage() {
     queryKey: ["home-tx", monthKey, space, coupleId, user?.id],
     queryFn: async () => {
       const [expData, incomeTotal, accountsBalance] = await Promise.all([
-        fetchMonthExpenses(ref, opts),
+        getCategoryExpenses(ref, opts),
         fetchMonthIncome(ref, opts),
         fetchAccountsTotal(opts),
       ]);

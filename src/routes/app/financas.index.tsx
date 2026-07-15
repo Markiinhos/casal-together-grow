@@ -17,7 +17,7 @@ import {
   Target,
 } from "lucide-react";
 import {
-  fetchAccountsTotal, fetchMonthExpenses, fetchMonthIncome, fetchCardInvoice,
+  fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, fetchCardInvoice,
   formatBRL, hideOrShow, monthLabel, monthRange,
 } from "@/lib/finance";
 import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
@@ -55,7 +55,7 @@ function FinancasCentral() {
 
   const expenses = useQuery({
     queryKey: ["fin-expenses", monthKey, space, coupleId, user?.id],
-    queryFn: () => fetchMonthExpenses(ref, opts),
+    queryFn: () => getCategoryExpenses(ref, opts),
     enabled: !!user,
   });
 
