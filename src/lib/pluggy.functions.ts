@@ -164,7 +164,7 @@ export const savePluggyItem = createServerFn({ method: "POST" })
     }
 
     // Transactions (last 90 days) + auto-import to transactions table
-    const from = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const from = getLocalISODate(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
     let imported = 0;
     for (const acc of accounts) {
       const { data: localAcc } = await supabase
