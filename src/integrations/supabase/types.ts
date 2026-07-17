@@ -116,10 +116,8 @@ export type Database = {
       }
       bank_connections: {
         Row: {
-          access_token: string | null
           couple_id: string | null
           created_at: string
-          expires_at: string | null
           id: string
           institution_id: string | null
           institution_logo: string | null
@@ -128,17 +126,14 @@ export type Database = {
           metadata: Json | null
           pluggy_item_id: string | null
           provider: string
-          refresh_token: string | null
           status: string
           updated_at: string
           user_id: string
           visibility: string
         }
         Insert: {
-          access_token?: string | null
           couple_id?: string | null
           created_at?: string
-          expires_at?: string | null
           id?: string
           institution_id?: string | null
           institution_logo?: string | null
@@ -147,17 +142,14 @@ export type Database = {
           metadata?: Json | null
           pluggy_item_id?: string | null
           provider: string
-          refresh_token?: string | null
           status?: string
           updated_at?: string
           user_id: string
           visibility?: string
         }
         Update: {
-          access_token?: string | null
           couple_id?: string | null
           created_at?: string
-          expires_at?: string | null
           id?: string
           institution_id?: string | null
           institution_logo?: string | null
@@ -166,7 +158,6 @@ export type Database = {
           metadata?: Json | null
           pluggy_item_id?: string | null
           provider?: string
-          refresh_token?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -2256,7 +2247,6 @@ export type Database = {
           meal_plan_id: string | null
           name: string
           quantity: string | null
-          source_type: string
           user_id: string
           visibility: string
         }
@@ -2269,7 +2259,6 @@ export type Database = {
           meal_plan_id?: string | null
           name: string
           quantity?: string | null
-          source_type?: string
           user_id: string
           visibility?: string
         }
@@ -2282,7 +2271,6 @@ export type Database = {
           meal_plan_id?: string | null
           name?: string
           quantity?: string | null
-          source_type?: string
           user_id?: string
           visibility?: string
         }
@@ -2301,56 +2289,6 @@ export type Database = {
             referencedRelation: "meal_plans"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      voice_assistant_commands: {
-        Row: {
-          id: string
-          user_id: string
-          couple_id: string | null
-          visibility: string
-          transcript: string
-          intent: string | null
-          entities: Json | null
-          status: string
-          error_message: string | null
-          created_at: string
-          executed_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          couple_id?: string | null
-          visibility?: string
-          transcript: string
-          intent?: string | null
-          entities?: Json | null
-          status?: string
-          error_message?: string | null
-          created_at?: string
-          executed_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          couple_id?: string | null
-          visibility?: string
-          transcript?: string
-          intent?: string | null
-          entities?: Json | null
-          status?: string
-          error_message?: string | null
-          created_at?: string
-          executed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "voice_assistant_commands_couple_id_fkey"
-            columns: ["couple_id"]
-            isOneToOne: false
-            referencedRelation: "couples"
-            referencedColumns: ["id"]
-          }
         ]
       }
       subscription_history: {
