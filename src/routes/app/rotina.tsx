@@ -33,7 +33,7 @@ function startOfWeek(d = new Date()) {
   return getLocalISODate(x);
 }
 function startOfMonth(d = new Date()) {
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  return getLocalISODate(new Date(d.getFullYear(), d.getMonth(), 1));
 }
 
 function RotinaPage() {

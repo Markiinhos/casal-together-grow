@@ -7,7 +7,7 @@ import { getLocalISODate } from "@/lib/date-utils";
 
 
 export function FinanceInsights() {
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const monthStart = getLocalISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const { data } = useQuery({
     queryKey: ["insights", monthStart],
     queryFn: async () => {
