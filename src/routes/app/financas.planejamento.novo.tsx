@@ -56,8 +56,8 @@ function PlanWizard() {
     if (editingId || income > 0) return;
     (async () => {
       const now = new Date(referenceMonth + "T12:00:00");
-      const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
-      const prevEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+      const prevStart = getLocalISODate(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+      const prevEnd = getLocalISODate(new Date(now.getFullYear(), now.getMonth(), 0));
       let q: any = supabase.from("transactions").select("amount").eq("type", "income").gte("date", prevStart).lte("date", prevEnd);
       if (space === "private") q = q.eq("visibility", "private").eq("user_id", user!.id);
       else if (coupleId) q = q.eq("visibility", "shared").eq("couple_id", coupleId);
