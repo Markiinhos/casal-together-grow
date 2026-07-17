@@ -58,7 +58,7 @@ function SubsPage() {
   const filtered = useMemo(() => {
     let list = [...subs];
     const now = new Date();
-    const in7Days = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+    const in7Days = getLocalISODate(new Date(now.getTime() + 7 * 86400000));
     const today = getLocalISODate(now);
 
     switch (filter) {
