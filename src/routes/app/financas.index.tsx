@@ -301,11 +301,27 @@ function FinancasCentral() {
               {(invoiceTab === "open" ? openInvoices : cardsList).map((c: any) => {
                 const m = cardMetrics[c.id];
                 const inv = m?.activeInv;
-                const used = inv?.total_amount ?? m?.currentBill ?? 0;
-                const limit = Number(c.limit_amount ?? 0);
-                const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
-                const available = Math.max(0, limit - used);
+                const agg = cardAggById[c.id];
+                const invoiceAmount = agg?.invoiceAmount ?? 0;
+                const committed = agg?.committed ?? 0;
+                const limit = agg?.limit ?? Number(c.limit_amount ?? 0);
+                const pct = limit > 0 ? Math.min(100, (committed / limit) * 100) : 0;
+                const available = agg?.available ?? Math.max(0, limit - committed);
                 return (
+                  <Card key={c.id} className="rounded-2xl p-4 shadow-card">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="size-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: c.color + "22", color: c.color }}>
+                        <CreditCard className="size-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{c.name}</div>
+                        <div className="text-xs text-muted-foreground">{c.bank || "Cartão"} · fecha dia {c.closing_day} · vence {c.due_day}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold">{hideOrShow(invoiceAmount, hidden)}</div>
+                        <div className="text-[11px] text-muted-foreground">Fatura {inv?.status === "paid" ? "Paga" : ""}</div>
+                      </div>
+                    </div>
                   <Card key={c.id} className="rounded-2xl p-4 shadow-card">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="size-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: c.color + "22", color: c.color }}>
