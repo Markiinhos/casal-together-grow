@@ -322,20 +322,6 @@ function FinancasCentral() {
                         <div className="text-[11px] text-muted-foreground">Fatura {inv?.status === "paid" ? "Paga" : ""}</div>
                       </div>
                     </div>
-                  <Card key={c.id} className="rounded-2xl p-4 shadow-card">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="size-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: c.color + "22", color: c.color }}>
-                        <CreditCard className="size-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{c.name}</div>
-                        <div className="text-xs text-muted-foreground">{c.bank || "Cartão"} · fecha dia {c.closing_day} · vence {c.due_day}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-semibold">{hideOrShow(used, hidden)}</div>
-                        <div className="text-[11px] text-muted-foreground">Fatura {inv?.status === "paid" ? "Paga" : ""}</div>
-                      </div>
-                    </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                       <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
                     </div>
