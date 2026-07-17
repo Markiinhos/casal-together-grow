@@ -362,29 +362,58 @@ function CardsPage() {
 }
 
 function PurchasesList({ purchases, cards }: { purchases: any[]; cards: any[] }) {
+  const [statusFilter, setStatusFilter] = useState<"ativas" | "quitadas" | "todas">("ativas");
   const parceladas = purchases.filter((p) => (p.installments?.length ?? 0) > 1);
   if (parceladas.length === 0) return null;
   const cardName = (id: string) => cards.find((c) => c.id === id)?.name ?? "—";
+  const filtered = parceladas.filter((p) => {
+    const insts = p.installments ?? [];
+    const quitada = insts.length > 0 && insts.every((i: any) => i.paid);
+    if (statusFilter === "ativas") return !quitada;
+    if (statusFilter === "quitadas") return quitada;
+    return true;
+  });
+  const counts = {
+    ativas: parceladas.filter((p) => !(p.installments ?? []).every((i: any) => i.paid)).length,
+    quitadas: parceladas.filter((p) => (p.installments ?? []).length > 0 && (p.installments ?? []).every((i: any) => i.paid)).length,
+  };
   return (
     <Card className="rounded-3xl shadow-card overflow-hidden">
-      <div className="px-4 py-3 border-b border-border font-semibold text-sm flex items-center gap-2">
-        <Calendar className="size-4 text-primary" /> Compras parceladas
+      <div className="px-4 py-3 border-b border-border font-semibold text-sm flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2"><Calendar className="size-4 text-primary" /> Compras parceladas</div>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+          <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ativas">Ativas ({counts.ativas})</SelectItem>
+            <SelectItem value="quitadas">Quitadas ({counts.quitadas})</SelectItem>
+            <SelectItem value="todas">Todas ({parceladas.length})</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+      {filtered.length === 0 ? (
+        <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+          Nenhuma compra {statusFilter === "ativas" ? "ativa" : statusFilter === "quitadas" ? "quitada" : ""}.
+        </div>
+      ) : (
       <div className="divide-y divide-border">
-        {parceladas.map((p) => {
+        {filtered.map((p) => {
           const insts = (p.installments ?? []).slice().sort((a: any, b: any) => a.installment_number - b.installment_number);
           const paid = insts.filter((i: any) => i.paid).length;
           const total = insts.length;
           const remaining = insts.filter((i: any) => !i.paid).reduce((s: number, i: any) => s + Number(i.amount), 0);
           const lastDue = insts[insts.length - 1]?.due_date;
+          const quitada = total > 0 && paid === total;
           return (
             <Collapsible key={p.id}>
-              <CollapsibleTrigger className="w-full px-4 py-3 flex items-center gap-3 hover:bg-accent/30 text-left">
+              <CollapsibleTrigger className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-accent/30 text-left ${quitada ? "opacity-60" : ""}`}>
                 <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <ShoppingBag className="size-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{p.description || p.categories?.name || "Compra"}</div>
+                  <div className="text-sm font-medium truncate">
+                    {p.description || p.categories?.name || "Compra"}
+                    {quitada && <span className="ml-2 text-[10px] bg-success/10 text-success px-1.5 py-0.5 rounded uppercase">Quitada</span>}
+                  </div>
                   <div className="text-xs text-muted-foreground">{cardName(p.credit_card_id)} · {paid}/{total} pagas · {formatBRL(Number(p.amount))}</div>
                 </div>
                 <div className="text-right">
@@ -407,6 +436,7 @@ function PurchasesList({ purchases, cards }: { purchases: any[]; cards: any[] })
           );
         })}
       </div>
+      )}
     </Card>
   );
 }
