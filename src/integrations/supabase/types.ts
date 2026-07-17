@@ -2256,7 +2256,6 @@ export type Database = {
           meal_plan_id: string | null
           name: string
           quantity: string | null
-          source_type: string
           user_id: string
           visibility: string
         }
@@ -2269,7 +2268,6 @@ export type Database = {
           meal_plan_id?: string | null
           name: string
           quantity?: string | null
-          source_type?: string
           user_id: string
           visibility?: string
         }
@@ -2282,7 +2280,6 @@ export type Database = {
           meal_plan_id?: string | null
           name?: string
           quantity?: string | null
-          source_type?: string
           user_id?: string
           visibility?: string
         }
@@ -2301,56 +2298,6 @@ export type Database = {
             referencedRelation: "meal_plans"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      voice_assistant_commands: {
-        Row: {
-          id: string
-          user_id: string
-          couple_id: string | null
-          visibility: string
-          transcript: string
-          intent: string | null
-          entities: Json | null
-          status: string
-          error_message: string | null
-          created_at: string
-          executed_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          couple_id?: string | null
-          visibility?: string
-          transcript: string
-          intent?: string | null
-          entities?: Json | null
-          status?: string
-          error_message?: string | null
-          created_at?: string
-          executed_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          couple_id?: string | null
-          visibility?: string
-          transcript?: string
-          intent?: string | null
-          entities?: Json | null
-          status?: string
-          error_message?: string | null
-          created_at?: string
-          executed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "voice_assistant_commands_couple_id_fkey"
-            columns: ["couple_id"]
-            isOneToOne: false
-            referencedRelation: "couples"
-            referencedColumns: ["id"]
-          }
         ]
       }
       subscription_history: {
