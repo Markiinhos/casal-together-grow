@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import {
   fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, fetchCardInvoice,
-  formatBRL, hideOrShow, monthLabel, monthRange,
+  formatBRL, hideOrShow, monthLabel, monthRange, getCardAggregate,
 } from "@/lib/finance";
 import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
 import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";
