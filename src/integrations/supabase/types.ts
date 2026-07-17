@@ -116,10 +116,8 @@ export type Database = {
       }
       bank_connections: {
         Row: {
-          access_token: string | null
           couple_id: string | null
           created_at: string
-          expires_at: string | null
           id: string
           institution_id: string | null
           institution_logo: string | null
@@ -128,17 +126,14 @@ export type Database = {
           metadata: Json | null
           pluggy_item_id: string | null
           provider: string
-          refresh_token: string | null
           status: string
           updated_at: string
           user_id: string
           visibility: string
         }
         Insert: {
-          access_token?: string | null
           couple_id?: string | null
           created_at?: string
-          expires_at?: string | null
           id?: string
           institution_id?: string | null
           institution_logo?: string | null
@@ -147,17 +142,14 @@ export type Database = {
           metadata?: Json | null
           pluggy_item_id?: string | null
           provider: string
-          refresh_token?: string | null
           status?: string
           updated_at?: string
           user_id: string
           visibility?: string
         }
         Update: {
-          access_token?: string | null
           couple_id?: string | null
           created_at?: string
-          expires_at?: string | null
           id?: string
           institution_id?: string | null
           institution_logo?: string | null
@@ -166,7 +158,6 @@ export type Database = {
           metadata?: Json | null
           pluggy_item_id?: string | null
           provider?: string
-          refresh_token?: string | null
           status?: string
           updated_at?: string
           user_id?: string
