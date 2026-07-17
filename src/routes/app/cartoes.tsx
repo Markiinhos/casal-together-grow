@@ -700,9 +700,11 @@ function CompareChart({ cards, cardMetrics }: { cards: any[]; cardMetrics: any }
   const data = cards.map((c) => {
     const m = cardMetrics[c.id] ?? {};
     const limit = Number(c.limit_amount) || 0;
+    // FONTE ÚNICA: prefere activeInv.total_amount (servidor) sobre currentBill (cliente)
+    const fatura = Number(m.activeInv?.total_amount ?? m.currentBill ?? 0);
     return {
       name: c.name,
-      fatura: Math.round(m.currentBill ?? 0),
+      fatura: Math.round(fatura),
       comprometido: Math.round(m.used ?? 0),
       limite: Math.round(limit),
       pct: limit > 0 ? Math.round(((m.used ?? 0) / limit) * 100) : 0,
