@@ -164,6 +164,10 @@ function FinancasCentral() {
   const [paymentTxId, setPaymentTxId] = useState<string | null>(null);
 
   const cardMetrics = useCardMetrics(cardsList, purchases, invoices);
+  // FONTE ÚNICA: mesma agregação usada em /app/cartoes (invoice = activeInv.total_amount,
+  // committed inclui parcelas futuras, available = limit - committed).
+  const cardAgg = useMemo(() => getCardAggregate(cardsList, cardMetrics), [cardsList, cardMetrics]);
+  const cardAggById = useMemo(() => Object.fromEntries(cardAgg.perCard.map((p) => [p.cardId, p])), [cardAgg]);
 
   const byCatSorted = useMemo(() => {
     const map = expenses.data?.byCategory ?? {};
