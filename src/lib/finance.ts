@@ -180,3 +180,65 @@ export function formatBRL(v: number): string {
 export function hideOrShow(v: number, hidden: boolean): string {
   return hidden ? "R$ ••••" : formatBRL(v);
 }
+
+/**
+ * FONTE ÚNICA — Agregados de cartões
+ * Consolida os totais exibidos em Home / Cartões / Financeiro para que
+ * "Total de faturas" seja SEMPRE a soma do que cada cartão mostra
+ * individualmente. Prefere `activeInv.total_amount` (calculado pelo servidor
+ * via recalculate_card_invoice_totals) e cai para `currentBill` apenas
+ * quando não há row de fatura no banco.
+ */
+export interface CardAggregate {
+  totalInvoices: number;      // Σ (fatura ativa) por cartão
+  totalCommitted: number;     // Σ (parcelas em aberto + fatura atual)
+  totalLimit: number;
+  totalAvailable: number;
+  perCard: Array<{
+    cardId: string;
+    invoiceAmount: number;
+    committed: number;
+    limit: number;
+    available: number;
+    invoiceStatus: string | null;
+    invoiceId: string | null;
+  }>;
+}
+
+export function getCardAggregate(
+  cards: Array<{ id: string; limit_amount?: number | string | null }>,
+  metrics: Record<string, { used?: number; currentBill?: number; activeInv?: any }>,
+): CardAggregate {
+  const perCard: CardAggregate["perCard"] = [];
+  let totalInvoices = 0;
+  let totalCommitted = 0;
+  let totalLimit = 0;
+  let totalAvailable = 0;
+
+  for (const c of cards) {
+    const m = metrics[c.id] ?? {};
+    const inv = m.activeInv ?? null;
+    const invoiceAmount = Number(inv?.total_amount ?? m.currentBill ?? 0);
+    const committed = Number(m.used ?? 0);
+    const limit = Number(c.limit_amount ?? 0);
+    const available = Math.max(0, limit - committed);
+
+    totalInvoices += invoiceAmount;
+    totalCommitted += committed;
+    totalLimit += limit;
+    totalAvailable += available;
+
+    perCard.push({
+      cardId: c.id,
+      invoiceAmount,
+      committed,
+      limit,
+      available,
+      invoiceStatus: inv?.status ?? null,
+      invoiceId: inv?.id ?? null,
+    });
+  }
+
+  return { totalInvoices, totalCommitted, totalLimit, totalAvailable, perCard };
+}
+
