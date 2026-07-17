@@ -56,7 +56,7 @@ export async function executeVoiceCommand(
     if (visibility === "private") {
       q = q.eq("user_id", userId).is("couple_id", null);
     } else {
-      q = q.eq("couple_id", targetCoupleId);
+      q = q.eq("couple_id", targetCoupleId as string);
     }
     
     const { data: existingItems, error: fetchError } = await q;
@@ -141,7 +141,7 @@ export async function logVoiceCommand(
   errorMessage: string | null = null
 ) {
   try {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("voice_assistant_commands")
       .insert({
         user_id: userId,

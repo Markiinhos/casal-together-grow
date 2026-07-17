@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mic, Send, X, Loader2 } from "lucide-react";
+import { Mic, Send, X, Loader2, Check } from "lucide-react";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { parseVoiceCommandFn } from "@/lib/voice.functions";
 import { executeVoiceCommand, logVoiceCommand, VoiceIntent } from "@/lib/voice-executor";
@@ -136,9 +136,10 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
       ];
 
       if (itemsToInsert.length > 0) {
-        const { error } = await import("@/integrations/supabase/client").then(m => m.supabase)
-          .from("shopping_items").insert(itemsToInsert);
-          
+        const mod = await import("@/integrations/supabase/client");
+        const { error } = await mod.supabase
+          .from("shopping_items").insert(itemsToInsert as never);
+
         if (error) throw error;
       }
 

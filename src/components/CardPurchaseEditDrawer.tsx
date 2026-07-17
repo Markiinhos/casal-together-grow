@@ -188,7 +188,7 @@ export function CardPurchaseEditDrawer({
           payload.updated_at = new Date().toISOString();
           const { error } = await supabase
             .from("transactions")
-            .update(payload)
+            .update(payload as never)
             .eq("id", purchaseId);
           if (error) throw error;
         }
