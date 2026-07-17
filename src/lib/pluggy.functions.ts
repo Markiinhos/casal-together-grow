@@ -179,7 +179,7 @@ export const savePluggyItem = createServerFn({ method: "POST" })
         const category = mapCategory(tx.description ?? "", tx.category);
         const isExpense = (tx.amount ?? 0) < 0 || tx.type === "DEBIT";
         const amountAbs = Math.abs(tx.amount ?? 0);
-        const dateStr = (tx.date instanceof Date ? tx.date : new Date(tx.date)).toISOString().slice(0, 10);
+        const dateStr = getLocalISODate(tx.date instanceof Date ? tx.date : new Date(tx.date));
 
         // Insert local CASAL transaction (idempotent via pluggy_transaction_id unique index)
         const { data: existingTx } = await supabase
