@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mic, Send, Edit2, X, Check, Loader2 } from "lucide-react";
+import { Mic, Send, X, Loader2 } from "lucide-react";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { parseVoiceCommandFn } from "@/lib/voice.functions";
 import { executeVoiceCommand, logVoiceCommand, VoiceIntent } from "@/lib/voice-executor";
@@ -11,6 +11,7 @@ import { useProfile } from "@/lib/hooks";
 import { useSpace } from "@/lib/space";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 
 type VoiceState = "idle" | "listening" | "processing" | "confirming" | "success" | "error";
 
@@ -31,6 +32,7 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
   const { data: profile } = useProfile();
   const { space } = useSpace();
   const qc = useQueryClient();
+  const parseVoiceCommand = useServerFn(parseVoiceCommandFn);
   const coupleId = profile?.couple_id ?? null;
 
   const { isListening, transcript, error: speechError, startListening, stopListening, reset, isSupported } = useSpeechRecognition();
@@ -85,7 +87,7 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
     
     try {
       // 1. Send to Gemini
-      const parsed = await parseVoiceCommandFn({ data: { transcript: textToProcess } });
+      const parsed = await parseVoiceCommand({ data: { transcript: textToProcess } });
       setParsedIntent(parsed);
 
       // 2. Execute Action (Check duplicates/conflicts)
