@@ -217,7 +217,7 @@ export function TransactionEditDrawer({
           payload.updated_at = new Date().toISOString();
           const { error } = await supabase
             .from("transactions")
-            .update(payload)
+            .update(payload as never)
             .eq("id", transactionId);
 
           if (error) {

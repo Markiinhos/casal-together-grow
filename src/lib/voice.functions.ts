@@ -34,7 +34,7 @@ Regras:
 `;
 
 export const parseVoiceCommandFn = createServerFn({ method: "POST" })
-  .validator((data: { transcript: string }) => data)
+  .inputValidator((data: { transcript: string }) => data)
   .handler(async ({ data }) => {
     const apiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
