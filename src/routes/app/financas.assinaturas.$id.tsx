@@ -190,11 +190,11 @@ function SubDetailPage() {
       if (error) throw error;
 
       // Advance next billing
-      const nextDate = calcNextBillingDate(
+      const nextDate = getLocalISODate(calcNextBillingDate(
         new Date(sub.next_billing_date + "T00:00:00"),
         sub.billing_frequency,
         sub.billing_interval
-      ).toISOString().slice(0, 10);
+      ));
 
       await supabase.from("subscriptions").update({
         last_charged_at: new Date().toISOString(),
