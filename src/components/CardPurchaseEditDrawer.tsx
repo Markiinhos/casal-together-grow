@@ -155,8 +155,13 @@ export function CardPurchaseEditDrawer({
       setNotes(tx.note ?? "");
       setConfirmDelete(false);
       setEditScope("all");
+      setDeleteScope(existingInstDefault(tx));
     }
   }, [tx]);
+
+  function existingInstDefault(t: any): "all" | "future" | "cancel" {
+    const anyPaid = (t?.installments ?? []).some((i: any) => i.paid);
+    return anyPaid ? "future" : "all";
 
   const existingInst = (tx?.installments ?? []) as any[];
   const paidCount = existingInst.filter((i: any) => i.paid).length;
