@@ -138,6 +138,7 @@ export function CardPurchaseEditDrawer({
   const [visibility, setVisibility] = useState<"private" | "shared">("shared");
   const [notes, setNotes] = useState("");
   const [editScope, setEditScope] = useState<EditScope>("all");
+  const [deleteScope, setDeleteScope] = useState<"all" | "future" | "cancel">("all");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
