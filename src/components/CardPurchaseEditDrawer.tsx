@@ -560,20 +560,47 @@ export function CardPurchaseEditDrawer({
             </div>
 
             {confirmDelete && (
-              <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive">
-                <AlertTriangle className="size-4 inline mr-1" />
-                {hasPaid
-                  ? "A compra será marcada como cancelada. Parcelas pagas permanecem no histórico."
-                  : "A compra e todas as parcelas serão excluídas permanentemente."}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDelete(false)}
-                  className="ml-2 text-xs h-6"
-                >
-                  Cancelar
-                </Button>
+              <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive space-y-2">
+                {existingInst.length > 1 && (
+                  <div>
+                    <Label className="text-xs text-destructive">Modo de exclusão</Label>
+                    <Select value={deleteScope} onValueChange={(v) => setDeleteScope(v as any)}>
+                      <SelectTrigger className="mt-1 bg-background text-foreground">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" disabled={hasPaid}>
+                          Excluir tudo{hasPaid ? " (indisponível: há parcelas pagas)" : ""}
+                        </SelectItem>
+                        <SelectItem value="future">
+                          Somente parcelas futuras (mantém pagas)
+                        </SelectItem>
+                        <SelectItem value="cancel">
+                          Cancelar compra (mantém histórico)
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="flex items-start gap-1">
+                  <AlertTriangle className="size-4 inline shrink-0 mt-0.5" />
+                  <span>
+                    {deleteScope === "cancel"
+                      ? "A compra será marcada como cancelada. Parcelas pagas permanecem no histórico."
+                      : deleteScope === "future"
+                      ? "Somente as parcelas ainda não pagas serão removidas."
+                      : "A compra e todas as parcelas serão excluídas permanentemente."}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmDelete(false)}
+                    className="ml-auto text-xs h-6"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
               </div>
             )}
           </form>
