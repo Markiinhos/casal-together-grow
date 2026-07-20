@@ -272,14 +272,51 @@ export function CardPurchaseEditDrawer({
     if (!user || !purchaseId) return;
     setDeleting(true);
     try {
-      // Delete installments first
-      await supabase
-        .from("installments")
-        .delete()
-        .eq("transaction_id", purchaseId);
-      const { error } = await supabase.from("transactions").delete().eq("id", purchaseId);
-      if (error) throw error;
-      toast.success("Compra excluída com sucesso!");
+      if (deleteScope === "cancel") {
+        // Mantém histórico: marca a transação como cancelada e apaga apenas parcelas futuras (não pagas)
+        await supabase
+          .from("installments")
+          .delete()
+          .eq("transaction_id", purchaseId)
+          .eq("paid", false);
+        const { error } = await supabase
+          .from("transactions")
+          .update({ status: "cancelled", updated_at: new Date().toISOString() } as never)
+          .eq("id", purchaseId);
+        if (error) throw error;
+        toast.success("Compra cancelada. Parcelas pagas mantidas no histórico.");
+      } else if (deleteScope === "future") {
+        // Apaga só parcelas futuras (não pagas) e ajusta total_installments
+        const remaining = existingInst.filter((i: any) => i.paid).length;
+        await supabase
+          .from("installments")
+          .delete()
+          .eq("transaction_id", purchaseId)
+          .eq("paid", false);
+        const newAmount = existingInst
+          .filter((i: any) => i.paid)
+          .reduce((s: number, i: any) => s + Number(i.amount ?? 0), 0);
+        const { error } = await supabase
+          .from("transactions")
+          .update({
+            total_installments: remaining || null,
+            amount: newAmount || Number(tx.amount),
+            updated_at: new Date().toISOString(),
+          } as never)
+          .eq("id", purchaseId);
+        if (error) throw error;
+        toast.success("Parcelas futuras removidas.");
+      } else {
+        if (hasPaid) {
+          toast.error("Existem parcelas pagas. Use 'Somente futuras' ou 'Cancelar'.");
+          setDeleting(false);
+          return;
+        }
+        await supabase.from("installments").delete().eq("transaction_id", purchaseId);
+        const { error } = await supabase.from("transactions").delete().eq("id", purchaseId);
+        if (error) throw error;
+        toast.success("Compra excluída com sucesso!");
+      }
       invalidateAll(qc);
       onOpenChange(false);
     } catch (err: any) {
@@ -289,7 +326,7 @@ export function CardPurchaseEditDrawer({
       setDeleting(false);
       setConfirmDelete(false);
     }
-  }, [user, purchaseId, hasPaid, qc, onOpenChange]);
+  }, [user, purchaseId, hasPaid, deleteScope, existingInst, tx, qc, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
