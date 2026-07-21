@@ -124,7 +124,7 @@ function CardsPage() {
             invoiceTotal={selectedInvoiceInfo.inv.total_amount}
             paidAmount={selectedInvoiceInfo.inv.paid_amount}
             invoiceId={selectedInvoiceInfo.inv.id}
-            refMonth={new Date(selectedInvoiceInfo.inv.reference_month + "-01T12:00:00")}
+            refMonth={selectedInvoiceInfo.inv.reference_month}
             accounts={accounts}
           />
         )}

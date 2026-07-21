@@ -38,7 +38,7 @@ interface InvoicePaymentDrawerProps {
   invoiceTotal: number;
   paidAmount?: number;
   invoiceId?: string;
-  refMonth: Date;
+  refMonth: string;
   accounts: any[];
 }
 
@@ -104,15 +104,22 @@ export function InvoicePaymentDrawer({
         return;
       }
 
-      if (!invoiceId) {
-        toast.error("Fatura não existe no banco de dados. Cadastre uma compra primeiro.");
-        setSaving(false);
-        return;
+      let finalInvoiceId = invoiceId;
+      if (!finalInvoiceId) {
+        // Sincroniza a fatura virtual garantindo que ela exista no banco
+        // @ts-ignore - ensure_card_invoice is a new RPC not yet in types
+        const { data: newInv, error: ensErr } = await supabase.rpc("ensure_card_invoice", {
+          p_card_id: card.id,
+          p_reference_month: refMonth,
+        });
+        if (ensErr) throw ensErr;
+        if (!newInv || !(newInv as any).id) throw new Error("Falha ao gerar fatura no banco.");
+        finalInvoiceId = (newInv as any).id;
       }
 
       // Call the existing RPC
       const { error } = await supabase.rpc("mark_card_invoice_paid", {
-        _invoice_id: invoiceId,
+        _invoice_id: finalInvoiceId as string,
         _payment_amount: val,
         _payment_date: payDate,
         _account_id: accountId || undefined,
@@ -197,10 +204,16 @@ export function InvoicePaymentDrawer({
           </DialogTitle>
           <DialogDescription className="text-xs">
             {card?.name ?? "Cartão"} —{" "}
-            {refMonth.toLocaleDateString("pt-BR", {
-              month: "long",
-              year: "numeric",
-            })}
+            {(() => {
+              try {
+                const mk = (refMonth || "").substring(0, 7);
+                if (!mk) return "Vencimento não definido";
+                const d = new Date(mk + "-01T12:00:00");
+                return d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+              } catch {
+                return refMonth || "Vencimento não definido";
+              }
+            })()}
           </DialogDescription>
         </DialogHeader>
 

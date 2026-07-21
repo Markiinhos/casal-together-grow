@@ -162,8 +162,8 @@ export function InvoicesPage() {
             card={card}
             invoiceTotal={selectedInvoice.total_amount}
             paidAmount={selectedInvoice.paid_amount}
-            invoiceId={selectedInvoice.id}
-            refMonth={new Date(selectedInvoice.reference_month + "-01T12:00:00")}
+            invoiceId={selectedInvoice?.id}
+            refMonth={selectedInvoice?.reference_month}
             accounts={accounts}
           />
         )}
