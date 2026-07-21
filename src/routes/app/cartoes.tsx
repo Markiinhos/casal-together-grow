@@ -221,7 +221,7 @@ function CardsPage() {
                                 onClick={() => handleOpenPay(agg.activeInv, c)}
                                 className="flex-1 text-[11px] h-7 px-0 rounded-lg gradient-coral text-white border-0 shadow-none"
                               >
-                                Pagar fatura
+                                Marcar fatura como paga
                               </Button>
                             )}
                           </div>

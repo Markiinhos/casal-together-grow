@@ -25,6 +25,7 @@ import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
 import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
 import { ListIcon } from "lucide-react";
+import { InvoicePaymentDrawer } from "@/components/InvoicePaymentDrawer";
 
 export const Route = createFileRoute("/app/financas/")({
   component: FinancasCentral,
@@ -39,6 +40,14 @@ function FinancasCentral() {
 
   const [ref, setRef] = useState(() => new Date());
   const [hidden, setHidden] = useState(false);
+  const [payDrawerOpen, setPayDrawerOpen] = useState(false);
+  const [selectedInvoiceInfo, setSelectedInvoiceInfo] = useState<{ inv: any; card: any } | null>(null);
+
+  function handleOpenPay(inv: any, card: any) {
+    setSelectedInvoiceInfo({ inv, card });
+    setPayDrawerOpen(true);
+  }
+
   const opts = { space, userId: user?.id ?? "", coupleId };
   const monthKey = `${ref.getFullYear()}-${ref.getMonth()}`;
 
@@ -146,6 +155,18 @@ function FinancasCentral() {
     <>
       <AppHeader title="Financeiro" subtitle="Contas, cartões e planejamento" />
       <div className="px-4 py-4 space-y-4 pb-24">
+        {selectedInvoiceInfo && (
+          <InvoicePaymentDrawer
+            open={payDrawerOpen}
+            onOpenChange={setPayDrawerOpen}
+            card={selectedInvoiceInfo.card}
+            invoiceTotal={selectedInvoiceInfo.inv.total_amount}
+            paidAmount={selectedInvoiceInfo.inv.paid_amount}
+            invoiceId={selectedInvoiceInfo.inv.id}
+            refMonth={new Date(selectedInvoiceInfo.inv.reference_month + "-01T12:00:00")}
+            accounts={accounts.data ?? []}
+          />
+        )}
         {/* Seletor de mês */}
         <div className="flex items-center justify-between gap-2">
           <button
@@ -286,6 +307,17 @@ function FinancasCentral() {
                     </div>
                     {agg.installmentsCount > 0 && (
                       <div className="text-[11px] text-muted-foreground mt-1">{agg.installmentsCount} parceladas no mês</div>
+                    )}
+                    {agg.activeInv && !agg.invoiceIsPaid && (
+                      <div className="mt-3 pt-3 border-t border-border/50">
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleOpenPay(agg.activeInv, c)}
+                          className="w-full text-xs h-8 rounded-xl gradient-coral text-white border-0 shadow-none"
+                        >
+                          Marcar fatura como paga
+                        </Button>
+                      </div>
                     )}
                   </Card>
                 );

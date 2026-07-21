@@ -187,7 +187,7 @@ export function InvoicePaymentDrawer({
             >
               <CreditCard className="size-4" />
             </div>
-            Pagar fatura
+            Marcar fatura como paga
           </DialogTitle>
           <DialogDescription className="text-xs">
             {card?.name ?? "Cartão"} —{" "}
@@ -293,9 +293,7 @@ export function InvoicePaymentDrawer({
             ) : (
               <>
                 <CheckCircle2 className="size-4 mr-1.5" />
-                {paymentType === "full"
-                  ? `Pagar ${formatBRL(remaining)}`
-                  : `Pagar ${formatBRL(parseFloat(payAmount.replace(",", ".")) || 0)}`}
+                Marcar como pago ({formatBRL(paymentType === "full" ? remaining : (parseFloat(payAmount.replace(",", ".")) || 0))})
               </>
             )}
           </Button>

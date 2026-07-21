@@ -140,7 +140,7 @@ export function InvoicesPage() {
                   className={`flex-1 rounded-xl ${isPaid ? "bg-muted text-muted-foreground" : "gradient-coral text-white border-0"}`} 
                   onClick={() => handleOpenPay(inv)}
                 >
-                  <CreditCard className="size-4 mr-2" /> {isPaid ? "Ver Pgto" : remaining > 0 ? "Pagar restante" : "Marcar como paga"}
+                  <CreditCard className="size-4 mr-2" /> {isPaid ? "Detalhes do Pgto" : "Marcar fatura como paga"}
                 </Button>
               </div>
             </Card>
