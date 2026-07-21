@@ -10,7 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
-import { useCardMetrics } from "@/hooks/useCardMetrics";
+import { useCardAggregates } from "@/hooks/useCardAggregates";
+import { type CardAggregate, OPEN_STATUSES } from "@/lib/card-aggregate";
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Wallet, CreditCard,
   TrendingUp, TrendingDown, Plus, ChartLine, Sparkles, PieChart,
@@ -72,42 +73,6 @@ function FinancasCentral() {
     enabled: !!user,
   });
 
-  const cards = useQuery({
-    queryKey: ["fin-cards", space, coupleId, user?.id],
-    queryFn: async () => {
-      let q: any = supabase.from("credit_cards").select("*");
-      if (space === "private") q = q.eq("visibility", "private").eq("user_id", user!.id);
-      else if (coupleId) q = q.eq("visibility", "shared").eq("couple_id", coupleId);
-      else q = q.eq("visibility", "shared").eq("user_id", user!.id);
-      const { data } = await q.order("name");
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
-
-  const { data: invoices = [] } = useQuery({
-    queryKey: ["card-invoices"],
-    queryFn: async () => {
-      const { data } = await supabase.from("card_invoices").select("*").order("reference_month", { ascending: true });
-      return (data ?? []) as any[];
-    },
-    enabled: !!user,
-  });
-
-  const { data: purchases = [] } = useQuery({
-    queryKey: ["card-purchases", coupleId, user?.id],
-    queryFn: async () => {
-      const q = supabase
-        .from("transactions")
-        .select("*, categories(name,color,icon), installments(*)")
-        .not("credit_card_id", "is", null)
-        .order("date", { ascending: false });
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
-      return (data ?? []) as any[];
-    },
-    enabled: !!user,
-  });
-
   // Categorias
   const categories = useQuery({
     queryKey: ["fin-cats", space, coupleId, user?.id],
@@ -156,18 +121,14 @@ function FinancasCentral() {
   }, [user, qc]);
 
   const balance = (income.data ?? 0) - (expenses.data?.total ?? 0);
-  const cardsList = cards.data ?? [];
+  const { aggregates: cardAggregates, cards: cardsData } = useCardAggregates();
+  const cardsList = cardsData;
   const openInvoices = cardsList; // todas aparecem em "abertas"; "fechadas" é view alternativa
   const [invoiceTab, setInvoiceTab] = useState<"open" | "closed">("open");
   const [editTxId, setEditTxId] = useState<string | null>(null);
   const [isEditCardTx, setIsEditCardTx] = useState(false);
   const [paymentTxId, setPaymentTxId] = useState<string | null>(null);
 
-  const cardMetrics = useCardMetrics(cardsList, purchases, invoices);
-  // FONTE ÚNICA: mesma agregação usada em /app/cartoes (invoice = activeInv.total_amount,
-  // committed inclui parcelas futuras, available = limit - committed).
-  const cardAgg = useMemo(() => getCardAggregate(cardsList, cardMetrics), [cardsList, cardMetrics]);
-  const cardAggById = useMemo(() => Object.fromEntries(cardAgg.perCard.map((p) => [p.cardId, p])), [cardAgg]);
 
   const byCatSorted = useMemo(() => {
     const map = expenses.data?.byCategory ?? {};
@@ -299,6 +260,7 @@ function FinancasCentral() {
           ) : (
             <div className="space-y-2">
               {(invoiceTab === "open" ? openInvoices : cardsList).map((c: any) => {
+<<<<<<< HEAD
                 const m = cardMetrics[c.id];
                 const inv = m?.activeInv;
                 const agg = cardAggById[c.id];
@@ -307,6 +269,10 @@ function FinancasCentral() {
                 const limit = agg?.limit ?? Number(c.limit_amount ?? 0);
                 const pct = limit > 0 ? Math.min(100, (committed / limit) * 100) : 0;
                 const available = agg?.available ?? Math.max(0, limit - committed);
+=======
+                const agg = cardAggregates.find(a => a.cardId === c.id);
+                if (!agg) return null;
+>>>>>>> 5a11fbe (feat: centralize credit card calculations into single source of truth)
                 return (
                   <Card key={c.id} className="rounded-2xl p-4 shadow-card">
                     <div className="flex items-center gap-3 mb-2">
@@ -318,19 +284,24 @@ function FinancasCentral() {
                         <div className="text-xs text-muted-foreground">{c.bank || "Cartão"} · fecha dia {c.closing_day} · vence {c.due_day}</div>
                       </div>
                       <div className="text-right">
+<<<<<<< HEAD
                         <div className="text-sm font-semibold">{hideOrShow(invoiceAmount, hidden)}</div>
                         <div className="text-[11px] text-muted-foreground">Fatura {inv?.status === "paid" ? "Paga" : ""}</div>
+=======
+                        <div className="text-sm font-semibold">{hideOrShow(agg.invoiceTotal, hidden)}</div>
+                        <div className="text-[11px] text-muted-foreground">Fatura {agg.invoiceIsPaid ? "Paga" : ""}</div>
+>>>>>>> 5a11fbe (feat: centralize credit card calculations into single source of truth)
                       </div>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                      <div className="h-full bg-primary transition-all" style={{ width: `${agg.usedPercent}%` }} />
                     </div>
                     <div className="flex items-center justify-between mt-1 text-[11px] text-muted-foreground">
-                      <span>{Math.round(pct)}% do limite</span>
-                      <span>Disponível: {hideOrShow(available, hidden)}</span>
+                      <span>{Math.round(agg.usedPercent)}% do limite</span>
+                      <span>Disponível: {hideOrShow(agg.available, hidden)}</span>
                     </div>
-                    {m && m.installmentsCount > 0 && (
-                      <div className="text-[11px] text-muted-foreground mt-1">{m.installmentsCount} parceladas no mês</div>
+                    {agg.installmentsCount > 0 && (
+                      <div className="text-[11px] text-muted-foreground mt-1">{agg.installmentsCount} parceladas no mês</div>
                     )}
                   </Card>
                 );

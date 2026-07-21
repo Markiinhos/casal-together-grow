@@ -15,6 +15,7 @@ import { TrendingUp, TrendingDown, CalendarDays, Wallet, RefreshCw, RefreshCcw }
 import { format, addMonths, startOfMonth, isAfter, isValid, addDays, addYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
+import { useCardAggregates } from "@/hooks/useCardAggregates";
 
 export const Route = createFileRoute("/app/financas/projecao")({
   component: ProjecaoPage,
@@ -49,21 +50,7 @@ function ProjecaoPage() {
     enabled: !!user?.id,
   });
 
-  const { data: cards, isLoading: isLoadingCards, isError: isErrorCards, refetch: refetchCards } = useQuery({
-    queryKey: ["cards", space, coupleId, user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      let q: any = supabase.from("credit_cards").select("*");
-      q = applySpaceFilter(q, { space, userId: user.id, coupleId });
-      const { data, error } = await q;
-      if (error) {
-        console.error("Erro ao carregar projeção financeira (cards):", error);
-        return [];
-      }
-      return data ?? [];
-    },
-    enabled: !!user?.id,
-  });
+  const { aggregates, isLoading: isLoadingCards, isError: isErrorCards } = useCardAggregates();
 
   const { data: subs = [], isLoading: isSubsLoading } = useQuery({
     queryKey: ["subs-projecao", space, coupleId, user?.id],
@@ -78,7 +65,6 @@ function ProjecaoPage() {
 
   const { chartData, upcoming, currentBalance, projectedBalance, isHealthy, totalFutureDebt, healthRatio, healthStatus } = useMemo(() => {
     const transactionsList = Array.isArray(tx) ? tx : [];
-    const _cards = Array.isArray(cards) ? cards : [];
     
     let currentBalanceAccum = 0;
     const now = new Date();
@@ -115,6 +101,7 @@ function ProjecaoPage() {
 
       const baseDate = new Date(t.date);
       if (!isValid(baseDate)) continue;
+      if (t.credit_card_id) continue; // Cartões são processados via useCardAggregates
 
       const installmentsCount = (t.total_installments && Number(t.total_installments) > 0) ? Number(t.total_installments) : 1;
       const amt = Number(t.amount || 0);
@@ -143,6 +130,33 @@ function ProjecaoPage() {
             }
         }
       }
+    }
+
+    // Include credit card installments from centralized aggregates
+    for (const agg of aggregates) {
+       for (const [monthKey, amount] of Object.entries(agg.monthly)) {
+          const [yy, mm] = monthKey.split("-");
+          const mDate = new Date(Number(yy), Number(mm) - 1, agg.dueDay || 10, 12, 0, 0);
+          if (mDate >= startOfMonth(now)) {
+             const lbl = format(mDate, "MMM/yy", { locale: ptBR });
+             if (dataByMonth[lbl]) {
+                 dataByMonth[lbl].expense += amount;
+             }
+             
+             if (isAfter(mDate, now) && amount > 0) {
+                 upc.push({
+                     id: `card-bill-${agg.cardId}-${monthKey}`,
+                     type: "expense",
+                     description: `Fatura ${agg.cardName}`,
+                     projectedAmount: amount,
+                     projectedDate: mDate,
+                     icon: "CreditCard",
+                     color: agg.color,
+                     isCardBill: true
+                 });
+             }
+          }
+       }
     }
 
     // Include subscriptions
@@ -237,7 +251,7 @@ function ProjecaoPage() {
         healthRatio: _healthRatio,
         healthStatus: _healthStatus
     };
-  }, [tx, cards, subs, monthsToProject]);
+  }, [tx, aggregates, subs, monthsToProject]);
 
   if (!user || isProfileLoading || isLoadingTx || isLoadingCards || isSubsLoading) {
       return (
@@ -277,7 +291,7 @@ function ProjecaoPage() {
                <Card className="rounded-3xl p-6 shadow-card text-center space-y-4">
                   <p className="text-sm font-semibold text-destructive">Não foi possível carregar a projeção financeira.</p>
                   <div className="flex gap-2 justify-center">
-                    <Button variant="outline" onClick={() => { refetchTx(); refetchCards(); }} className="rounded-xl">
+                    <Button variant="outline" onClick={() => { refetchTx(); }} className="rounded-xl">
                       <RefreshCw className="size-4 mr-2" /> Tentar novamente
                     </Button>
                     <Button variant="secondary" onClick={() => navigate({ to: "/app/financas" })} className="rounded-xl">

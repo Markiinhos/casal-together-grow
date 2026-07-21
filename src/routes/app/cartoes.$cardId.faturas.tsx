@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useSpace } from "@/lib/space";
 import { formatBRL } from "@/lib/finance";
+import { getInvoiceStatusLabel, getInvoiceStatusColor } from "@/lib/card-aggregate";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,9 @@ export function InvoicesPage() {
         {list.map((inv) => {
           const date = new Date(inv.reference_month + "-01T12:00:00");
           const isPaid = inv.status === "paid";
-          const remaining = inv.total_amount - (inv.paid_amount || 0);
+          const remaining = Math.max(0, inv.total_amount - (inv.paid_amount || 0));
+          const statusLabel = getInvoiceStatusLabel(inv.status);
+          const statusColor = getInvoiceStatusColor(inv.status);
 
           return (
             <Card key={inv.id} className="rounded-3xl p-4 shadow-card hover:bg-muted/30 transition-colors">
@@ -113,15 +116,8 @@ export function InvoicesPage() {
                 <div>
                   <div className="font-semibold capitalize text-lg flex items-center gap-2">
                     {date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                      isPaid ? "bg-success/20 text-success" : 
-                      inv.status === "overdue" ? "bg-destructive/20 text-destructive" :
-                      inv.status === "due" ? "bg-yellow-500/20 text-yellow-600" :
-                      inv.status === "partially_paid" ? "bg-orange-500/20 text-orange-600" :
-                      inv.status === "closed" ? "bg-blue-500/20 text-blue-600" :
-                      "bg-primary/20 text-primary"
-                    }`}>
-                      {isPaid ? "Paga" : inv.status === "overdue" ? "Atrasada" : inv.status === "due" ? "Vence Hoje" : inv.status === "closed" ? "Fechada" : inv.status === "partially_paid" ? "Pag. Parcial" : "Pendente"}
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${statusColor}`}>
+                      {statusLabel}
                     </span>
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
@@ -144,7 +140,7 @@ export function InvoicesPage() {
                   className={`flex-1 rounded-xl ${isPaid ? "bg-muted text-muted-foreground" : "gradient-coral text-white border-0"}`} 
                   onClick={() => handleOpenPay(inv)}
                 >
-                  <CreditCard className="size-4 mr-2" /> {isPaid ? "Ver Pgto" : inv.status === "partially_paid" ? "Pagar restante" : "Marcar como paga"}
+                  <CreditCard className="size-4 mr-2" /> {isPaid ? "Ver Pgto" : remaining > 0 ? "Pagar restante" : "Marcar como paga"}
                 </Button>
               </div>
             </Card>

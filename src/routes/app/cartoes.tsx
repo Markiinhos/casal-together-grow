@@ -20,11 +20,12 @@ import { getLocalISODate } from "@/lib/date-utils";
 import { CreditCard, Plus, Trash2, ChevronDown, ShoppingBag, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
-import { useCardMetrics } from "@/hooks/useCardMetrics";
+import { useCardAggregates } from "@/hooks/useCardAggregates";
 import { InvoicePaymentDrawer } from "@/components/InvoicePaymentDrawer";
 import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Link } from "@tanstack/react-router";
+import { type CardAggregate, getInvoiceStatusLabel, getInvoiceStatusColor, OPEN_STATUSES } from "@/lib/card-aggregate";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
 
 export const Route = createFileRoute("/app/cartoes")({ component: CardsPage });
@@ -46,38 +47,6 @@ function CardsPage() {
   const [openCard, setOpenCard] = useState(false);
   const [openPurchase, setOpenPurchase] = useState(false);
 
-  const { data: cards = [], isLoading: isLoadingCards } = useQuery({
-    queryKey: ["cards", coupleId, user?.id],
-    queryFn: async () => {
-      const q = supabase.from("credit_cards").select("*").order("created_at");
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
-      return (data ?? []) as any[];
-    },
-    enabled: !!user,
-  });
-
-  const { data: purchases = [] } = useQuery({
-    queryKey: ["card-purchases", coupleId, user?.id],
-    queryFn: async () => {
-      const q = supabase
-        .from("transactions")
-        .select("*, categories(name,color,icon), installments(*)")
-        .not("credit_card_id", "is", null)
-        .order("date", { ascending: false });
-      const { data } = coupleId ? await q.eq("couple_id", coupleId) : await q.eq("user_id", user!.id);
-      return (data ?? []) as any[];
-    },
-    enabled: !!user,
-  });
-
-  const { data: invoices = [] } = useQuery({
-    queryKey: ["card-invoices"],
-    queryFn: async () => {
-      const { data } = await supabase.from("card_invoices").select("*").order("reference_month", { ascending: true });
-      return (data ?? []) as any[];
-    },
-    enabled: !!user,
-  });
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["fin-accounts", user?.id],
@@ -133,7 +102,7 @@ function CardsPage() {
   }
 
   // Compute per-card metrics from purchases/installments
-  const cardMetrics = useCardMetrics(cards, purchases, invoices);
+  const { aggregates, byId, isLoading: isLoadingCards, cards, purchases, invoices, rawMetrics: cardMetrics } = useCardAggregates();
 
   const [payDrawerOpen, setPayDrawerOpen] = useState(false);
   const [selectedInvoiceInfo, setSelectedInvoiceInfo] = useState<{ inv: any; card: any } | null>(null);
@@ -204,13 +173,8 @@ function CardsPage() {
               </Card>
             ) : (
               cards.map((c) => {
-                const m = cardMetrics[c.id] ?? { used: 0, currentBill: 0, installmentsCount: 0, remainingTotal: 0, lastPurchase: null, byCategory: {}, activeInv: null };
-                const limit = Number(c.limit_amount) || 0;
-                const pct = limit > 0 ? Math.min(100, (m.used / limit) * 100) : 0;
-                const topCat = Object.entries(m.byCategory).sort((a: any, b: any) => b[1] - a[1])[0];
-                const invObj = m.activeInv;
-                const openStatuses = ["open", "due", "overdue", "partially_paid"];
-                const isPaid = invObj?.status === "paid" || invObj?.status === "closed";
+                const agg = byId[c.id];
+                if (!agg) return null;
 
                 return (
                   <Card key={c.id} className="rounded-3xl overflow-hidden shadow-soft border-0">
@@ -225,36 +189,36 @@ function CardsPage() {
                       </div>
                       <div className="mt-4">
                         <div className="text-[11px] opacity-80">Comprometido</div>
-                        <div className="text-2xl font-bold">{formatBRL(m.used)} <span className="text-xs font-normal opacity-80">/ {formatBRL(limit)}</span></div>
+                        <div className="text-2xl font-bold">{formatBRL(agg.used)} <span className="text-xs font-normal opacity-80">/ {formatBRL(agg.limitTotal)}</span></div>
                         <div className="h-1.5 rounded-full bg-white/25 overflow-hidden mt-2">
-                          <div className="h-full bg-white" style={{ width: `${pct}%` }} />
+                          <div className="h-full bg-white" style={{ width: `${agg.usedPercent}%` }} />
                         </div>
-                        <div className="text-[11px] opacity-80 mt-1">{pct.toFixed(0)}% do limite utilizado</div>
+                        <div className="text-[11px] opacity-80 mt-1">{agg.usedPercent.toFixed(0)}% do limite utilizado</div>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-px bg-border">
                       <div className="bg-card p-3 flex flex-col justify-between">
                         <div>
-                          <div className="text-[10px] text-muted-foreground uppercase">{invObj ? `Fatura (${invObj.reference_month.split("-").reverse().join("/")})` : "Fatura atual"}</div>
-                          <div className="font-semibold text-sm">{formatBRL(invObj?.total_amount ?? m.currentBill)}</div>
-                          {invObj && (
+                          <div className="text-[10px] text-muted-foreground uppercase">{agg.activeInv ? `Fatura (${agg.activeInv.reference_month.split("-").reverse().join("/")})` : "Fatura atual"}</div>
+                          <div className="font-semibold text-sm">{formatBRL(agg.invoiceTotal)}</div>
+                          {agg.activeInv && (
                              <div className="text-[10px] mt-0.5">
                                Status: 
-                               <span className={openStatuses.includes(invObj.status) ? "text-orange-500 font-medium ml-1" : "text-success font-medium ml-1"}>
-                                 {invObj.status}
+                               <span className={OPEN_STATUSES.includes(agg.invoiceStatus) ? "text-orange-500 font-medium ml-1" : "text-success font-medium ml-1"}>
+                                 {agg.invoiceStatus}
                                </span>
                              </div>
                           )}
                         </div>
-                        {invObj && (
+                        {agg.activeInv && (
                           <div className="mt-2 flex gap-1.5">
                             <Link to={`/app/cartoes/$cardId/faturas`} params={{ cardId: c.id }} className="flex-1">
                               <Button variant="outline" size="sm" className="w-full text-xs h-7 px-0 rounded-lg">Detalhes</Button>
                             </Link>
-                            {!isPaid && (
+                            {!agg.invoiceIsPaid && (
                               <Button 
                                 size="sm" 
-                                onClick={() => handleOpenPay(invObj, c)}
+                                onClick={() => handleOpenPay(agg.activeInv, c)}
                                 className="flex-1 text-[11px] h-7 px-0 rounded-lg gradient-coral text-white border-0 shadow-none"
                               >
                                 Pagar fatura
@@ -265,18 +229,18 @@ function CardsPage() {
                       </div>
                       <div className="bg-card p-3">
                         <div className="text-[10px] text-muted-foreground uppercase">Restante parcelas</div>
-                        <div className="font-semibold text-sm">{formatBRL(m.remainingTotal)}</div>
+                        <div className="font-semibold text-sm">{formatBRL(agg.remainingTotal)}</div>
                       </div>
                       <div className="bg-card p-3">
                         <div className="text-[10px] text-muted-foreground uppercase">Parceladas</div>
-                        <div className="font-semibold text-sm">{m.installmentsCount}</div>
+                        <div className="font-semibold text-sm">{agg.installmentsCount}</div>
                       </div>
                       <div className="bg-card p-3">
                         <div className="text-[10px] text-muted-foreground uppercase">Maior categoria</div>
-                        <div className="font-semibold text-sm truncate">{topCat ? topCat[0] : "—"}</div>
+                        <div className="font-semibold text-sm truncate">{agg.topCategory ? agg.topCategory[0] : "—"}</div>
                       </div>
                     </div>
-                    {pct >= 80 && (
+                    {agg.usedPercent >= 80 && (
                       <div className="px-4 py-2 bg-destructive/10 text-destructive text-xs">
                         ⚠️ Limite acima de 80% utilizado
                       </div>
@@ -294,26 +258,19 @@ function CardsPage() {
             {cards.length > 0 && (
               <div className="space-y-3">
                 {cards.map((c) => {
-                  const m = cardMetrics[c.id] ?? { currentBill: 0, activeInv: null };
-                  const inv = m.activeInv;
-                  const billAmount = inv?.total_amount ?? m.currentBill;
-                  const paidAmt = inv?.paid_amount ?? 0;
-                  const remaining = billAmount - paidAmt;
-                  const isInvPaid = inv?.status === "paid" || inv?.status === "closed";
-                  const refLabel = inv?.reference_month
-                    ? new Date(inv.reference_month + "-01T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
-                    : new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+                  const agg = byId[c.id];
+                  if (!agg) return null;
                   return (
                     <Card key={c.id} className="rounded-2xl shadow-card overflow-hidden">
                       <div className="px-4 py-3 flex items-center gap-3" style={{ borderLeft: `4px solid ${c.color}` }}>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-sm">{c.name}</div>
-                          <div className="text-xs text-muted-foreground capitalize">{refLabel} · Vence dia {c.due_day}</div>
+                          <div className="text-xs text-muted-foreground capitalize">{agg.invoiceRefLabel} · Vence dia {c.due_day}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-sm">{formatBRL(billAmount)}</div>
-                          {paidAmt > 0 && !isInvPaid && (
-                            <div className="text-[10px] text-success">Pago: {formatBRL(paidAmt)}</div>
+                          <div className="font-bold text-sm">{formatBRL(agg.invoiceTotal)}</div>
+                          {agg.invoicePaid > 0 && !agg.invoiceIsPaid && (
+                            <div className="text-[10px] text-success">Pago: {formatBRL(agg.invoicePaid)}</div>
                           )}
                         </div>
                       </div>
@@ -323,16 +280,16 @@ function CardsPage() {
                             <Wallet className="size-3.5 mr-1" /> Detalhes
                           </Button>
                         </Link>
-                        {!isInvPaid && remaining > 0 && inv && (
+                        {!agg.invoiceIsPaid && agg.invoiceRemaining > 0 && agg.activeInv && (
                           <Button
                             size="sm"
-                            onClick={() => handleOpenPay(inv, c)}
+                            onClick={() => handleOpenPay(agg.activeInv, c)}
                             className="flex-1 text-xs h-8 rounded-xl gradient-coral text-white border-0"
                           >
                             <CreditCard className="size-3.5 mr-1" /> Marcar como paga
                           </Button>
                         )}
-                        {isInvPaid && (
+                        {agg.invoiceIsPaid && (
                           <div className="flex-1 flex items-center justify-center text-xs text-success font-medium gap-1">
                             ✓ Paga
                           </div>
