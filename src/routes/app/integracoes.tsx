@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Landmark, Plus, RefreshCw, Trash2, ShieldCheck, Eye, EyeOff, Search, ArrowLeft } from "lucide-react";
-import { useEffect, useMemo, useState, lazy, Suspense } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-const PluggyConnect = lazy(() => import("react-pluggy-connect").then(m => ({ default: m.PluggyConnect })));
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -45,6 +44,17 @@ const CATEGORIES: { key: string; label: string }[] = [
   { key: "cooperative", label: "Cooperativas" },
   { key: "credit", label: "Crédito" },
 ];
+
+function PluggyConnectWrapper(props: any) {
+  const [Component, setComponent] = useState<any>(null);
+
+  useEffect(() => {
+    import("react-pluggy-connect").then(m => setComponent(() => m.PluggyConnect)).catch(console.error);
+  }, []);
+
+  if (!Component) return <div className="p-4 text-center text-sm text-muted-foreground">Carregando conector...</div>;
+  return <Component {...props} />;
+}
 
 function IntegrationsPage() {
   const [connections, setConnections] = useState<Conn[]>([]);
@@ -233,20 +243,18 @@ function IntegrationsPage() {
           )}
         </div>
         {open && token && typeof window !== "undefined" && (
-          <Suspense fallback={<div className="p-4 text-center">Carregando conector...</div>}>
-            <PluggyConnect
-              connectToken={token}
-              includeSandbox={false}
-              connectorIds={selectedConnector ? [selectedConnector] : undefined}
-              onSuccess={onSuccess}
-              onError={(err: any) => {
-                console.error("Pluggy error", err);
-                toast.error("Erro na conexão");
-                setOpen(false);
-              }}
-              onClose={() => setOpen(false)}
-            />
-          </Suspense>
+          <PluggyConnectWrapper
+            connectToken={token}
+            includeSandbox={false}
+            connectorIds={selectedConnector ? [selectedConnector] : undefined}
+            onSuccess={onSuccess}
+            onError={(err: any) => {
+              console.error("Pluggy error", err);
+              toast.error("Erro na conexão");
+              setOpen(false);
+            }}
+            onClose={() => setOpen(false)}
+          />
         )}
       </>
     );
