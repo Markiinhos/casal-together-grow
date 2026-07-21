@@ -25,6 +25,21 @@ export function AppHeader({ title, subtitle, showSpaceToggle = true }: { title?:
     refetchInterval: 30000,
   });
 
+  // Atualiza status de faturas no banco (due, overdue, closed) ao abrir a tela
+  useEffect(() => {
+    if (!user) return;
+    const updateInvoices = async () => {
+      try {
+        // cast to any to avoid TS error before types are generated
+        await supabase.rpc("update_my_invoice_statuses" as any);
+        qc.invalidateQueries({ queryKey: ["card-invoices"] });
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    updateInvoices();
+  }, [user, qc]);
+
   useEffect(() => {
     if (!user) return;
     const channel = supabase

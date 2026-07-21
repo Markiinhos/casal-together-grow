@@ -81,10 +81,8 @@ export function useCardMetrics(cards: any[], purchases: any[], invoices: any[]) 
       }
 
       if (activeInv) {
-        const dueDateObj = new Date(activeInv.due_date + "T23:59:59");
-        if (today > dueDateObj && activeInv.paid_amount < activeInv.total_amount && ["open", "due"].includes(activeInv.status)) {
-          activeInv = { ...activeInv, status: "overdue" };
-        }
+        // Agora o banco de dados é a única fonte da verdade para o status.
+        // A RPC `update_my_invoice_statuses` atualiza os status diariamente ou no carregamento.
       }
       
       // Se não tem fatura no banco, mas tem fatura calculada (virtual)
