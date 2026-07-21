@@ -55,6 +55,12 @@ const KEYS = [
   "card-invoices",
   "tx-projecao",
   "plans",
+  "installments",
+  "transactions",
+  "finance-dashboard",
+  "monthly-financial-summary",
+  "monthly-plans",
+  "financial-projection"
 ];
 
 function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
