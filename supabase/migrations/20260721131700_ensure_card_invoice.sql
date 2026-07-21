@@ -51,7 +51,7 @@ BEGIN
     WHERE card_id = p_card_id AND reference_month = v_ref_date;
 
     -- 5. Trigger recalculation to ensure total_amount is up to date based on purchases/installments
-    PERFORM public.recalculate_card_invoice_totals(p_card_id, v_ref_date);
+    PERFORM public.recalculate_card_invoice_totals(v_invoice.id);
 
     -- Retrieve the updated invoice
     SELECT * INTO v_invoice 
