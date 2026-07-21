@@ -278,7 +278,7 @@ function FinancasCentral() {
             </Card>
           )}
           <Button asChild variant="outline" className="w-full mt-2 rounded-2xl">
-            <Link to="/app/contas"><Plus className="size-4 mr-1" /> Adicionar conta</Link>
+            <Link to="/app/financas/contas"><Plus className="size-4 mr-1" /> Adicionar conta</Link>
           </Button>
         </section>
 
