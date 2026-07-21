@@ -260,19 +260,8 @@ function FinancasCentral() {
           ) : (
             <div className="space-y-2">
               {(invoiceTab === "open" ? openInvoices : cardsList).map((c: any) => {
-<<<<<<< HEAD
-                const m = cardMetrics[c.id];
-                const inv = m?.activeInv;
-                const agg = cardAggById[c.id];
-                const invoiceAmount = agg?.invoiceAmount ?? 0;
-                const committed = agg?.committed ?? 0;
-                const limit = agg?.limit ?? Number(c.limit_amount ?? 0);
-                const pct = limit > 0 ? Math.min(100, (committed / limit) * 100) : 0;
-                const available = agg?.available ?? Math.max(0, limit - committed);
-=======
                 const agg = cardAggregates.find(a => a.cardId === c.id);
                 if (!agg) return null;
->>>>>>> 5a11fbe (feat: centralize credit card calculations into single source of truth)
                 return (
                   <Card key={c.id} className="rounded-2xl p-4 shadow-card">
                     <div className="flex items-center gap-3 mb-2">
@@ -284,13 +273,8 @@ function FinancasCentral() {
                         <div className="text-xs text-muted-foreground">{c.bank || "Cartão"} · fecha dia {c.closing_day} · vence {c.due_day}</div>
                       </div>
                       <div className="text-right">
-<<<<<<< HEAD
-                        <div className="text-sm font-semibold">{hideOrShow(invoiceAmount, hidden)}</div>
-                        <div className="text-[11px] text-muted-foreground">Fatura {inv?.status === "paid" ? "Paga" : ""}</div>
-=======
                         <div className="text-sm font-semibold">{hideOrShow(agg.invoiceTotal, hidden)}</div>
                         <div className="text-[11px] text-muted-foreground">Fatura {agg.invoiceIsPaid ? "Paga" : ""}</div>
->>>>>>> 5a11fbe (feat: centralize credit card calculations into single source of truth)
                       </div>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden">
