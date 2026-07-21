@@ -56,14 +56,17 @@ export type Database = {
         Row: {
           account_number: string | null
           balance: number | null
-          connection_id: string
+          color: string | null
+          connection_id: string | null
           couple_id: string | null
           created_at: string
           currency: string | null
           hidden: boolean
+          icon: string | null
           id: string
           name: string | null
-          pluggy_account_id: string
+          pluggy_account_id: string | null
+          source: string
           subtype: string | null
           type: string | null
           updated_at: string
@@ -73,14 +76,17 @@ export type Database = {
         Insert: {
           account_number?: string | null
           balance?: number | null
-          connection_id: string
+          color?: string | null
+          connection_id?: string | null
           couple_id?: string | null
           created_at?: string
           currency?: string | null
           hidden?: boolean
+          icon?: string | null
           id?: string
           name?: string | null
-          pluggy_account_id: string
+          pluggy_account_id?: string | null
+          source?: string
           subtype?: string | null
           type?: string | null
           updated_at?: string
@@ -90,14 +96,17 @@ export type Database = {
         Update: {
           account_number?: string | null
           balance?: number | null
-          connection_id?: string
+          color?: string | null
+          connection_id?: string | null
           couple_id?: string | null
           created_at?: string
           currency?: string | null
           hidden?: boolean
+          icon?: string | null
           id?: string
           name?: string | null
-          pluggy_account_id?: string
+          pluggy_account_id?: string | null
+          source?: string
           subtype?: string | null
           type?: string | null
           updated_at?: string

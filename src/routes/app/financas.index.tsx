@@ -247,7 +247,7 @@ function FinancasCentral() {
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Contas</h3>
-            <Link to="/app/contas" className="text-xs text-primary font-medium">Ver todas</Link>
+            <Link to="/app/financas/contas" className="text-xs text-primary font-medium">Ver todas</Link>
           </div>
           {accounts.isLoading ? (
             <Skeleton className="h-24 rounded-2xl" />
@@ -278,7 +278,7 @@ function FinancasCentral() {
             </Card>
           )}
           <Button asChild variant="outline" className="w-full mt-2 rounded-2xl">
-            <Link to="/app/contas"><Plus className="size-4 mr-1" /> Adicionar conta</Link>
+            <Link to="/app/financas/contas"><Plus className="size-4 mr-1" /> Adicionar conta</Link>
           </Button>
         </section>
 
