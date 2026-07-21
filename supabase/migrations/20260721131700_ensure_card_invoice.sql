@@ -1,13 +1,16 @@
 CREATE OR REPLACE FUNCTION public.ensure_card_invoice(
   p_card_id UUID, 
-  p_reference_month DATE
+  p_reference_month TEXT
 ) RETURNS public.card_invoices
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_card RECORD;
   v_cycle RECORD;
   v_invoice public.card_invoices;
+  v_ref_date DATE;
 BEGIN
+  v_ref_date := p_reference_month::DATE;
+
   -- 1. Validate card
   SELECT * INTO v_card FROM public.credit_cards WHERE id = p_card_id;
   IF v_card IS NULL THEN
@@ -29,15 +32,15 @@ BEGIN
   
   -- Use make_date safely or just interval math
   DECLARE
-    v_due_date DATE := (p_reference_month + ((v_card.due_day - 1) || ' days')::interval)::date;
-    v_closing_date DATE := ((p_reference_month - INTERVAL '1 month') + ((v_card.closing_day - 1) || ' days')::interval)::date;
+    v_due_date DATE := (v_ref_date + ((v_card.due_day - 1) || ' days')::interval)::date;
+    v_closing_date DATE := ((v_ref_date - INTERVAL '1 month') + ((v_card.closing_day - 1) || ' days')::interval)::date;
   BEGIN
     -- 3. Upsert the invoice (using the existing unique constraint on card_id, reference_month)
     INSERT INTO public.card_invoices (
       card_id, user_id, couple_id, visibility, reference_month,
       closing_date, due_date, status
     ) VALUES (
-      p_card_id, auth.uid(), v_card.couple_id, v_card.visibility, p_reference_month,
+      p_card_id, auth.uid(), v_card.couple_id, v_card.visibility, v_ref_date,
       v_closing_date, v_due_date, 'open'
     )
     ON CONFLICT (card_id, reference_month) DO NOTHING;
@@ -45,15 +48,15 @@ BEGIN
     -- 4. Retrieve the invoice
     SELECT * INTO v_invoice 
     FROM public.card_invoices 
-    WHERE card_id = p_card_id AND reference_month = p_reference_month;
+    WHERE card_id = p_card_id AND reference_month = v_ref_date;
 
     -- 5. Trigger recalculation to ensure total_amount is up to date based on purchases/installments
-    PERFORM public.recalculate_card_invoice_totals(p_card_id, p_reference_month);
+    PERFORM public.recalculate_card_invoice_totals(p_card_id, v_ref_date);
 
     -- Retrieve the updated invoice
     SELECT * INTO v_invoice 
     FROM public.card_invoices 
-    WHERE card_id = p_card_id AND reference_month = p_reference_month;
+    WHERE card_id = p_card_id AND reference_month = v_ref_date;
 
     RETURN v_invoice;
   END;
