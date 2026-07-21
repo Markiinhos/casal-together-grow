@@ -21,7 +21,7 @@ export function useCardAggregates() {
   const { data: profile } = useProfile();
   const coupleId = profile?.couple_id ?? null;
 
-  const { data: cards = [], isLoading: isLoadingCards } = useQuery({
+  const { data: cards = [], isLoading: isLoadingCards, isError: isErrorCards } = useQuery({
     queryKey: ["cards", coupleId, user?.id],
     queryFn: async () => {
       const q = supabase.from("credit_cards").select("*").order("created_at");
@@ -33,7 +33,7 @@ export function useCardAggregates() {
     enabled: !!user,
   });
 
-  const { data: purchases = [], isLoading: isLoadingPurchases } = useQuery({
+  const { data: purchases = [], isLoading: isLoadingPurchases, isError: isErrorPurchases } = useQuery({
     queryKey: ["card-purchases", coupleId, user?.id],
     queryFn: async () => {
       const q = supabase
@@ -49,7 +49,7 @@ export function useCardAggregates() {
     enabled: !!user,
   });
 
-  const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery({
+  const { data: invoices = [], isLoading: isLoadingInvoices, isError: isErrorInvoices } = useQuery({
     queryKey: ["card-invoices"],
     queryFn: async () => {
       const { data } = await supabase
@@ -79,6 +79,7 @@ export function useCardAggregates() {
     aggregates,
     byId,
     isLoading: isLoadingCards || isLoadingPurchases || isLoadingInvoices,
+    isError: isErrorCards || isErrorPurchases || isErrorInvoices,
     cards,
     purchases,
     invoices,
