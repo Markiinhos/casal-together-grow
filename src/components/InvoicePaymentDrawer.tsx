@@ -157,22 +157,12 @@ export function InvoicePaymentDrawer({
     if (!user || !invoiceId) return;
     setUndoing(true);
     try {
-      // Find payment transactions for this invoice
-      const { data: payTxs } = await supabase
-        .from("transactions")
-        .select("id")
-        .eq("credit_card_id", card.id)
-        .eq("is_card_payment", true)
-        .order("date", { ascending: false })
-        .limit(1);
+      // Chama a RPC para desfazer o pagamento de forma segura, restaurando saldos e status
+      const { error: undoErr } = await supabase.rpc("undo_card_invoice_payment", {
+        _invoice_id: invoiceId,
+      });
 
-      if (payTxs && payTxs.length > 0) {
-        // Hard delete the payment transaction
-        await supabase
-          .from("transactions")
-          .delete()
-          .eq("id", payTxs[0].id);
-      }
+      if (undoErr) throw undoErr;
 
       toast.success("Pagamento desfeito! Fatura reaberta.");
       invalidateAll(qc);
