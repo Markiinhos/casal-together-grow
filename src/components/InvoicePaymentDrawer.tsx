@@ -190,10 +190,10 @@ export function InvoicePaymentDrawer({
             >
               <CreditCard className="size-4" />
             </div>
-            Marcar fatura como paga
+            {remaining > 0 ? "Marcar fatura como paga" : "Fatura já paga"}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {card?.name ?? "Cartão"} —{" "}
+            {card?.name ?? "Cartão"} — Fatura de{" "}
             {(() => {
               try {
                 const mk = (refMonth || "").substring(0, 7);
