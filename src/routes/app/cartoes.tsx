@@ -307,10 +307,15 @@ function CardsPage() {
                             <CreditCard className="size-3.5 mr-1" /> Marcar como paga
                           </Button>
                         )}
-                        {agg.invoiceIsPaid && (
-                          <div className="flex-1 flex items-center justify-center text-xs text-success font-medium gap-1">
-                            ✓ Paga
-                          </div>
+                        {agg.invoiceIsPaid && agg.activeInv && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleOpenPay(agg.activeInv, c)}
+                            className="flex-1 text-xs h-8 rounded-xl"
+                          >
+                            ✓ Paga — editar/desfazer
+                          </Button>
                         )}
                       </div>
                     </Card>
