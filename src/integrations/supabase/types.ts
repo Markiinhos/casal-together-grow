@@ -2973,6 +2973,33 @@ export type Database = {
       can_access_plan: { Args: { _plan_id: string }; Returns: boolean }
       can_edit_plan: { Args: { _plan_id: string }; Returns: boolean }
       current_couple_id: { Args: never; Returns: string }
+      ensure_card_invoice: {
+        Args: { p_card_id: string; p_reference_month: string }
+        Returns: {
+          card_id: string
+          closing_date: string
+          couple_id: string | null
+          created_at: string
+          due_date: string
+          id: string
+          notes: string | null
+          paid_amount: number
+          paid_at: string | null
+          payment_transaction_id: string | null
+          reference_month: string
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "card_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       is_couple_member: { Args: { _couple_id: string }; Returns: boolean }
       join_couple_by_code: { Args: { _code: string }; Returns: string }
       mark_card_invoice_paid: {
@@ -3013,6 +3040,7 @@ export type Database = {
         Args: { _invoice_id: string; _payment_transaction_id?: string }
         Returns: undefined
       }
+      update_my_invoice_statuses: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
