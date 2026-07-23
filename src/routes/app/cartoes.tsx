@@ -199,13 +199,22 @@ function CardsPage() {
                     <div className="grid grid-cols-2 gap-px bg-border">
                       <div className="bg-card p-3 flex flex-col justify-between">
                         <div>
-                          <div className="text-[10px] text-muted-foreground uppercase">{agg.activeInv ? `Fatura (${agg.activeInv.reference_month.split("-").reverse().join("/")})` : "Fatura atual"}</div>
-                          <div className="font-semibold text-sm">{formatBRL(agg.invoiceTotal)}</div>
+                          <div className="text-[10px] text-muted-foreground uppercase">
+                            {agg.activeInv
+                              ? (agg.invoiceIsPaid ? "Última fatura" : "Próxima fatura em aberto")
+                              : "Fatura atual"}
+                          </div>
+                          <div className="font-semibold text-sm capitalize">{agg.invoiceRefLabel}</div>
+                          <div className="text-[11px] text-muted-foreground">{formatBRL(agg.invoiceTotal)}</div>
+                          {agg.activeInv?.due_date && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              Vence em {new Date(String(agg.activeInv.due_date).slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR")}
+                            </div>
+                          )}
                           {agg.activeInv && (
-                             <div className="text-[10px] mt-0.5">
-                               Status: 
-                               <span className={OPEN_STATUSES.includes(agg.invoiceStatus) ? "text-orange-500 font-medium ml-1" : "text-success font-medium ml-1"}>
-                                 {agg.invoiceStatus}
+                             <div className="text-[10px] mt-1">
+                               <span className={`px-1.5 py-0.5 rounded-full font-medium ${agg.invoiceStatusColor}`}>
+                                 {agg.invoiceStatusLabel}
                                </span>
                              </div>
                           )}
@@ -215,13 +224,22 @@ function CardsPage() {
                             <Link to={`/app/cartoes/$cardId/faturas`} params={{ cardId: c.id }} className="flex-1">
                               <Button variant="outline" size="sm" className="w-full text-xs h-7 px-0 rounded-lg">Detalhes</Button>
                             </Link>
-                            {!agg.invoiceIsPaid && (
-                              <Button 
-                                size="sm" 
+                            {!agg.invoiceIsPaid ? (
+                              <Button
+                                size="sm"
                                 onClick={() => handleOpenPay(agg.activeInv, c)}
                                 className="flex-1 text-[11px] h-7 px-0 rounded-lg gradient-coral text-white border-0 shadow-none"
                               >
-                                Marcar fatura como paga
+                                Marcar como paga
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleOpenPay(agg.activeInv, c)}
+                                className="flex-1 text-[11px] h-7 px-0 rounded-lg"
+                              >
+                                Editar pagamento
                               </Button>
                             )}
                           </div>
