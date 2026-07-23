@@ -190,10 +190,10 @@ export function InvoicePaymentDrawer({
             >
               <CreditCard className="size-4" />
             </div>
-            Marcar fatura como paga
+            {remaining > 0 ? "Marcar fatura como paga" : "Fatura já paga"}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {card?.name ?? "Cartão"} —{" "}
+            {card?.name ?? "Cartão"} — Fatura de{" "}
             {(() => {
               try {
                 const mk = (refMonth || "").substring(0, 7);
@@ -230,82 +230,97 @@ export function InvoicePaymentDrawer({
             </div>
           </div>
 
-          {/* Tipo de pagamento */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                setPaymentType("full");
-                setPayAmount(String(remaining));
-              }}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-medium border transition ${paymentType === "full" ? "bg-primary/10 border-primary text-primary" : "bg-muted border-border text-muted-foreground"}`}
-            >
-              Pagamento total
-            </button>
-            <button
-              onClick={() => setPaymentType("partial")}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-medium border transition ${paymentType === "partial" ? "bg-primary/10 border-primary text-primary" : "bg-muted border-border text-muted-foreground"}`}
-            >
-              Pagamento parcial
-            </button>
-          </div>
+          {remaining > 0 ? (
+            <>
+              {/* Tipo de pagamento */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setPaymentType("full");
+                    setPayAmount(String(remaining));
+                  }}
+                  className={`flex-1 rounded-xl py-2.5 text-sm font-medium border transition ${paymentType === "full" ? "bg-primary/10 border-primary text-primary" : "bg-muted border-border text-muted-foreground"}`}
+                >
+                  Pagamento total
+                </button>
+                <button
+                  onClick={() => setPaymentType("partial")}
+                  className={`flex-1 rounded-xl py-2.5 text-sm font-medium border transition ${paymentType === "partial" ? "bg-primary/10 border-primary text-primary" : "bg-muted border-border text-muted-foreground"}`}
+                >
+                  Pagamento parcial
+                </button>
+              </div>
 
-          {paymentType === "partial" && (
-            <div>
-              <Label className="text-xs">Valor do pagamento</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={payAmount}
-                onChange={(e) => setPayAmount(e.target.value)}
-                className="mt-1"
-                max={remaining}
-              />
+              {paymentType === "partial" && (
+                <div>
+                  <Label className="text-xs">Valor do pagamento</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)}
+                    className="mt-1"
+                    max={remaining}
+                  />
+                </div>
+              )}
+
+              <div>
+                <Label className="text-xs">Data em que o pagamento saiu da conta</Label>
+                <Input
+                  type="date"
+                  value={payDate}
+                  onChange={(e) => setPayDate(e.target.value)}
+                  className="mt-1"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Independente da data escolhida, o valor abate a fatura selecionada acima.
+                </p>
+              </div>
+
+              {accounts.length > 0 && (
+                <div>
+                  <Label className="text-xs">Conta utilizada</Label>
+                  <Select value={accountId || "none"} onValueChange={(v) => setAccountId(v === "none" ? "" : v)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selecione (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhuma</SelectItem>
+                      {accounts.map((a: any) => (
+                        <SelectItem key={a.id} value={a.id}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <Button
+                onClick={handlePay}
+                disabled={saving}
+                className="w-full rounded-xl gradient-coral text-white border-0 h-11"
+              >
+                {saving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-4 mr-1.5" />
+                    Marcar como pago ({formatBRL(paymentType === "full" ? remaining : (parseFloat(payAmount.replace(",", ".")) || 0))})
+                  </>
+                )}
+              </Button>
+            </>
+          ) : (
+            <div className="rounded-2xl bg-success/10 p-4 text-center space-y-1">
+              <CheckCircle2 className="size-6 mx-auto text-success" />
+              <p className="text-sm font-semibold text-success">Fatura totalmente paga</p>
+              <p className="text-[11px] text-muted-foreground">
+                Se você se arrependeu ou pagou o valor errado, use "Desfazer pagamento" abaixo para reabrir a fatura e refazer o registro.
+              </p>
             </div>
           )}
-
-          <div>
-            <Label className="text-xs">Data do pagamento</Label>
-            <Input
-              type="date"
-              value={payDate}
-              onChange={(e) => setPayDate(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-
-          {accounts.length > 0 && (
-            <div>
-              <Label className="text-xs">Conta utilizada</Label>
-              <Select value={accountId || "none"} onValueChange={(v) => setAccountId(v === "none" ? "" : v)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Selecione (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhuma</SelectItem>
-                  {accounts.map((a: any) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <Button
-            onClick={handlePay}
-            disabled={saving}
-            className="w-full rounded-xl gradient-coral text-white border-0 h-11"
-          >
-            {saving ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <>
-                <CheckCircle2 className="size-4 mr-1.5" />
-                Marcar como pago ({formatBRL(paymentType === "full" ? remaining : (parseFloat(payAmount.replace(",", ".")) || 0))})
-              </>
-            )}
-          </Button>
 
           {/* Desfazer pagamento */}
           {paidAmount > 0 && (
