@@ -25,7 +25,7 @@ import { InvoicePaymentDrawer } from "@/components/InvoicePaymentDrawer";
 import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Link } from "@tanstack/react-router";
-import { type CardAggregate, getInvoiceStatusLabel, getInvoiceStatusColor, OPEN_STATUSES } from "@/lib/card-aggregate";
+import { type CardAggregate, getInvoiceStatusLabel, getInvoiceStatusColor } from "@/lib/card-aggregate";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
 
 export const Route = createFileRoute("/app/cartoes")({ component: CardsPage });
