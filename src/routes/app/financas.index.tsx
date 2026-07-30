@@ -32,8 +32,8 @@ export const Route = createFileRoute("/app/financas/")({
 });
 
 function FinancasCentral() {
-  const { user } = useAuth();
-  const { data: profile } = useProfile();
+  const { user, loading: loadingAuth } = useAuth();
+  const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const coupleId = profile?.couple_id ?? null;
   const { space } = useSpace();
   const qc = useQueryClient();
@@ -138,7 +138,6 @@ function FinancasCentral() {
   const [isEditCardTx, setIsEditCardTx] = useState(false);
   const [paymentTxId, setPaymentTxId] = useState<string | null>(null);
 
-
   const byCatSorted = useMemo(() => {
     const map = expenses.data?.byCategory ?? {};
     const cats = categories.data ?? [];
@@ -150,6 +149,15 @@ function FinancasCentral() {
       }))
       .sort((a, b) => b.total - a.total);
   }, [expenses.data, categories.data]);
+
+  if (loadingAuth || isLoadingProfile) {
+    return (
+      <div className="flex flex-col h-[50vh] items-center justify-center text-muted-foreground gap-3">
+        <Skeleton className="size-12 rounded-full" />
+        <span className="text-sm font-medium">Carregando painel...</span>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -195,7 +203,7 @@ function FinancasCentral() {
 
         {/* Card principal */}
         <Card className="rounded-3xl p-5 shadow-card">
-          {accountsTotal.isLoading ? (
+          {accountsTotal.isPending ? (
             <Skeleton className="h-9 w-40 rounded-xl" />
           ) : (
             <div className="text-3xl font-bold">{hideOrShow(accountsTotal.data ?? 0, hidden)}</div>
@@ -204,11 +212,11 @@ function FinancasCentral() {
           <div className="grid grid-cols-3 gap-2 mt-4">
             <div className="rounded-2xl bg-success/10 p-3">
               <div className="flex items-center gap-1.5 text-success mb-1"><TrendingUp className="size-3.5" /><span className="text-[11px] font-medium">Receitas</span></div>
-              {income.isLoading ? <Skeleton className="h-4 w-16" /> : <div className="font-semibold text-sm">{hideOrShow(income.data ?? 0, hidden)}</div>}
+              {income.isPending ? <Skeleton className="h-4 w-16" /> : <div className="font-semibold text-sm">{hideOrShow(income.data ?? 0, hidden)}</div>}
             </div>
             <div className="rounded-2xl bg-destructive/10 p-3">
               <div className="flex items-center gap-1.5 text-destructive mb-1"><TrendingDown className="size-3.5" /><span className="text-[11px] font-medium">Despesas</span></div>
-              {expenses.isLoading ? <Skeleton className="h-4 w-16" /> : <div className="font-semibold text-sm">{hideOrShow(expenses.data?.total ?? 0, hidden)}</div>}
+              {expenses.isPending ? <Skeleton className="h-4 w-16" /> : <div className="font-semibold text-sm">{hideOrShow(expenses.data?.total ?? 0, hidden)}</div>}
             </div>
             <div className="rounded-2xl bg-accent-purple/10 p-3">
               <div className="flex items-center gap-1.5 text-accent-purple mb-1"><ChartLine className="size-3.5" /><span className="text-[11px] font-medium">Saldo mês</span></div>
@@ -231,7 +239,7 @@ function FinancasCentral() {
             <h3 className="font-semibold">Contas</h3>
             <Link to="/app/financas/contas" className="text-xs text-primary font-medium">Ver todas</Link>
           </div>
-          {accounts.isLoading ? (
+          {accounts.isPending ? (
             <Skeleton className="h-24 rounded-2xl" />
           ) : accounts.data && accounts.data.length > 0 ? (
             <Card className="rounded-2xl divide-y divide-border shadow-card overflow-hidden">

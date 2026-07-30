@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/hooks";
 import { useCardMetrics } from "@/hooks/useCardMetrics";
+import { useSpace, applySpaceFilter } from "@/lib/space";
 import { getCardAggregate, type CardAggregate } from "@/lib/card-aggregate";
 
 /**
@@ -19,43 +20,44 @@ import { getCardAggregate, type CardAggregate } from "@/lib/card-aggregate";
 export function useCardAggregates() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { space } = useSpace();
   const coupleId = profile?.couple_id ?? null;
 
   const { data: cards = [], isLoading: isLoadingCards, isError: isErrorCards } = useQuery({
-    queryKey: ["cards", coupleId, user?.id],
+    queryKey: ["cards", space, coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase.from("credit_cards").select("*").order("created_at");
-      const { data } = coupleId
-        ? await q.eq("couple_id", coupleId)
-        : await q.eq("user_id", user!.id);
+      let q = supabase.from("credit_cards").select("*").order("created_at");
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return (data ?? []) as any[];
     },
     enabled: !!user,
   });
 
   const { data: purchases = [], isLoading: isLoadingPurchases, isError: isErrorPurchases } = useQuery({
-    queryKey: ["card-purchases", coupleId, user?.id],
+    queryKey: ["card-purchases", space, coupleId, user?.id],
     queryFn: async () => {
-      const q = supabase
+      let q = supabase
         .from("transactions")
         .select("*, categories(name,color,icon), installments(*)")
         .not("credit_card_id", "is", null)
         .order("date", { ascending: false });
-      const { data } = coupleId
-        ? await q.eq("couple_id", coupleId)
-        : await q.eq("user_id", user!.id);
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return (data ?? []) as any[];
     },
     enabled: !!user,
   });
 
   const { data: invoices = [], isLoading: isLoadingInvoices, isError: isErrorInvoices } = useQuery({
-    queryKey: ["card-invoices"],
+    queryKey: ["card-invoices", space, coupleId, user?.id],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("card_invoices")
         .select("*")
         .order("reference_month", { ascending: true });
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data } = await q;
       return (data ?? []) as any[];
     },
     enabled: !!user,

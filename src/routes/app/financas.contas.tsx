@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/hooks";
@@ -52,8 +52,8 @@ interface Acc {
 }
 
 function AccountsPage() {
-  const { user } = useAuth();
-  const { data: profile } = useProfile();
+  const { user, loading: loadingAuth } = useAuth();
+  const { data: profile, isLoading: isLoadingProfile } = useProfile();
   const { space } = useSpace();
   const coupleId = profile?.couple_id ?? null;
   const qc = useQueryClient();
@@ -61,7 +61,7 @@ function AccountsPage() {
   const [editing, setEditing] = useState<Acc | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const { data: accounts = [], isLoading } = useQuery({
+  const { data: accounts = [], isPending } = useQuery({
     queryKey: ["bank_accounts_crud", space, coupleId, user?.id],
     enabled: !!user,
     queryFn: async () => {
@@ -105,6 +105,15 @@ function AccountsPage() {
   const hidden = accounts.filter((a) => a.hidden);
   const total = visible.reduce((s, a) => s + Number(a.balance ?? 0), 0);
 
+  if (loadingAuth || isLoadingProfile) {
+    return (
+      <div className="flex flex-col h-[50vh] items-center justify-center text-muted-foreground gap-3">
+        <div className="size-12 rounded-full animate-pulse bg-muted" />
+        <span className="text-sm font-medium">Carregando contas...</span>
+      </div>
+    );
+  }
+
   return (
     <>
       <AppHeader title="Contas bancárias" subtitle="Saldos e contas manuais" />
@@ -127,7 +136,7 @@ function AccountsPage() {
           </div>
         </Card>
 
-        {isLoading ? (
+        {isPending ? (
           <Card className="rounded-2xl p-6 text-center text-sm text-muted-foreground">
             Carregando…
           </Card>
@@ -236,17 +245,15 @@ function AccountFormDialog({
   const [color, setColor] = useState(editing?.color ?? COLORS[0]);
   const [saving, setSaving] = useState(false);
 
-  // Reset ao abrir/mudar de conta
-  const key = editing?.id ?? "new";
-  const [snapshotKey, setSnapshotKey] = useState<string | null>(null);
-  if (open && snapshotKey !== key) {
-    setSnapshotKey(key);
-    setName(editing?.name ?? "");
-    setType(editing?.type ?? "checking");
-    setBalance(editing?.balance != null ? String(editing.balance) : "");
-    setColor(editing?.color ?? COLORS[0]);
-  }
-  if (!open && snapshotKey !== null) setSnapshotKey(null);
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (open) {
+      setName(editing?.name ?? "");
+      setType(editing?.type ?? "checking");
+      setBalance(editing?.balance != null ? String(editing.balance) : "");
+      setColor(editing?.color ?? COLORS[0]);
+    }
+  }, [open, editing]);
 
   const isPluggy = editing?.source === "pluggy";
 

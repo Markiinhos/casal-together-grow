@@ -105,9 +105,11 @@ function SimulatePage() {
 
   // Contexto financeiro do mês
   const { data: tx = [] } = useQuery({
-    queryKey: ["tx-list", space, coupleId, user?.id],
+    queryKey: ["tx-list-month", space, coupleId, user?.id, new Date().getFullYear(), new Date().getMonth()],
     queryFn: async () => {
-      let q: any = supabase.from("transactions").select("*");
+      const now = new Date();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      let q: any = supabase.from("transactions").select("*").gte("date", monthStart);
       q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
       const { data } = await q;
       return data ?? [];
@@ -116,15 +118,10 @@ function SimulatePage() {
   });
 
   const ctx = useMemo(() => {
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     let income = 0, expense = 0;
     for (const t of tx as any[]) {
-      const d = new Date(t.date);
-      if (d >= monthStart) {
-        if (t.type === "income") income += Number(t.amount);
-        if (t.type === "expense") expense += Number(t.amount);
-      }
+      if (t.type === "income") income += Number(t.amount);
+      if (t.type === "expense") expense += Number(t.amount);
     }
     return { monthIncome: income, monthExpense: expense };
   }, [tx]);
