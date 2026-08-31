@@ -122,7 +122,7 @@ function NewSubPage() {
       amount: parsedAmount,
       currency: "BRL",
       billing_frequency: frequency,
-      billing_interval: parseInt(interval) || 1,
+      billing_interval: Math.max(1, parseInt(interval) || 1),
       start_date: startDate || null,
       next_billing_date: nextBilling,
       billing_day: billingDay ? parseInt(billingDay) : null,

@@ -40,9 +40,8 @@ function mapInstitutionType(t?: string): string {
 
 // Sync Pluggy connectors → financial_institutions table
 export const syncInstitutions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .handler(async () => {
-    const expectedSecret = process.env.SYNC_SECRET;
-    // Allow open call only when no secret configured; otherwise this fn is gated by middleware-less but harmless (read-only writes to public catalog)
     const client = await getPluggyClient();
     const { results: connectors } = await client.fetchConnectors({ countries: ["BR"], sandbox: false });
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -155,7 +154,7 @@ export const savePluggyItem = createServerFn({ method: "POST" })
           card_brand: cc?.brand ?? null,
           limit_amount: cc?.creditLimit ?? null,
           available_limit: cc?.availableCreditLimit ?? null,
-          current_bill: cc?.balanceCloseDate ? acc.balance : acc.balance,
+          current_bill: acc.balance,
           closing_day: cc?.balanceCloseDate ? new Date(cc.balanceCloseDate).getDate() : null,
           due_day: cc?.balanceDueDate ? new Date(cc.balanceDueDate).getDate() : null,
         },

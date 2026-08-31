@@ -160,6 +160,7 @@ function getEffectiveAmount(sub: Pick<Subscription, "amount" | "trial_enabled" |
 
 export function calcNextBillingDate(current: Date, freq: BillingFrequency, interval: number = 1): Date {
   const d = new Date(current);
+  interval = Math.max(1, Math.floor(interval) || 1);
   switch (freq) {
     case "weekly":
       d.setDate(d.getDate() + 7 * interval); break;
@@ -298,12 +299,14 @@ export function projectSubscriptionsForMonth(
     if (cursor > endD) continue;
 
     // Wind cursor back if it's way in the past, fast-forward
-    while (cursor < startD) {
+    let guard = 0;
+    while (cursor < startD && guard++ < 1000) {
       cursor = calcNextBillingDate(cursor, sub.billing_frequency, sub.billing_interval);
     }
 
     // Collect all charges within the month
-    while (cursor <= endD) {
+    guard = 0;
+    while (cursor <= endD && guard++ < 1000) {
       const dateStr = getLocalISODate(cursor);
       if (dateStr >= start && dateStr <= end) {
         const amt = getEffectiveAmount(sub);

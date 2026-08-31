@@ -265,19 +265,26 @@ export function TransactionEditDrawer({
       const hasInstallments = tx?.installments && tx.installments.length > 0;
 
       if (hasInstallments) {
-        // Delete installments first
+        // Preserve history: remove only unpaid installments and mark the transaction as cancelled
         await supabase
           .from("installments")
           .delete()
-          .eq("transaction_id", transactionId);
+          .eq("transaction_id", transactionId)
+          .eq("paid", false);
+        const { error } = await supabase
+          .from("transactions")
+          .update({ status: "cancelled", updated_at: new Date().toISOString() } as never)
+          .eq("id", transactionId);
+        if (error) throw error;
+        toast.success("Lançamento cancelado. Parcelas pagas mantidas no histórico.");
+      } else {
+        const { error } = await supabase
+          .from("transactions")
+          .delete()
+          .eq("id", transactionId);
+        if (error) throw error;
+        toast.success("Lançamento excluído!");
       }
-      
-      const { error } = await supabase
-        .from("transactions")
-        .delete()
-        .eq("id", transactionId);
-      if (error) throw error;
-      toast.success("Lançamento excluído!");
 
       invalidateAll(qc);
       onOpenChange(false);

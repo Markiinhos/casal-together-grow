@@ -18,8 +18,8 @@ import {
   Target,
 } from "lucide-react";
 import {
-  fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, fetchCardInvoice,
-  formatBRL, hideOrShow, monthLabel, monthRange, getCardAggregate,
+  fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome,
+  formatBRL, hideOrShow, monthLabel, monthRange,
 } from "@/lib/finance";
 import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
 import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";

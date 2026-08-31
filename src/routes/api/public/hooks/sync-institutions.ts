@@ -1,10 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getRequest } from "@tanstack/react-start/server";
 
 export const Route = createFileRoute("/api/public/hooks/sync-institutions")({
   server: {
     handlers: {
       POST: async () => {
         try {
+          const expectedSecret = process.env.SYNC_SECRET;
+          const providedSecret = getRequest()?.headers.get("x-sync-secret");
+          if (!expectedSecret || providedSecret !== expectedSecret) {
+            return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+
           const { PluggyClient } = await import("pluggy-sdk");
           const client = new PluggyClient({
             clientId: process.env.PLUGGY_CLIENT_ID!,

@@ -151,94 +151,11 @@ export async function fetchMonthIncome(ref: Date, opts: SpaceOpts): Promise<numb
   return (data ?? []).reduce((s: number, t: any) => s + Number(t.amount), 0);
 }
 
-/** Fatura do cartão para um mês de referência */
-export async function fetchCardInvoice(cardId: string, closing: number, ref: Date): Promise<{
-  total: number;
-  count: number;
-  installments: number;
-}> {
-  // Busca da nova tabela card_invoices usando o reference_month correspondente
-  const refString = getLocalISODate(new Date(ref.getFullYear(), ref.getMonth(), 1));
-  const { data } = await supabase
-    .from("card_invoices")
-    .select("total_amount")
-    .eq("card_id", cardId)
-    .eq("reference_month", refString)
-    .maybeSingle();
-
-  return {
-    total: Number(data?.total_amount ?? 0),
-    count: 0,
-    installments: 0,
-  };
-}
-
 export function formatBRL(v: number): string {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 export function hideOrShow(v: number, hidden: boolean): string {
   return hidden ? "R$ ••••" : formatBRL(v);
-}
-
-/**
- * FONTE ÚNICA — Agregados de cartões
- * Consolida os totais exibidos em Home / Cartões / Financeiro para que
- * "Total de faturas" seja SEMPRE a soma do que cada cartão mostra
- * individualmente. Prefere `activeInv.total_amount` (calculado pelo servidor
- * via recalculate_card_invoice_totals) e cai para `currentBill` apenas
- * quando não há row de fatura no banco.
- */
-export interface CardAggregate {
-  totalInvoices: number;      // Σ (fatura ativa) por cartão
-  totalCommitted: number;     // Σ (parcelas em aberto + fatura atual)
-  totalLimit: number;
-  totalAvailable: number;
-  perCard: Array<{
-    cardId: string;
-    invoiceAmount: number;
-    committed: number;
-    limit: number;
-    available: number;
-    invoiceStatus: string | null;
-    invoiceId: string | null;
-  }>;
-}
-
-export function getCardAggregate(
-  cards: Array<{ id: string; limit_amount?: number | string | null }>,
-  metrics: Record<string, { used?: number; currentBill?: number; activeInv?: any }>,
-): CardAggregate {
-  const perCard: CardAggregate["perCard"] = [];
-  let totalInvoices = 0;
-  let totalCommitted = 0;
-  let totalLimit = 0;
-  let totalAvailable = 0;
-
-  for (const c of cards) {
-    const m = metrics[c.id] ?? {};
-    const inv = m.activeInv ?? null;
-    const invoiceAmount = Number(inv?.total_amount ?? m.currentBill ?? 0);
-    const committed = Number(m.used ?? 0);
-    const limit = Number(c.limit_amount ?? 0);
-    const available = Math.max(0, limit - committed);
-
-    totalInvoices += invoiceAmount;
-    totalCommitted += committed;
-    totalLimit += limit;
-    totalAvailable += available;
-
-    perCard.push({
-      cardId: c.id,
-      invoiceAmount,
-      committed,
-      limit,
-      available,
-      invoiceStatus: inv?.status ?? null,
-      invoiceId: inv?.id ?? null,
-    });
-  }
-
-  return { totalInvoices, totalCommitted, totalLimit, totalAvailable, perCard };
 }
 
