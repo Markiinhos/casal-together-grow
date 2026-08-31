@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CoupleAvatar } from "@/components/CouplePhotoUploader";
 import { FinanceInsights } from "@/components/FinanceInsights";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { buildSummary, fetchSubscriptions, monthlyEquivalent } from "@/lib/subscriptions";
 import {
   TrendingUp,
@@ -254,6 +255,7 @@ function HomePage() {
           </Card>
         )}
 
+        <ErrorBoundary>
         <Card className="rounded-3xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">{isPrivate ? "Minhas finanças do mês" : "Resumo do mês"}</h3>
@@ -300,9 +302,15 @@ function HomePage() {
             </>
           )}
         </Card>
+        </ErrorBoundary>
 
-        {!isPrivate && <FinanceInsights />}
+        {!isPrivate && (
+          <ErrorBoundary>
+            <FinanceInsights />
+          </ErrorBoundary>
+        )}
 
+        <ErrorBoundary>
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">Assinaturas</h3>
@@ -357,6 +365,7 @@ function HomePage() {
             </Card>
           )}
         </section>
+        </ErrorBoundary>
 
         {isPrivate && (
           <section>
@@ -410,6 +419,7 @@ function HomePage() {
           </section>
         )}
 
+        <ErrorBoundary>
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">{isPrivate ? "Minhas metas" : "Metas ativas"}</h3>
@@ -451,7 +461,9 @@ function HomePage() {
             </Card>
           )}
         </section>
+        </ErrorBoundary>
 
+        <ErrorBoundary>
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">Próximos compromissos</h3>
@@ -486,7 +498,9 @@ function HomePage() {
             </Card>
           )}
         </section>
+        </ErrorBoundary>
 
+        <ErrorBoundary>
         <section>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">Tarefas pendentes</h3>
@@ -527,6 +541,7 @@ function HomePage() {
             </Card>
           )}
         </section>
+        </ErrorBoundary>
       </div>
 
       <div className="fixed bottom-24 right-4 z-50">

@@ -1,9 +1,0 @@
-src/lib/subscriptions.ts(321,46): error TS2345: Argument of type '"process_subscription_charges"' is not assignable to parameter of type '"award_points" | "can_access_plan" | "can_edit_plan" | "current_couple_id" | "is_couple_member" | "join_couple_by_code"'.
-src/lib/subscriptions.ts(326,3): error TS2322: Type 'string' is not assignable to type '{ subscription_id: string; transaction_id: string | null; status: string; }[]'.
-src/routes/app/financas.assinaturas.$id.tsx(35,38): error TS2345: Argument of type '"/app/financas/assinaturas/$id"' is not assignable to parameter of type 'keyof FileRoutesByPath | undefined'.
-src/routes/app/financas.assinaturas.$id.tsx(100,69): error TS2345: Argument of type 'Record<string, any>' is not assignable to parameter of type 'RejectExcessProperties<{ account_id?: string | null | undefined; amount?: number | undefined; amount_after_trial?: number | null | undefined; auto_renew?: boolean | undefined; billing_day?: number | null | undefined; ... 27 more ...; visibility?: string | undefined; }, Record<...>>'.
-  Type 'Record<string, any>' is not assignable to type '{ [x: string]: never; }'.
-    'string' index signatures are incompatible.
-      Type 'any' is not assignable to type 'never'.
-src/routes/app/financas.assinaturas.index.tsx(31,38): error TS2345: Argument of type '"/app/financas/assinaturas/"' is not assignable to parameter of type 'keyof FileRoutesByPath | undefined'.
-src/routes/app/financas.assinaturas.nova.tsx(20,38): error TS2345: Argument of type '"/app/financas/assinaturas/nova"' is not assignable to parameter of type 'keyof FileRoutesByPath | undefined'.

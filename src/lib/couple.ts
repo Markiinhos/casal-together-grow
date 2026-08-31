@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
+export { formatBRL } from "./finance";
+
 export interface Profile {
   id: string;
   full_name: string | null;
@@ -65,6 +67,3 @@ export async function joinCoupleByCode(code: string, _userId: string): Promise<C
   return couple as Couple;
 }
 
-export function formatBRL(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
-}

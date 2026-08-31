@@ -151,8 +151,8 @@ export async function fetchMonthIncome(ref: Date, opts: SpaceOpts): Promise<numb
   return (data ?? []).reduce((s: number, t: any) => s + Number(t.amount), 0);
 }
 
-export function formatBRL(v: number): string {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export function formatBRL(v: number | null | undefined): string {
+  return (v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 export function hideOrShow(v: number, hidden: boolean): string {

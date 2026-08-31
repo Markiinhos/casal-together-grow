@@ -1,3 +1,5 @@
+import { formatBRL } from "./finance";
+
 export const ITEM_TYPES = [
   { v: "purchase", label: "Compra" },
   { v: "maintenance", label: "Manutenção" },
@@ -73,5 +75,5 @@ export function labelFor<T extends { v: string; label: string }>(list: readonly 
 
 export function fmtBRL(n: number | null | undefined): string {
   if (n == null) return "—";
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return formatBRL(n);
 }

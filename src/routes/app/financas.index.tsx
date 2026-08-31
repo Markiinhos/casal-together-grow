@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/EmptyState";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useCardAggregates } from "@/hooks/useCardAggregates";
 import { type CardAggregate, OPEN_STATUSES } from "@/lib/card-aggregate";
 import {
@@ -202,6 +203,7 @@ function FinancasCentral() {
         </div>
 
         {/* Card principal */}
+        <ErrorBoundary>
         <Card className="rounded-3xl p-5 shadow-card">
           {accountsTotal.isPending ? (
             <Skeleton className="h-9 w-40 rounded-xl" />
@@ -224,6 +226,7 @@ function FinancasCentral() {
             </div>
           </div>
         </Card>
+        </ErrorBoundary>
 
         {/* Atalhos */}
         <div className="grid grid-cols-4 gap-2">
@@ -234,6 +237,7 @@ function FinancasCentral() {
         </div>
 
         {/* Contas */}
+        <ErrorBoundary>
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Contas</h3>
@@ -271,8 +275,10 @@ function FinancasCentral() {
             <Link to="/app/financas/contas"><Plus className="size-4 mr-1" /> Adicionar conta</Link>
           </Button>
         </section>
+        </ErrorBoundary>
 
         {/* Cartões */}
+        <ErrorBoundary>
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Cartões de crédito</h3>
@@ -333,8 +339,10 @@ function FinancasCentral() {
             </div>
           )}
         </section>
+        </ErrorBoundary>
 
         {/* Despesas por categoria */}
+        <ErrorBoundary>
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Despesas por categoria</h3>
@@ -362,8 +370,10 @@ function FinancasCentral() {
             </Card>
           )}
         </section>
+        </ErrorBoundary>
 
         {/* Lançamentos Recentes */}
+        <ErrorBoundary>
         <section>
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-semibold">Lançamentos recentes</h3>
@@ -415,6 +425,7 @@ function FinancasCentral() {
             </Card>
           )}
         </section>
+        </ErrorBoundary>
       </div>
 
       <TransactionEditDrawer
