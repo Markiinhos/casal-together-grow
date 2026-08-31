@@ -17,7 +17,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
 import { getLocalISODate } from "@/lib/date-utils";
-import { CreditCard, Plus, Trash2, ChevronDown, ShoppingBag, TrendingUp, Calendar, Wallet } from "lucide-react";
+import { CreditCard, Plus, Trash2, Pencil, ChevronDown, ShoppingBag, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
 import { useCardAggregates } from "@/hooks/useCardAggregates";
@@ -46,6 +46,7 @@ function CardsPage() {
   const qc = useQueryClient();
   const [openCard, setOpenCard] = useState(false);
   const [openPurchase, setOpenPurchase] = useState(false);
+  const [editingCard, setEditingCard] = useState<any | null>(null);
 
 
   const { data: accounts = [] } = useQuery({
@@ -116,6 +117,12 @@ function CardsPage() {
     <>
       <AppHeader title="Cartões" subtitle="Faturas, parcelas e análises" />
       <div className="px-4 py-4 space-y-4 pb-24">
+        <Dialog open={!!editingCard} onOpenChange={(op) => !op && setEditingCard(null)}>
+          <DialogContent className="rounded-3xl">
+            <DialogHeader><DialogTitle>Editar cartão</DialogTitle></DialogHeader>
+            {editingCard && <CardForm card={editingCard} onDone={() => setEditingCard(null)} />}
+          </DialogContent>
+        </Dialog>
         {selectedInvoiceInfo && (
           <InvoicePaymentDrawer
             open={payDrawerOpen}
@@ -185,7 +192,10 @@ function CardsPage() {
                           <div className="font-bold text-lg">{c.name}</div>
                           <div className="text-[11px] opacity-80 mt-0.5">{ownerName(c.user_id)} · Fecha dia {c.closing_day} · Vence dia {c.due_day}</div>
                         </div>
-                        <button onClick={() => delCard(c.id)} className="opacity-70 hover:opacity-100"><Trash2 className="size-4" /></button>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setEditingCard(c)} className="opacity-70 hover:opacity-100"><Pencil className="size-4" /></button>
+                          <button onClick={() => delCard(c.id)} className="opacity-70 hover:opacity-100"><Trash2 className="size-4" /></button>
+                        </div>
                       </div>
                       <div className="mt-4">
                         <div className="text-[11px] opacity-80">Comprometido</div>
@@ -819,13 +829,14 @@ function PurchaseForm({ cards, cats, onDone }: { cards: any[]; cats: any[]; onDo
   );
 }
 
-function CardForm({ onDone }: { onDone: () => void }) {
-  const [name, setName] = useState("");
-  const [bank, setBank] = useState("");
-  const [color, setColor] = useState(COLORS[0]);
-  const [limitAmount, setLimitAmount] = useState("");
-  const [closingDay, setClosingDay] = useState("1");
-  const [dueDay, setDueDay] = useState("10");
+function CardForm({ card, onDone }: { card?: any; onDone: () => void }) {
+  const isEdit = !!card;
+  const [name, setName] = useState(card?.name ?? "");
+  const [bank, setBank] = useState(card?.bank ?? "");
+  const [color, setColor] = useState(card?.color ?? COLORS[0]);
+  const [limitAmount, setLimitAmount] = useState(card?.limit_amount != null ? String(card.limit_amount) : "");
+  const [closingDay, setClosingDay] = useState(card?.closing_day != null ? String(card.closing_day) : "1");
+  const [dueDay, setDueDay] = useState(card?.due_day != null ? String(card.due_day) : "10");
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const qc = useQueryClient();
@@ -833,16 +844,25 @@ function CardForm({ onDone }: { onDone: () => void }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
-    const { error } = await supabase.from("credit_cards").insert({
-      user_id: user.id,
-      couple_id: profile?.couple_id ?? null,
+    const payload = {
       name, bank, color,
       limit_amount: Number(limitAmount) || 0,
       closing_day: Math.min(31, Math.max(1, Number(closingDay) || 1)),
       due_day: Math.min(31, Math.max(1, Number(dueDay) || 10)),
-    });
+    };
+    const { error } = isEdit
+      ? await supabase.from("credit_cards").update(payload).eq("id", card.id)
+      : await supabase.from("credit_cards").insert({
+          user_id: user.id,
+          couple_id: profile?.couple_id ?? null,
+          ...payload,
+        });
     if (error) toast.error(error.message);
-    else { toast.success("Cartão criado!"); qc.invalidateQueries({ queryKey: ["cards"] }); onDone(); }
+    else {
+      toast.success(isEdit ? "Cartão atualizado!" : "Cartão criado!");
+      qc.invalidateQueries({ queryKey: ["cards"] });
+      onDone();
+    }
   }
 
   return (
@@ -862,7 +882,7 @@ function CardForm({ onDone }: { onDone: () => void }) {
         <div><Label>Fechamento (dia)</Label><Input type="number" min={1} max={31} value={closingDay} onChange={(e) => setClosingDay(e.target.value)} /></div>
         <div><Label>Vencimento (dia)</Label><Input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} /></div>
       </div>
-      <Button type="submit" className="w-full rounded-xl gradient-coral text-white border-0 h-11">Salvar</Button>
+      <Button type="submit" className="w-full rounded-xl gradient-coral text-white border-0 h-11">{isEdit ? "Salvar alterações" : "Salvar"}</Button>
     </form>
   );
 }
