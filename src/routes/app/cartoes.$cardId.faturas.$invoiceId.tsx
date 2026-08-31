@@ -1,15 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatBRL } from "@/lib/finance";
-import { ShoppingBag, CreditCard } from "lucide-react";
+import { ShoppingBag, CreditCard, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InvoicePaymentDrawer } from "@/components/InvoicePaymentDrawer";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/cartoes/$cardId/faturas/$invoiceId")({
   component: InvoiceDetailPage,
@@ -18,7 +21,11 @@ export const Route = createFileRoute("/app/cartoes/$cardId/faturas/$invoiceId")(
 export function InvoiceDetailPage() {
   const { cardId, invoiceId } = Route.useParams();
   const { user } = useAuth();
+  const qc = useQueryClient();
   const [payDrawerOpen, setPayDrawerOpen] = useState(false);
+  const [editingAdjustment, setEditingAdjustment] = useState(false);
+  const [adjustmentInput, setAdjustmentInput] = useState("");
+  const [savingAdjustment, setSavingAdjustment] = useState(false);
 
   // Fetch accounts para o pagamento
   const { data: accounts = [] } = useQuery({
@@ -54,6 +61,30 @@ export function InvoiceDetailPage() {
         <div className="p-4 text-center">Fatura não encontrada.</div>
       </>
     );
+  }
+
+  const manualAdjustment = Number((invoice as any).manual_adjustment ?? 0);
+
+  function openAdjustmentEditor() {
+    setAdjustmentInput(String(manualAdjustment));
+    setEditingAdjustment(true);
+  }
+
+  async function saveAdjustment() {
+    setSavingAdjustment(true);
+    const { error } = await supabase.rpc("set_invoice_manual_adjustment" as any, {
+      _invoice_id: invoiceId,
+      _adjustment: Number(adjustmentInput) || 0,
+    });
+    setSavingAdjustment(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Ajuste salvo!");
+    setEditingAdjustment(false);
+    qc.invalidateQueries({ queryKey: ["card-invoice-detail", invoiceId] });
+    qc.invalidateQueries({ queryKey: ["card-invoices"] });
   }
 
   return (
@@ -106,7 +137,47 @@ export function InvoiceDetailPage() {
            )}
         </Card>
 
-        <Button 
+        <Card className="rounded-2xl p-4 shadow-card">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-sm font-semibold">Ajuste manual</div>
+            {!editingAdjustment && (
+              <button onClick={openAdjustmentEditor} className="text-primary text-xs flex items-center gap-1">
+                <Pencil className="size-3.5" /> {manualAdjustment !== 0 ? "Editar" : "Adicionar"}
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mb-2">
+            Some juros, multa ou desconto ao total calculado automaticamente pelas compras. Positivo aumenta a fatura, negativo diminui.
+          </p>
+          {editingAdjustment ? (
+            <div className="space-y-2">
+              <div>
+                <Label>Valor do ajuste (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={adjustmentInput}
+                  onChange={(e) => setAdjustmentInput(e.target.value)}
+                  placeholder="Ex: 15.90 ou -10"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setEditingAdjustment(false)} disabled={savingAdjustment}>
+                  Cancelar
+                </Button>
+                <Button className="flex-1 rounded-xl gradient-coral text-white border-0" onClick={saveAdjustment} disabled={savingAdjustment}>
+                  {savingAdjustment ? "Salvando..." : "Salvar"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className={`text-lg font-bold ${manualAdjustment > 0 ? "text-destructive" : manualAdjustment < 0 ? "text-success" : ""}`}>
+              {manualAdjustment === 0 ? "Nenhum ajuste" : formatBRL(manualAdjustment)}
+            </div>
+          )}
+        </Card>
+
+        <Button
           className={`w-full rounded-xl h-12 font-medium ${invoice.status === "paid" ? "bg-muted text-muted-foreground border border-border" : "gradient-coral text-white border-0"}`} 
           onClick={() => setPayDrawerOpen(true)}
         >
