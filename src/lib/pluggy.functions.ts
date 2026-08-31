@@ -123,9 +123,10 @@ export const savePluggyItem = createServerFn({ method: "POST" })
 
     // Accounts
     const { results: accounts } = await client.fetchAccounts(item.id);
-    for (const acc of accounts) {
-      await supabase.from("bank_accounts").upsert(
-        {
+    const { data: upsertedAccounts, error: accErr } = await supabase
+      .from("bank_accounts")
+      .upsert(
+        accounts.map((acc) => ({
           connection_id: connRow.id,
           couple_id: coupleId,
           user_id: userId,
@@ -136,10 +137,14 @@ export const savePluggyItem = createServerFn({ method: "POST" })
           balance: acc.balance ?? 0,
           currency: acc.currencyCode ?? "BRL",
           account_number: acc.number ?? null,
-        },
+        })),
         { onConflict: "pluggy_account_id" },
-      );
-    }
+      )
+      .select("id, pluggy_account_id");
+    if (accErr) throw accErr;
+    const localAccountIdByPluggyId = new Map(
+      (upsertedAccounts ?? []).map((a: any) => [a.pluggy_account_id, a.id as string]),
+    );
 
     // Cards (creditCard accounts)
     for (const acc of accounts.filter((a) => a.type === "CREDIT")) {
@@ -166,65 +171,67 @@ export const savePluggyItem = createServerFn({ method: "POST" })
     const from = getLocalISODate(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
     let imported = 0;
     for (const acc of accounts) {
-      const { data: localAcc } = await supabase
-        .from("bank_accounts")
-        .select("id")
-        .eq("pluggy_account_id", acc.id)
-        .single();
-      if (!localAcc) continue;
+      const localAccountId = localAccountIdByPluggyId.get(acc.id);
+      if (!localAccountId) continue;
 
       const { results: txs } = await client.fetchTransactions(acc.id, { from, pageSize: 200 });
-      for (const tx of txs) {
-        const category = mapCategory(tx.description ?? "", tx.category);
-        const isExpense = (tx.amount ?? 0) < 0 || tx.type === "DEBIT";
-        const amountAbs = Math.abs(tx.amount ?? 0);
-        const dateStr = getLocalISODate(tx.date instanceof Date ? tx.date : new Date(tx.date));
+      if (txs.length === 0) continue;
 
-        // Insert local CASAL transaction (idempotent via pluggy_transaction_id unique index)
-        const { data: existingTx } = await supabase
+      const txIds = txs.map((tx) => String(tx.id));
+
+      // One round trip to find which of these transactions already exist locally
+      const { data: existingTxs } = await supabase
+        .from("transactions")
+        .select("id, pluggy_transaction_id")
+        .in("pluggy_transaction_id", txIds);
+      const localTxIdByPluggyTxId = new Map(
+        (existingTxs ?? []).map((t: any) => [t.pluggy_transaction_id, t.id as string]),
+      );
+
+      // Bulk-insert only the transactions we don't have yet
+      const newTxs = txs.filter((tx) => !localTxIdByPluggyTxId.has(String(tx.id)));
+      if (newTxs.length > 0) {
+        const { data: inserted, error: insErr } = await supabase
           .from("transactions")
-          .select("id")
-          .eq("pluggy_transaction_id", tx.id)
-          .maybeSingle();
-
-        let localTxId = existingTx?.id as string | undefined;
-        if (!existingTx) {
-          const { data: ins } = await supabase
-            .from("transactions")
-            .insert({
+          .insert(
+            newTxs.map((tx) => ({
               user_id: userId,
               couple_id: coupleId,
-              type: isExpense ? "expense" : "income",
-              amount: amountAbs,
+              type: (tx.amount ?? 0) < 0 || tx.type === "DEBIT" ? "expense" : "income",
+              amount: Math.abs(tx.amount ?? 0),
               description: tx.description ?? "Importado",
-              date: dateStr,
+              date: getLocalISODate(tx.date instanceof Date ? tx.date : new Date(tx.date)),
               pluggy_transaction_id: tx.id,
               imported_from: "pluggy",
-            })
-            .select("id")
-            .single();
-          localTxId = ins?.id;
-          imported++;
+            })),
+          )
+          .select("id, pluggy_transaction_id");
+        if (insErr) throw insErr;
+        for (const row of inserted ?? []) {
+          localTxIdByPluggyTxId.set((row as any).pluggy_transaction_id, (row as any).id);
         }
-
-        await supabase.from("bank_transactions").upsert(
-          {
-            account_id: localAcc.id,
-            couple_id: coupleId,
-            user_id: userId,
-            pluggy_transaction_id: tx.id,
-            description: tx.description ?? "",
-            amount: tx.amount ?? 0,
-            currency: tx.currencyCode ?? "BRL",
-            category,
-            pluggy_category: tx.category ?? null,
-            date: dateStr,
-            type: tx.type ?? null,
-            imported_tx_id: localTxId ?? null,
-          },
-          { onConflict: "pluggy_transaction_id" },
-        );
+        imported += inserted?.length ?? 0;
       }
+
+      // Bulk upsert the bank_transactions mirror rows
+      const { error: bankTxErr } = await supabase.from("bank_transactions").upsert(
+        txs.map((tx) => ({
+          account_id: localAccountId,
+          couple_id: coupleId,
+          user_id: userId,
+          pluggy_transaction_id: tx.id,
+          description: tx.description ?? "",
+          amount: tx.amount ?? 0,
+          currency: tx.currencyCode ?? "BRL",
+          category: mapCategory(tx.description ?? "", tx.category),
+          pluggy_category: tx.category ?? null,
+          date: getLocalISODate(tx.date instanceof Date ? tx.date : new Date(tx.date)),
+          type: tx.type ?? null,
+          imported_tx_id: localTxIdByPluggyTxId.get(String(tx.id)) ?? null,
+        })),
+        { onConflict: "pluggy_transaction_id" },
+      );
+      if (bankTxErr) throw bankTxErr;
     }
 
     return { ok: true, connectionId: connRow.id, imported };
