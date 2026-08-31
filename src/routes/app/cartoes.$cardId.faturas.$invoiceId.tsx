@@ -113,6 +113,8 @@ export function InvoiceDetailPage() {
           invoiceId={invoice.id}
           refMonth={invoice.reference_month}
           accounts={accounts}
+          status={invoice.status}
+          closingDate={invoice.closing_date}
         />
 
         <Card className="rounded-3xl p-5 shadow-card bg-primary text-primary-foreground">

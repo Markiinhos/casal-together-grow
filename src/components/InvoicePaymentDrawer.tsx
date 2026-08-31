@@ -40,6 +40,8 @@ interface InvoicePaymentDrawerProps {
   invoiceId?: string;
   refMonth: string;
   accounts: any[];
+  status?: string;
+  closingDate?: string;
 }
 
 const KEYS = [
@@ -76,10 +78,16 @@ export function InvoicePaymentDrawer({
   invoiceId,
   refMonth,
   accounts,
+  status,
+  closingDate,
 }: InvoicePaymentDrawerProps) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const remaining = invoiceTotal - paidAmount;
+  const cycleOpen = status === "open";
+  const closingDateLabel = closingDate
+    ? new Date(closingDate + "T12:00:00").toLocaleDateString("pt-BR")
+    : null;
 
   const [payAmount, setPayAmount] = useState(String(remaining));
   const [payDate, setPayDate] = useState(() => getLocalISODate());
@@ -91,6 +99,10 @@ export function InvoicePaymentDrawer({
 
   const handlePay = useCallback(async () => {
     if (!user || !card || saving) return;
+    if (cycleOpen) {
+      toast.error("Esta fatura ainda não fechou o ciclo — aguarde o fechamento para marcar como paga.");
+      return;
+    }
     setSaving(true);
     try {
       const val =
@@ -149,6 +161,7 @@ export function InvoicePaymentDrawer({
     remaining,
     accountId,
     refMonth,
+    cycleOpen,
     qc,
     onOpenChange,
   ]);
@@ -230,7 +243,16 @@ export function InvoicePaymentDrawer({
             </div>
           </div>
 
-          {remaining > 0 ? (
+          {remaining > 0 && cycleOpen ? (
+            <div className="rounded-2xl bg-warning/10 p-4 text-center space-y-1">
+              <AlertTriangle className="size-6 mx-auto text-warning-foreground" />
+              <p className="text-sm font-semibold">Ciclo desta fatura ainda aberto</p>
+              <p className="text-[11px] text-muted-foreground">
+                Ainda podem entrar novas compras neste ciclo{closingDateLabel ? ` (fecha em ${closingDateLabel})` : ""}.
+                Aguarde o fechamento antes de marcar como paga, para não pagar um valor que ainda vai mudar.
+              </p>
+            </div>
+          ) : remaining > 0 ? (
             <>
               {/* Tipo de pagamento */}
               <div className="flex gap-2">

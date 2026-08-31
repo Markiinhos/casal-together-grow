@@ -165,6 +165,8 @@ export function InvoicesPage() {
             invoiceId={selectedInvoice?.id}
             refMonth={selectedInvoice?.reference_month}
             accounts={accounts}
+            status={selectedInvoice?.status}
+            closingDate={selectedInvoice?.closing_date}
           />
         )}
 

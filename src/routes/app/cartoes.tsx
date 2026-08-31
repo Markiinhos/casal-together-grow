@@ -133,6 +133,8 @@ function CardsPage() {
             invoiceId={selectedInvoiceInfo.inv.id}
             refMonth={selectedInvoiceInfo.inv.reference_month}
             accounts={accounts}
+            status={selectedInvoiceInfo.inv.status}
+            closingDate={selectedInvoiceInfo.inv.closing_date}
           />
         )}
         <div className="grid grid-cols-2 gap-2">
