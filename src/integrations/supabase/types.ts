@@ -259,6 +259,7 @@ export type Database = {
           created_at: string
           due_date: string
           id: string
+          manual_adjustment: number
           notes: string | null
           paid_amount: number
           paid_at: string | null
@@ -277,6 +278,7 @@ export type Database = {
           created_at?: string
           due_date: string
           id?: string
+          manual_adjustment?: number
           notes?: string | null
           paid_amount?: number
           paid_at?: string | null
@@ -295,6 +297,7 @@ export type Database = {
           created_at?: string
           due_date?: string
           id?: string
+          manual_adjustment?: number
           notes?: string | null
           paid_amount?: number
           paid_at?: string | null
@@ -2982,6 +2985,7 @@ export type Database = {
           created_at: string
           due_date: string
           id: string
+          manual_adjustment: number
           notes: string | null
           paid_amount: number
           paid_at: string | null
@@ -3035,6 +3039,34 @@ export type Database = {
           due_date: string
           reference_month: string
         }[]
+      }
+      set_invoice_manual_adjustment: {
+        Args: { _adjustment: number; _invoice_id: string }
+        Returns: {
+          card_id: string
+          closing_date: string
+          couple_id: string | null
+          created_at: string
+          due_date: string
+          id: string
+          manual_adjustment: number
+          notes: string | null
+          paid_amount: number
+          paid_at: string | null
+          payment_transaction_id: string | null
+          reference_month: string
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "card_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       undo_card_invoice_payment: {
         Args: { _invoice_id: string; _payment_transaction_id?: string }
