@@ -1,0 +1,72 @@
+-- Fix race condition in join_couple_by_code: two people redeeming the same
+-- invite code at the same instant could both pass the "member_count < 2"
+-- check before either UPDATE ran, resulting in a couple with 3+ members.
+-- Locking the couples row before counting members serializes concurrent
+-- redemptions of the same invite code.
+CREATE OR REPLACE FUNCTION public.join_couple_by_code(_code text)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user uuid := auth.uid();
+  v_couple_id uuid;
+  v_created_by uuid;
+  v_member_count int;
+  v_current_couple uuid;
+BEGIN
+  IF v_user IS NULL THEN
+    RAISE EXCEPTION 'Usuário não autenticado' USING ERRCODE = '28000';
+  END IF;
+
+  IF _code IS NULL OR length(trim(_code)) = 0 THEN
+    RAISE EXCEPTION 'Código de convite inválido' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT couple_id INTO v_current_couple FROM public.profiles WHERE id = v_user;
+  IF v_current_couple IS NOT NULL THEN
+    RAISE EXCEPTION 'Você já faz parte de um casal' USING ERRCODE = '23505';
+  END IF;
+
+  SELECT id, created_by INTO v_couple_id, v_created_by
+  FROM public.couples
+  WHERE invite_code = lower(trim(_code))
+  LIMIT 1;
+
+  IF v_couple_id IS NULL THEN
+    RAISE EXCEPTION 'Convite inválido ou expirado' USING ERRCODE = 'P0002';
+  END IF;
+
+  IF v_created_by = v_user THEN
+    RAISE EXCEPTION 'Você não pode aceitar seu próprio convite' USING ERRCODE = '22023';
+  END IF;
+
+  -- Serialize concurrent redemptions of the same invite code: whoever gets
+  -- here first holds the lock until their transaction commits, so the
+  -- member-count check below always sees a consistent, up-to-date value.
+  PERFORM 1 FROM public.couples WHERE id = v_couple_id FOR UPDATE;
+
+  SELECT count(*) INTO v_member_count FROM public.profiles WHERE couple_id = v_couple_id;
+  IF v_member_count >= 2 THEN
+    RAISE EXCEPTION 'Este casal já está completo' USING ERRCODE = '23505';
+  END IF;
+
+  -- Link the user to the couple
+  UPDATE public.profiles SET couple_id = v_couple_id, updated_at = now() WHERE id = v_user;
+
+  -- Migrate solo records (where couple_id IS NULL) so the user's history is preserved
+  UPDATE public.transactions   SET couple_id = v_couple_id WHERE user_id = v_user AND couple_id IS NULL;
+  UPDATE public.house_tasks    SET couple_id = v_couple_id WHERE user_id = v_user AND couple_id IS NULL;
+  UPDATE public.goals          SET couple_id = v_couple_id WHERE user_id = v_user AND couple_id IS NULL;
+  UPDATE public.events         SET couple_id = v_couple_id WHERE user_id = v_user AND couple_id IS NULL;
+  UPDATE public.memories       SET couple_id = v_couple_id WHERE user_id = v_user AND couple_id IS NULL;
+  UPDATE public.wishes         SET couple_id = v_couple_id WHERE user_id = v_user AND couple_id IS NULL;
+  UPDATE public.categories     SET couple_id = v_couple_id WHERE user_id = v_user AND couple_id IS NULL;
+  UPDATE public.user_points    SET couple_id = v_couple_id WHERE user_id = v_user AND couple_id IS NULL;
+
+  RETURN v_couple_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.join_couple_by_code(text) TO authenticated;
