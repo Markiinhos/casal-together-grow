@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ArrowLeft, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/mais/configuracoes")({
@@ -22,6 +23,9 @@ function SettingsPage() {
   const { data: profile } = useProfile();
   const qc = useQueryClient();
   const [fullName, setFullName] = useState("");
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => { if (profile) setFullName(profile.full_name ?? ""); }, [profile]);
 
@@ -42,6 +46,21 @@ function SettingsPage() {
   async function updateSetting(key: string, value: any) {
     if (!user) return;
     await supabase.from("settings").upsert({ user_id: user.id, ...settings, [key]: value });
+    qc.invalidateQueries();
+  }
+
+  async function resetCreditCards() {
+    setResetting(true);
+    const { data, error } = await supabase.rpc("reset_credit_cards_data" as any);
+    setResetting(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    toast.success(`Apagado: ${row?.deleted_cards ?? 0} cartão(ões) e ${row?.deleted_transactions ?? 0} lançamento(s).`);
+    setResetOpen(false);
+    setResetConfirmText("");
     qc.invalidateQueries();
   }
 
@@ -102,6 +121,56 @@ function SettingsPage() {
             </div>
           ))}
         </Card>
+
+        <Card className="rounded-3xl p-5 shadow-card space-y-3 border-destructive/30">
+          <h3 className="font-semibold text-destructive flex items-center gap-2">
+            <AlertTriangle className="size-4" /> Zona de perigo
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Apaga todos os seus cartões, faturas e compras/parcelas vinculadas a eles (inclusive do parceiro,
+            se forem compartilhados). Contas, metas e outros dados não são afetados. Essa ação não pode ser desfeita.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => setResetOpen(true)}
+            className="w-full rounded-xl text-destructive border-destructive/30"
+          >
+            Apagar todos os dados de cartão
+          </Button>
+        </Card>
+
+        <Dialog open={resetOpen} onOpenChange={(op) => { setResetOpen(op); if (!op) setResetConfirmText(""); }}>
+          <DialogContent className="rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="size-5" /> Apagar dados de cartão
+              </DialogTitle>
+              <DialogDescription>
+                Isso vai apagar permanentemente todos os cartões, faturas e compras/parcelas vinculadas a eles.
+                Não é possível desfazer.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Digite "apagar" para confirmar</Label>
+                <Input
+                  value={resetConfirmText}
+                  onChange={(e) => setResetConfirmText(e.target.value)}
+                  placeholder="apagar"
+                  autoComplete="off"
+                />
+              </div>
+              <Button
+                variant="destructive"
+                disabled={resetConfirmText.trim().toLowerCase() !== "apagar" || resetting}
+                onClick={resetCreditCards}
+                className="w-full rounded-xl"
+              >
+                {resetting ? <Loader2 className="size-4 animate-spin" /> : "Apagar tudo, sem volta"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Button variant="outline" onClick={() => supabase.auth.signOut()} className="w-full rounded-xl text-destructive border-destructive/30">
           Sair da conta
