@@ -39,6 +39,7 @@ import { Route as AppCasaRouteRouteImport } from './routes/app/casa/route'
 import { Route as AppMaisIndexRouteImport } from './routes/app/mais/index'
 import { Route as AppFinancasIndexRouteImport } from './routes/app/financas.index'
 import { Route as AppCasaIndexRouteImport } from './routes/app/casa/index'
+import { Route as AppCartoesIndexRouteImport } from './routes/app/cartoes.index'
 import { Route as AppMaisNotificacoesRouteImport } from './routes/app/mais/notificacoes'
 import { Route as AppMaisConfiguracoesRouteImport } from './routes/app/mais/configuracoes'
 import { Route as AppFinancasSimularRouteImport } from './routes/app/financas.simular'
@@ -209,6 +210,11 @@ const AppCasaIndexRoute = AppCasaIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppCasaRouteRoute,
 } as any)
+const AppCartoesIndexRoute = AppCartoesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppCartoesRoute,
+} as any)
 const AppMaisNotificacoesRoute = AppMaisNotificacoesRouteImport.update({
   id: '/notificacoes',
   path: '/notificacoes',
@@ -348,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
+  '/app/cartoes/': typeof AppCartoesIndexRoute
   '/app/casa/': typeof AppCasaIndexRoute
   '/app/financas/': typeof AppFinancasIndexRoute
   '/app/mais/': typeof AppMaisIndexRoute
@@ -373,7 +380,6 @@ export interface FileRoutesByTo {
   '/app/adicionar': typeof AppAdicionarRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/cardapio': typeof AppCardapioRoute
-  '/app/cartoes': typeof AppCartoesRouteWithChildren
   '/app/casal': typeof AppCasalRoute
   '/app/categorias': typeof AppCategoriasRoute
   '/app/compras': typeof AppComprasRoute
@@ -395,6 +401,7 @@ export interface FileRoutesByTo {
   '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
+  '/app/cartoes': typeof AppCartoesIndexRoute
   '/app/casa': typeof AppCasaIndexRoute
   '/app/financas': typeof AppFinancasIndexRoute
   '/app/mais': typeof AppMaisIndexRoute
@@ -447,6 +454,7 @@ export interface FileRoutesById {
   '/app/financas/simular': typeof AppFinancasSimularRoute
   '/app/mais/configuracoes': typeof AppMaisConfiguracoesRoute
   '/app/mais/notificacoes': typeof AppMaisNotificacoesRoute
+  '/app/cartoes/': typeof AppCartoesIndexRoute
   '/app/casa/': typeof AppCasaIndexRoute
   '/app/financas/': typeof AppFinancasIndexRoute
   '/app/mais/': typeof AppMaisIndexRoute
@@ -500,6 +508,7 @@ export interface FileRouteTypes {
     | '/app/financas/simular'
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
+    | '/app/cartoes/'
     | '/app/casa/'
     | '/app/financas/'
     | '/app/mais/'
@@ -525,7 +534,6 @@ export interface FileRouteTypes {
     | '/app/adicionar'
     | '/app/agenda'
     | '/app/cardapio'
-    | '/app/cartoes'
     | '/app/casal'
     | '/app/categorias'
     | '/app/compras'
@@ -547,6 +555,7 @@ export interface FileRouteTypes {
     | '/app/financas/simular'
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
+    | '/app/cartoes'
     | '/app/casa'
     | '/app/financas'
     | '/app/mais'
@@ -598,6 +607,7 @@ export interface FileRouteTypes {
     | '/app/financas/simular'
     | '/app/mais/configuracoes'
     | '/app/mais/notificacoes'
+    | '/app/cartoes/'
     | '/app/casa/'
     | '/app/financas/'
     | '/app/mais/'
@@ -836,6 +846,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCasaIndexRouteImport
       parentRoute: typeof AppCasaRouteRoute
     }
+    '/app/cartoes/': {
+      id: '/app/cartoes/'
+      path: '/'
+      fullPath: '/app/cartoes/'
+      preLoaderRoute: typeof AppCartoesIndexRouteImport
+      parentRoute: typeof AppCartoesRoute
+    }
     '/app/mais/notificacoes': {
       id: '/app/mais/notificacoes'
       path: '/notificacoes'
@@ -1034,10 +1051,12 @@ const AppCartoesCardIdFaturasRouteWithChildren =
   )
 
 interface AppCartoesRouteChildren {
+  AppCartoesIndexRoute: typeof AppCartoesIndexRoute
   AppCartoesCardIdFaturasRoute: typeof AppCartoesCardIdFaturasRouteWithChildren
 }
 
 const AppCartoesRouteChildren: AppCartoesRouteChildren = {
+  AppCartoesIndexRoute: AppCartoesIndexRoute,
   AppCartoesCardIdFaturasRoute: AppCartoesCardIdFaturasRouteWithChildren,
 }
 
