@@ -251,6 +251,47 @@ export type Database = {
           },
         ]
       }
+      card_invoice_edits: {
+        Row: {
+          created_at: string
+          edited_by: string
+          field: string
+          id: string
+          invoice_id: string
+          new_value: string | null
+          note: string | null
+          old_value: string | null
+        }
+        Insert: {
+          created_at?: string
+          edited_by: string
+          field: string
+          id?: string
+          invoice_id: string
+          new_value?: string | null
+          note?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          created_at?: string
+          edited_by?: string
+          field?: string
+          id?: string
+          invoice_id?: string
+          new_value?: string | null
+          note?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_invoice_edits_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "card_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       card_invoices: {
         Row: {
           card_id: string
@@ -259,6 +300,7 @@ export type Database = {
           created_at: string
           due_date: string
           id: string
+          manual_adjustment: number
           notes: string | null
           paid_amount: number
           paid_at: string | null
@@ -277,6 +319,7 @@ export type Database = {
           created_at?: string
           due_date: string
           id?: string
+          manual_adjustment?: number
           notes?: string | null
           paid_amount?: number
           paid_at?: string | null
@@ -295,6 +338,7 @@ export type Database = {
           created_at?: string
           due_date?: string
           id?: string
+          manual_adjustment?: number
           notes?: string | null
           paid_amount?: number
           paid_at?: string | null
@@ -2973,6 +3017,40 @@ export type Database = {
       can_access_plan: { Args: { _plan_id: string }; Returns: boolean }
       can_edit_plan: { Args: { _plan_id: string }; Returns: boolean }
       current_couple_id: { Args: never; Returns: string }
+      edit_card_invoice: {
+        Args: {
+          _invoice_id: string
+          _new_due_date: string
+          _new_manual_adjustment: number
+          _new_reference_month: string
+          _note?: string
+        }
+        Returns: {
+          card_id: string
+          closing_date: string
+          couple_id: string | null
+          created_at: string
+          due_date: string
+          id: string
+          manual_adjustment: number
+          notes: string | null
+          paid_amount: number
+          paid_at: string | null
+          payment_transaction_id: string | null
+          reference_month: string
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "card_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ensure_card_invoice: {
         Args: { p_card_id: string; p_reference_month: string }
         Returns: {
@@ -2982,6 +3060,7 @@ export type Database = {
           created_at: string
           due_date: string
           id: string
+          manual_adjustment: number
           notes: string | null
           paid_amount: number
           paid_at: string | null
@@ -3035,6 +3114,34 @@ export type Database = {
           due_date: string
           reference_month: string
         }[]
+      }
+      set_invoice_manual_adjustment: {
+        Args: { _adjustment: number; _invoice_id: string }
+        Returns: {
+          card_id: string
+          closing_date: string
+          couple_id: string | null
+          created_at: string
+          due_date: string
+          id: string
+          manual_adjustment: number
+          notes: string | null
+          paid_amount: number
+          paid_at: string | null
+          payment_transaction_id: string | null
+          reference_month: string
+          status: string
+          total_amount: number
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "card_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       undo_card_invoice_payment: {
         Args: { _invoice_id: string; _payment_transaction_id?: string }
