@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile, usePartner } from "@/lib/hooks";
@@ -13,6 +13,9 @@ import { formatBRL } from "@/lib/finance";
 import { ShoppingBag, CreditCard, Pencil, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InvoicePaymentDrawer } from "@/components/InvoicePaymentDrawer";
+import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useCardAggregates } from "@/hooks/useCardAggregates";
 import { toast } from "sonner";
 
 const EDIT_FIELD_LABELS: Record<string, string> = {
@@ -51,7 +54,9 @@ export function InvoiceDetailPage() {
   const { data: profile } = useProfile();
   const { data: partner } = usePartner();
   const qc = useQueryClient();
+  const { purchases } = useCardAggregates();
   const [payDrawerOpen, setPayDrawerOpen] = useState(false);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null);
   const [editingInvoice, setEditingInvoice] = useState(false);
   const [refMonthInput, setRefMonthInput] = useState("");
   const [dueDateInput, setDueDateInput] = useState("");
@@ -115,6 +120,35 @@ export function InvoiceDetailPage() {
   }
 
   const manualAdjustment = Number((invoice as any).manual_adjustment ?? 0);
+
+  // Lançamentos (compras/parcelas) que caem dentro do ciclo desta fatura —
+  // mesma janela de datas usada pelo cálculo automático no servidor.
+  const invoiceLaunches = useMemo(() => {
+    const closingDate = new Date(invoice.closing_date + "T00:00:00");
+    const cycleEnd = new Date(closingDate);
+    cycleEnd.setDate(cycleEnd.getDate() - 1);
+    const refMonthDate = new Date(invoice.reference_month.slice(0, 10) + "T00:00:00");
+    const closingDay = (invoice as any).credit_cards?.closing_day ?? 1;
+    const cycleStart = new Date(refMonthDate.getFullYear(), refMonthDate.getMonth() - 1, closingDay);
+    const monthStart = new Date(refMonthDate.getFullYear(), refMonthDate.getMonth(), 1);
+    const monthEnd = new Date(refMonthDate.getFullYear(), refMonthDate.getMonth() + 1, 1);
+
+    return (purchases as any[])
+      .filter((p) => p.credit_card_id === invoice.card_id)
+      .map((p) => {
+        const insts = (p.installments ?? []) as any[];
+        if (insts.length > 0) {
+          const inst = insts.find((i) => {
+            const d = new Date(String(i.due_date).slice(0, 10) + "T00:00:00");
+            return d >= monthStart && d < monthEnd;
+          });
+          return inst ? { purchase: p, inst } : null;
+        }
+        const d = new Date(String(p.date).slice(0, 10) + "T00:00:00");
+        return d >= cycleStart && d <= cycleEnd ? { purchase: p, inst: null } : null;
+      })
+      .filter((x): x is { purchase: any; inst: any } => x !== null);
+  }, [purchases, invoice]);
 
   function openInvoiceEditor() {
     setRefMonthInput(invoice!.reference_month.slice(0, 7));
@@ -321,11 +355,57 @@ export function InvoiceDetailPage() {
           </section>
         )}
 
+        <ErrorBoundary>
+          <CardPurchaseEditDrawer
+            purchaseId={selectedPurchaseId}
+            open={!!selectedPurchaseId}
+            onOpenChange={(op) => {
+              if (!op) {
+                setSelectedPurchaseId(null);
+                qc.invalidateQueries({ queryKey: ["card-invoice-detail", invoiceId] });
+              }
+            }}
+          />
+        </ErrorBoundary>
+
         <section>
-           <h3 className="font-semibold mb-2 text-sm">Informação Adicional</h3>
-           <Card className="rounded-2xl p-4 shadow-space text-sm text-muted-foreground whitespace-pre-wrap">
-              Para visualizar os lançamentos desta fatura com detalhes (compras parceladas, etc) retorne ao histórico do cartão na tela principal.
-           </Card>
+          <h3 className="font-semibold mb-2 text-sm flex items-center gap-1.5">
+            <ShoppingBag className="size-4 text-primary" /> Lançamentos desta fatura
+          </h3>
+          {invoiceLaunches.length === 0 ? (
+            <Card className="rounded-2xl p-4 shadow-card text-sm text-muted-foreground">
+              Nenhum lançamento encontrado neste ciclo.
+            </Card>
+          ) : (
+            <Card className="rounded-3xl shadow-card overflow-hidden divide-y divide-border">
+              {invoiceLaunches.map(({ purchase: p, inst }) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPurchaseId(p.id)}
+                  className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="size-9 rounded-xl bg-accent/40 flex items-center justify-center shrink-0">
+                    <ShoppingBag className="size-4 text-foreground/70" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {p.description || p.categories?.name || "Compra"}
+                      {inst && <span className="ml-1.5 text-[10px] text-muted-foreground">{inst.installment_number}/{inst.total_installments}</span>}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(p.date + "T12:00:00").toLocaleDateString("pt-BR")}
+                      {p.categories?.name && <> · {p.categories.name}</>}
+                      {inst?.paid && <span className="text-success"> · Paga</span>}
+                    </div>
+                  </div>
+                  <div className="text-sm font-semibold">{formatBRL(Number(inst?.amount ?? p.amount))}</div>
+                </button>
+              ))}
+            </Card>
+          )}
+          <p className="text-[10px] text-muted-foreground mt-2">
+            Toque num lançamento para editar ou excluir.
+          </p>
         </section>
       </div>
     </>
