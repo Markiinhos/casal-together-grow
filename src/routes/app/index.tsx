@@ -28,6 +28,8 @@ import {
   Activity,
   Droplet,
   RefreshCw,
+  Wallet,
+
 } from "lucide-react";
 import { VoiceAssistantButton } from "@/components/VoiceAssistant/VoiceAssistantButton";
 import { VoiceAssistantSheet } from "@/components/VoiceAssistant/VoiceAssistantSheet";
