@@ -12,17 +12,19 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { EmptyState } from "@/components/EmptyState";
-import { Tag, Plus, Trash2, Pencil, ChevronDown, ChevronUp, Archive, Globe, Lock } from "lucide-react";
+import { Tag, Plus, Trash2, Pencil, ChevronDown, Archive, Globe, Lock, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import * as Collapsible from "@radix-ui/react-collapsible";
+import { CategoryIcon, CATEGORY_ICONS } from "@/lib/category-icons";
+
 
 export const Route = createFileRoute("/app/categorias")({
   component: CatPage,
 });
 
 const PALETTE = ["#FF6B57", "#7B61FF", "#34D399", "#FBBF24", "#60A5FA", "#F472B6", "#A78BFA", "#F87171", "#10B981"];
-const ICONS = ["tag", "shopping-cart", "utensils", "home", "car", "heart", "gift", "music", "plane", "book", "coffee", "dumbbell"];
+
 
 interface Subcat {
   id: string;
@@ -80,10 +82,36 @@ function CatPage() {
         .order("sort_order")
         .order("name");
       if (error) console.error("[cats] load", error);
-      return (data ?? []) as unknown as Cat[];
+      const rows = (data ?? []) as unknown as Cat[];
+      return rows.map((c) => ({
+        ...c,
+        subcategories: [...(c.subcategories ?? [])].sort(
+          (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.name.localeCompare(b.name),
+        ),
+      }));
     },
     enabled: !!user,
   });
+
+  /** Troca a ordem de dois itens (categorias ou subcategorias) persistindo sort_order. */
+  async function move(list: { id: string; sort_order: number }[], index: number, dir: -1 | 1) {
+    const target = list[index + dir];
+    const current = list[index];
+    if (!target || !current) return;
+    const a = current.sort_order ?? index;
+    const b = target.sort_order ?? index + dir;
+    const [newA, newB] = a === b ? [index + dir, index] : [b, a];
+    const [r1, r2] = await Promise.all([
+      supabase.from("categories").update({ sort_order: newA }).eq("id", current.id),
+      supabase.from("categories").update({ sort_order: newB }).eq("id", target.id),
+    ]);
+    if (r1.error || r2.error) {
+      toast.error("Não foi possível reordenar. Tente novamente.");
+      return;
+    }
+    invalidateAll(qc);
+  }
+
 
   async function del(cat: Cat) {
     if (cat.is_default) {
@@ -151,12 +179,30 @@ function CatPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {cats.map((c) => (
+            {cats.map((c, ci) => (
               <Collapsible.Root key={c.id} className="bg-card rounded-2xl shadow-sm border border-border/50 overflow-hidden">
                 <Collapsible.Trigger className="w-full px-4 py-3.5 flex items-center gap-3 hover:bg-muted/50 transition-colors group">
-                  <div className="size-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: c.color + "22", color: c.color }}>
-                    <Tag className="size-4" />
+                  <div className="flex flex-col -my-1">
+                    <button
+                      type="button"
+                      disabled={ci === 0}
+                      onClick={(e) => { e.stopPropagation(); move(cats as any, ci, -1); }}
+                      className="size-5 rounded flex items-center justify-center text-muted-foreground disabled:opacity-25"
+                      aria-label="Mover para cima"
+                    >
+                      <ArrowUp className="size-3" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={ci === cats.length - 1}
+                      onClick={(e) => { e.stopPropagation(); move(cats as any, ci, 1); }}
+                      className="size-5 rounded flex items-center justify-center text-muted-foreground disabled:opacity-25"
+                      aria-label="Mover para baixo"
+                    >
+                      <ArrowDown className="size-3" />
+                    </button>
                   </div>
+                  <CategoryIcon icon={c.icon} color={c.color} size={40} />
                   <div className="flex-1 min-w-0 text-left">
                     <div className="font-semibold text-sm flex items-center gap-1.5">
                       {c.name}
@@ -179,11 +225,32 @@ function CatPage() {
                 </Collapsible.Trigger>
                 
                 <Collapsible.Content className="px-4 pb-3 pt-1 border-t border-border/40 bg-muted/20 space-y-1">
-                   {c.subcategories?.map(sub => (
+                   {(c.subcategories ?? []).map((sub, si) => (
                      <div key={sub.id} className="flex items-center justify-between py-2 px-2 hover:bg-muted rounded-lg group">
-                        <div className="flex items-center gap-2 text-sm text-foreground/80">
-                          <div className="size-2 rounded-full" style={{ background: sub.color || c.color }} />
-                          {sub.name}
+                        <div className="flex items-center gap-2 text-sm text-foreground/80 min-w-0">
+                          <div className="flex flex-col">
+                            <button
+                              type="button"
+                              disabled={si === 0}
+                              onClick={() => move((c.subcategories ?? []) as any, si, -1)}
+                              className="size-4 flex items-center justify-center text-muted-foreground disabled:opacity-25"
+                              aria-label="Mover para cima"
+                            >
+                              <ArrowUp className="size-2.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={si === (c.subcategories?.length ?? 0) - 1}
+                              onClick={() => move((c.subcategories ?? []) as any, si, 1)}
+                              className="size-4 flex items-center justify-center text-muted-foreground disabled:opacity-25"
+                              aria-label="Mover para baixo"
+                            >
+                              <ArrowDown className="size-2.5" />
+                            </button>
+                          </div>
+                          <CategoryIcon icon={sub.icon ?? c.icon} color={sub.color || c.color} size={26} />
+                          <span className="truncate">{sub.name}</span>
+                          {sub.is_archived && <Archive className="size-3 text-muted-foreground shrink-0" />}
                         </div>
                         <div className="flex items-center gap-1 opacity-100 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" onClick={() => { setEditingSub({ sub, catId: c.id }); setOpenSub(true); }} className="size-7 rounded-md">
@@ -202,6 +269,7 @@ function CatPage() {
                 </Collapsible.Content>
               </Collapsible.Root>
             ))}
+
           </div>
         )}
       </div>
@@ -213,7 +281,7 @@ function CatForm({ editing, coupleId, onDone }: { editing: Cat | null; coupleId:
   const [name, setName] = useState(editing?.name ?? "");
   const [type, setType] = useState(editing?.type ?? "expense");
   const [color, setColor] = useState(editing?.color ?? PALETTE[0]);
-  const [icon, setIcon] = useState(editing?.icon ?? ICONS[0]);
+  const [icon, setIcon] = useState(editing?.icon ?? CATEGORY_ICONS[0].key);
   const [visibility, setVisibility] = useState(editing?.visibility ?? "shared");
   const [is_archived, setIsArchived] = useState(editing?.is_archived ?? false);
   const [saving, setSaving] = useState(false);
@@ -303,11 +371,11 @@ function CatForm({ editing, coupleId, onDone }: { editing: Cat | null; coupleId:
           </SelectContent>
         </Select>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-3">
         <div>
           <Label className="text-xs">Cor</Label>
           <div className="flex flex-wrap gap-2 mt-1.5">
-            {PALETTE.slice(0,6).map((c) => (
+            {PALETTE.map((c) => (
               <button key={c} type="button" onClick={() => setColor(c)}
                 className={`size-7 rounded-full border-2 transition ${color === c ? "border-foreground scale-110" : "border-transparent"}`}
                 style={{ background: c }} />
@@ -316,14 +384,28 @@ function CatForm({ editing, coupleId, onDone }: { editing: Cat | null; coupleId:
         </div>
         <div>
           <Label className="text-xs">Ícone</Label>
-          <Select value={icon} onValueChange={setIcon}>
-            <SelectTrigger className="mt-1.5 h-10"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {ICONS.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-8 gap-1.5 mt-1.5 max-h-32 overflow-y-auto pr-1">
+            {CATEGORY_ICONS.map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                type="button"
+                title={label}
+                aria-label={label}
+                onClick={() => setIcon(key)}
+                className={`aspect-square rounded-xl flex items-center justify-center border transition ${icon === key ? "border-foreground" : "border-border/60"}`}
+                style={icon === key ? { background: color + "22", color } : undefined}
+              >
+                <Icon className="size-4" />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl bg-muted/30 p-2">
+          <CategoryIcon icon={icon} color={color} size={32} />
+          <span className="text-xs text-muted-foreground">Prévia de como aparece nas listas</span>
         </div>
       </div>
+
       
       {coupleId && (
         <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border border-border/50">
@@ -349,8 +431,10 @@ function CatForm({ editing, coupleId, onDone }: { editing: Cat | null; coupleId:
 function SubcatForm({ parentCat, editing, onDone }: { parentCat: Cat; editing: Subcat | null; onDone: () => void }) {
   const [name, setName] = useState(editing?.name ?? "");
   const [color, setColor] = useState(editing?.color ?? "");
+  const [icon, setIcon] = useState(editing?.icon ?? "");
   const [is_archived, setIsArchived] = useState(editing?.is_archived ?? false);
   const [saving, setSaving] = useState(false);
+
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -390,10 +474,11 @@ function SubcatForm({ parentCat, editing, onDone }: { parentCat: Cat; editing: S
     
     let error;
     if (editing) {
-      ({ error } = await supabase.from("categories").update({ name: cleanedName, color: color || "#7B61FF", is_archived, updated_at: new Date().toISOString() }).eq("id", editing.id));
+      ({ error } = await supabase.from("categories").update({ name: cleanedName, color: color || "#7B61FF", icon: icon || parentCat.icon, is_archived, updated_at: new Date().toISOString() }).eq("id", editing.id));
     } else {
       ({ error } = await supabase.from("categories").insert({
         name: cleanedName, color: color || "#7B61FF", is_archived,
+        icon: icon || parentCat.icon,
         parent_id: parentCat.id, 
         user_id: user.id, 
         type: parentCat.type, 
@@ -401,6 +486,7 @@ function SubcatForm({ parentCat, editing, onDone }: { parentCat: Cat; editing: S
         couple_id: parentCat.couple_id
       }));
     }
+
     setSaving(false);
     if (error) {
       console.error("[subcats] save error:", error);
@@ -419,13 +505,34 @@ function SubcatForm({ parentCat, editing, onDone }: { parentCat: Cat; editing: S
         <Label className="text-xs">Cor personalizada (Opcional)</Label>
         <div className="flex flex-wrap gap-2 mt-1.5">
           <button type="button" onClick={() => setColor("")} className={`size-7 rounded-full border-2 transition flex items-center justify-center text-xs ${!color ? "border-foreground bg-muted" : "border-border bg-transparent"}`}>N</button>
-          {PALETTE.slice(0,6).map((c) => (
+          {PALETTE.map((c) => (
             <button key={c} type="button" onClick={() => setColor(c)}
               className={`size-7 rounded-full border-2 transition ${color === c ? "border-foreground scale-110" : "border-transparent"}`}
               style={{ background: c }} />
           ))}
         </div>
       </div>
+
+      <div>
+        <Label className="text-xs">Ícone (Opcional)</Label>
+        <div className="grid grid-cols-8 gap-1.5 mt-1.5 max-h-28 overflow-y-auto pr-1">
+          {CATEGORY_ICONS.map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              type="button"
+              title={label}
+              aria-label={label}
+              onClick={() => setIcon(icon === key ? "" : key)}
+              className={`aspect-square rounded-xl flex items-center justify-center border transition ${icon === key ? "border-foreground" : "border-border/60"}`}
+            >
+              <Icon className="size-4" />
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1">Sem escolher, herda o ícone da categoria "{parentCat.name}".</p>
+      </div>
+      
+
       
       {editing && (
         <div className="flex items-center justify-between p-3 bg-muted/30 rounded-xl border border-border/50">

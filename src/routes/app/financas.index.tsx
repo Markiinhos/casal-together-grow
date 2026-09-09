@@ -234,9 +234,11 @@ function FinancasCentral() {
         <div className="grid grid-cols-4 gap-2">
           <ShortcutTile to="/app/financas/planejamento" icon={Target} label="Planejamento" />
           <ShortcutTile to="/app/financas/projecao" icon={ChartLine} label="Projeção" />
+          <ShortcutTile to="/app/financas/faturas" icon={CreditCard} label="Faturas" />
           <ShortcutTile to="/app/financas/simular" icon={Sparkles} label="Simular" />
           <ShortcutTile to="/app/categorias" icon={PieChart} label="Categorias" />
         </div>
+
 
         {/* Contas */}
         <ErrorBoundary>

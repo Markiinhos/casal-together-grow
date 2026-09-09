@@ -28,6 +28,8 @@ import {
   Activity,
   Droplet,
   RefreshCw,
+  Wallet,
+
 } from "lucide-react";
 import { VoiceAssistantButton } from "@/components/VoiceAssistant/VoiceAssistantButton";
 import { VoiceAssistantSheet } from "@/components/VoiceAssistant/VoiceAssistantSheet";
@@ -67,6 +69,34 @@ function HomePage() {
     },
     enabled: !!user,
   });
+
+  /** Contas bancárias do espaço atual + últimas movimentações vinculadas a elas. */
+  const { data: accountsData, isLoading: isAccountsLoading } = useQuery({
+    queryKey: ["home-accounts", space, coupleId, user?.id],
+    queryFn: async () => {
+      let qa: any = supabase
+        .from("bank_accounts")
+        .select("id,name,type,balance,color,icon,source")
+        .eq("hidden", false)
+        .order("created_at");
+      qa = applySpaceFilter(qa, { space, userId: user!.id, coupleId });
+      const { data: accounts } = await qa;
+      const list = (accounts ?? []) as any[];
+
+      let qt: any = supabase
+        .from("transactions")
+        .select("id,description,amount,type,date,account_id")
+        .not("account_id", "is", null)
+        .order("date", { ascending: false })
+        .limit(6);
+      qt = applySpaceFilter(qt, { space, userId: user!.id, coupleId });
+      const { data: movements } = await qt;
+
+      return { accounts: list, movements: (movements ?? []) as any[] };
+    },
+    enabled: !!user,
+  });
+
 
   // Realtime cache invalidation for financial data
   useEffect(() => {
@@ -303,6 +333,82 @@ function HomePage() {
           )}
         </Card>
         </ErrorBoundary>
+
+        <ErrorBoundary>
+        <Card className="rounded-3xl p-5 shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Minhas contas</h3>
+            <Link to="/app/financas/contas" className="text-xs text-primary font-medium">
+              Gerenciar
+            </Link>
+          </div>
+
+          {isAccountsLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-12 rounded-2xl" />
+              <Skeleton className="h-12 rounded-2xl" />
+            </div>
+          ) : (accountsData?.accounts.length ?? 0) === 0 ? (
+            <EmptyState
+              icon={Wallet}
+              title="Nenhuma conta cadastrada"
+              description="Cadastre uma conta para acompanhar o saldo e as movimentações aqui."
+            />
+          ) : (
+            <>
+              <div className="space-y-2">
+                {accountsData!.accounts.map((a: any) => (
+                  <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-muted/30 p-3">
+                    <div
+                      className="size-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: (a.color || "#7B61FF") + "22", color: a.color || "#7B61FF" }}
+                    >
+                      <Wallet className="size-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{a.name || "Conta"}</div>
+                      <div className="text-[11px] text-muted-foreground capitalize">
+                        {a.type || "conta"}{a.source === "pluggy" ? " · sincronizada" : ""}
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold">{formatBRL(Number(a.balance ?? 0))}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-border/50">
+                <div className="text-xs font-semibold text-muted-foreground mb-2">Últimas movimentações</div>
+                {(accountsData?.movements.length ?? 0) === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhuma movimentação vinculada às contas ainda.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {accountsData!.movements.map((m: any) => {
+                      const acc = accountsData!.accounts.find((a: any) => a.id === m.account_id);
+                      const isIncome = m.type === "income";
+                      return (
+                        <div key={m.id} className="flex items-center justify-between gap-3 text-sm">
+                          <div className="min-w-0">
+                            <div className="truncate">{m.description || (isIncome ? "Entrada" : "Saída")}</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {new Date(m.date + "T00:00:00").toLocaleDateString("pt-BR")}
+                              {acc ? ` · ${acc.name}` : ""}
+                            </div>
+                          </div>
+                          <div className={`font-semibold shrink-0 ${isIncome ? "text-success" : "text-destructive"}`}>
+                            {isIncome ? "+" : "-"}{formatBRL(Number(m.amount ?? 0))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </Card>
+        </ErrorBoundary>
+
+
 
         {!isPrivate && (
           <ErrorBoundary>

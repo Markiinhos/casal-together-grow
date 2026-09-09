@@ -45,6 +45,7 @@ import { Route as AppMaisConfiguracoesRouteImport } from './routes/app/mais/conf
 import { Route as AppFinancasSimularRouteImport } from './routes/app/financas.simular'
 import { Route as AppFinancasSimulacoesRouteImport } from './routes/app/financas.simulacoes'
 import { Route as AppFinancasProjecaoRouteImport } from './routes/app/financas.projecao'
+import { Route as AppFinancasFaturasRouteImport } from './routes/app/financas.faturas'
 import { Route as AppFinancasContasRouteImport } from './routes/app/financas.contas'
 import { Route as AppCasaComprasRouteImport } from './routes/app/casa/compras'
 import { Route as AppFinancasPlanejamentoIndexRouteImport } from './routes/app/financas.planejamento.index'
@@ -240,6 +241,11 @@ const AppFinancasProjecaoRoute = AppFinancasProjecaoRouteImport.update({
   path: '/financas/projecao',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppFinancasFaturasRoute = AppFinancasFaturasRouteImport.update({
+  id: '/financas/faturas',
+  path: '/financas/faturas',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppFinancasContasRoute = AppFinancasContasRouteImport.update({
   id: '/financas/contas',
   path: '/financas/contas',
@@ -349,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/contas': typeof AppFinancasContasRoute
+  '/app/financas/faturas': typeof AppFinancasFaturasRoute
   '/app/financas/projecao': typeof AppFinancasProjecaoRoute
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
@@ -396,6 +403,7 @@ export interface FileRoutesByTo {
   '/convite/$code': typeof ConviteCodeRoute
   '/app': typeof AppIndexRoute
   '/app/financas/contas': typeof AppFinancasContasRoute
+  '/app/financas/faturas': typeof AppFinancasFaturasRoute
   '/app/financas/projecao': typeof AppFinancasProjecaoRoute
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
@@ -449,6 +457,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/contas': typeof AppFinancasContasRoute
+  '/app/financas/faturas': typeof AppFinancasFaturasRoute
   '/app/financas/projecao': typeof AppFinancasProjecaoRoute
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
@@ -503,6 +512,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/casa/compras'
     | '/app/financas/contas'
+    | '/app/financas/faturas'
     | '/app/financas/projecao'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
@@ -550,6 +560,7 @@ export interface FileRouteTypes {
     | '/convite/$code'
     | '/app'
     | '/app/financas/contas'
+    | '/app/financas/faturas'
     | '/app/financas/projecao'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
@@ -602,6 +613,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/casa/compras'
     | '/app/financas/contas'
+    | '/app/financas/faturas'
     | '/app/financas/projecao'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
@@ -888,6 +900,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancasProjecaoRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/financas/faturas': {
+      id: '/app/financas/faturas'
+      path: '/financas/faturas'
+      fullPath: '/app/financas/faturas'
+      preLoaderRoute: typeof AppFinancasFaturasRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/financas/contas': {
       id: '/app/financas/contas'
       path: '/financas/contas'
@@ -1087,6 +1106,7 @@ interface AppRouteRouteChildren {
   AppTarefasRoute: typeof AppTarefasRoute
   AppIndexRoute: typeof AppIndexRoute
   AppFinancasContasRoute: typeof AppFinancasContasRoute
+  AppFinancasFaturasRoute: typeof AppFinancasFaturasRoute
   AppFinancasProjecaoRoute: typeof AppFinancasProjecaoRoute
   AppFinancasSimulacoesRoute: typeof AppFinancasSimulacoesRoute
   AppFinancasSimularRoute: typeof AppFinancasSimularRoute
@@ -1122,6 +1142,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppTarefasRoute: AppTarefasRoute,
   AppIndexRoute: AppIndexRoute,
   AppFinancasContasRoute: AppFinancasContasRoute,
+  AppFinancasFaturasRoute: AppFinancasFaturasRoute,
   AppFinancasProjecaoRoute: AppFinancasProjecaoRoute,
   AppFinancasSimulacoesRoute: AppFinancasSimulacoesRoute,
   AppFinancasSimularRoute: AppFinancasSimularRoute,

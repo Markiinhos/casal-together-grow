@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -16,6 +16,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { AppHeader } from "@/components/AppHeader";
 import { Sparkles, Wallet, Calendar, Target, ListChecks, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { CategoryIcon } from "@/lib/category-icons";
+
 
 export const Route = createFileRoute("/app/adicionar")({
   component: AddPage,
@@ -196,12 +198,29 @@ function TxForm({ type }: { type: "income" | "expense" }) {
   const { data: categories } = useQuery({
     queryKey: ["categories", profile?.couple_id, user?.id, type],
     queryFn: async () => {
-      const q = supabase.from("categories").select("*").in("type", [type, "other"]).order("name");
+      const q = supabase
+        .from("categories")
+        .select("*")
+        .in("type", [type, "other"])
+        .eq("is_archived", false)
+        .order("sort_order")
+        .order("name");
       const { data } = profile?.couple_id ? await q.eq("couple_id", profile.couple_id) : await q.eq("user_id", user!.id);
       return data ?? [];
     },
     enabled: !!user,
   });
+
+  /** Categorias pai com suas subcategorias aninhadas, na ordem definida em /app/categorias. */
+  const grouped = useMemo(() => {
+    const all = (categories ?? []) as any[];
+    const parents = all.filter((c) => !c.parent_id);
+    return parents.map((p) => ({
+      ...p,
+      subs: all.filter((s) => s.parent_id === p.id),
+    }));
+  }, [categories]);
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -242,13 +261,27 @@ function TxForm({ type }: { type: "income" | "expense" }) {
           <Select value={categoryId} onValueChange={setCategoryId}>
             <SelectTrigger><SelectValue placeholder="Selecione (opcional)" /></SelectTrigger>
             <SelectContent>
-              {(categories ?? []).map((c: any) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
+              {grouped.map((c: any) => [
+                <SelectItem key={c.id} value={c.id}>
+                  <span className="flex items-center gap-2">
+                    <CategoryIcon icon={c.icon} color={c.color} size={22} />
+                    {c.name}
+                  </span>
+                </SelectItem>,
+                ...c.subs.map((s: any) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    <span className="flex items-center gap-2 pl-4">
+                      <CategoryIcon icon={s.icon ?? c.icon} color={s.color || c.color} size={20} />
+                      <span className="text-muted-foreground">{c.name} ·</span> {s.name}
+                    </span>
+                  </SelectItem>
+                )),
+              ])}
             </SelectContent>
           </Select>
           <Link to="/app/categorias" className="text-xs text-primary mt-1 inline-block">+ Gerenciar categorias</Link>
         </div>
+
         <div>
           <Label>Data</Label>
           <Input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
