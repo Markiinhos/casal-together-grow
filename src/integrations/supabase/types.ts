@@ -694,6 +694,137 @@ export type Database = {
           },
         ]
       }
+      debt_payments: {
+        Row: {
+          amount: number
+          couple_id: string | null
+          created_at: string
+          debt_id: string
+          id: string
+          notes: string | null
+          payment_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          couple_id?: string | null
+          created_at?: string
+          debt_id: string
+          id?: string
+          notes?: string | null
+          payment_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          couple_id?: string | null
+          created_at?: string
+          debt_id?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debt_payments_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_payments_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debts: {
+        Row: {
+          couple_id: string | null
+          created_at: string
+          creditor: string
+          current_amount: number
+          debt_date: string
+          description: string
+          id: string
+          notes: string | null
+          original_amount: number
+          responsible_user_id: string
+          status: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          couple_id?: string | null
+          created_at?: string
+          creditor: string
+          current_amount: number
+          debt_date: string
+          description: string
+          id?: string
+          notes?: string | null
+          original_amount: number
+          responsible_user_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          couple_id?: string | null
+          created_at?: string
+          creditor?: string
+          current_amount?: number
+          debt_date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          original_amount?: number
+          responsible_user_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debts_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debts_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           category: string | null
@@ -1702,6 +1833,79 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      investments: {
+        Row: {
+          amount: number
+          couple_id: string | null
+          created_at: string
+          id: string
+          institution: string
+          investment_date: string
+          investment_type: string
+          name: string
+          notes: string | null
+          responsible_user_id: string
+          updated_at: string
+          user_id: string
+          visibility: string
+          yield_description: string | null
+        }
+        Insert: {
+          amount: number
+          couple_id?: string | null
+          created_at?: string
+          id?: string
+          institution: string
+          investment_date: string
+          investment_type: string
+          name: string
+          notes?: string | null
+          responsible_user_id: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+          yield_description?: string | null
+        }
+        Update: {
+          amount?: number
+          couple_id?: string | null
+          created_at?: string
+          id?: string
+          institution?: string
+          investment_date?: string
+          investment_type?: string
+          name?: string
+          notes?: string | null
+          responsible_user_id?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+          yield_description?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investments_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investments_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
