@@ -17,10 +17,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowDownCircle, ArrowUpCircle, CalendarClock, Pencil, PiggyBank, Plus, Trash2, WalletCards } from "lucide-react";
+import { ArrowUpCircle, CalendarClock, ChevronRight, Landmark, Pencil, PiggyBank, Plus, ReceiptText, Trash2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/app/financas/estrutura/")({ component: FinancialStructure });
+export const Route = createFileRoute("/app/financas/estrutura/")({
+  head: () => ({ meta: [
+    { title: "Estrutura financeira — CASAL" },
+    { name: "description", content: "Organize receitas previstas, despesas fixas, investimentos e dívidas do casal." },
+    { property: "og:title", content: "Estrutura financeira — CASAL" },
+    { property: "og:description", content: "Organize receitas previstas, despesas fixas, investimentos e dívidas do casal." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
+  component: FinancialStructure,
+});
 
 const incomeTypes: Record<string, string> = { salary: "Salário", scholarship: "Bolsa", freelance: "Freelance", benefit: "Benefício", commission: "Comissão", extra: "Renda extra", other: "Outro" };
 const paymentMethods: Record<string, string> = { pix: "Pix", debit: "Débito", bank_account: "Conta bancária", credit_card: "Cartão de crédito", boleto: "Boleto", cash: "Dinheiro", other: "Outro" };
@@ -111,6 +121,23 @@ function FinancialStructure() {
         </div>
         <p className="text-[11px] text-muted-foreground mt-3">Previsão mensal. Lançamentos realizados continuam no resumo financeiro principal.</p>
       </Card>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button asChild variant="outline" className="h-auto justify-start gap-3 rounded-2xl p-4 text-left">
+          <Link to="/app/financas/estrutura/investimentos">
+            <Landmark className="size-5 shrink-0 text-success" />
+            <span className="min-w-0 flex-1"><span className="block font-semibold">Investimentos</span><span className="block text-[11px] font-normal text-muted-foreground">Acompanhamento manual</span></span>
+            <ChevronRight className="size-4 shrink-0" />
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-auto justify-start gap-3 rounded-2xl p-4 text-left">
+          <Link to="/app/financas/estrutura/dividas">
+            <ReceiptText className="size-5 shrink-0 text-destructive" />
+            <span className="min-w-0 flex-1"><span className="block font-semibold">Dívidas</span><span className="block text-[11px] font-normal text-muted-foreground">Plano para quitar</span></span>
+            <ChevronRight className="size-4 shrink-0" />
+          </Link>
+        </Button>
+      </div>
 
       <Tabs defaultValue="summary">
         <TabsList className="grid grid-cols-4 w-full h-auto rounded-2xl p-1">
