@@ -46,10 +46,10 @@ import { Route as AppFinancasSimularRouteImport } from './routes/app/financas.si
 import { Route as AppFinancasSimulacoesRouteImport } from './routes/app/financas.simulacoes'
 import { Route as AppFinancasProjecaoRouteImport } from './routes/app/financas.projecao'
 import { Route as AppFinancasFaturasRouteImport } from './routes/app/financas.faturas'
-import { Route as AppFinancasEstruturaRouteImport } from './routes/app/financas.estrutura'
 import { Route as AppFinancasContasRouteImport } from './routes/app/financas.contas'
 import { Route as AppCasaComprasRouteImport } from './routes/app/casa/compras'
 import { Route as AppFinancasPlanejamentoIndexRouteImport } from './routes/app/financas.planejamento.index'
+import { Route as AppFinancasEstruturaIndexRouteImport } from './routes/app/financas.estrutura.index'
 import { Route as AppFinancasAssinaturasIndexRouteImport } from './routes/app/financas.assinaturas.index'
 import { Route as AppCasaComprasIndexRouteImport } from './routes/app/casa/compras.index'
 import { Route as AppFinancasPlanejamentoNovoRouteImport } from './routes/app/financas.planejamento.novo'
@@ -247,11 +247,6 @@ const AppFinancasFaturasRoute = AppFinancasFaturasRouteImport.update({
   path: '/financas/faturas',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const AppFinancasEstruturaRoute = AppFinancasEstruturaRouteImport.update({
-  id: '/financas/estrutura',
-  path: '/financas/estrutura',
-  getParentRoute: () => AppRouteRoute,
-} as any)
 const AppFinancasContasRoute = AppFinancasContasRouteImport.update({
   id: '/financas/contas',
   path: '/financas/contas',
@@ -266,6 +261,12 @@ const AppFinancasPlanejamentoIndexRoute =
   AppFinancasPlanejamentoIndexRouteImport.update({
     id: '/financas/planejamento/',
     path: '/financas/planejamento/',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
+const AppFinancasEstruturaIndexRoute =
+  AppFinancasEstruturaIndexRouteImport.update({
+    id: '/financas/estrutura/',
+    path: '/financas/estrutura/',
     getParentRoute: () => AppRouteRoute,
   } as any)
 const AppFinancasAssinaturasIndexRoute =
@@ -361,7 +362,6 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/contas': typeof AppFinancasContasRoute
-  '/app/financas/estrutura': typeof AppFinancasEstruturaRoute
   '/app/financas/faturas': typeof AppFinancasFaturasRoute
   '/app/financas/projecao': typeof AppFinancasProjecaoRoute
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
@@ -382,6 +382,7 @@ export interface FileRoutesByFullPath {
   '/app/financas/planejamento/novo': typeof AppFinancasPlanejamentoNovoRoute
   '/app/casa/compras/': typeof AppCasaComprasIndexRoute
   '/app/financas/assinaturas/': typeof AppFinancasAssinaturasIndexRoute
+  '/app/financas/estrutura/': typeof AppFinancasEstruturaIndexRoute
   '/app/financas/planejamento/': typeof AppFinancasPlanejamentoIndexRoute
   '/app/cartoes/$cardId/faturas/$invoiceId': typeof AppCartoesCardIdFaturasInvoiceIdRoute
 }
@@ -410,7 +411,6 @@ export interface FileRoutesByTo {
   '/convite/$code': typeof ConviteCodeRoute
   '/app': typeof AppIndexRoute
   '/app/financas/contas': typeof AppFinancasContasRoute
-  '/app/financas/estrutura': typeof AppFinancasEstruturaRoute
   '/app/financas/faturas': typeof AppFinancasFaturasRoute
   '/app/financas/projecao': typeof AppFinancasProjecaoRoute
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
@@ -431,6 +431,7 @@ export interface FileRoutesByTo {
   '/app/financas/planejamento/novo': typeof AppFinancasPlanejamentoNovoRoute
   '/app/casa/compras': typeof AppCasaComprasIndexRoute
   '/app/financas/assinaturas': typeof AppFinancasAssinaturasIndexRoute
+  '/app/financas/estrutura': typeof AppFinancasEstruturaIndexRoute
   '/app/financas/planejamento': typeof AppFinancasPlanejamentoIndexRoute
   '/app/cartoes/$cardId/faturas/$invoiceId': typeof AppCartoesCardIdFaturasInvoiceIdRoute
 }
@@ -465,7 +466,6 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/contas': typeof AppFinancasContasRoute
-  '/app/financas/estrutura': typeof AppFinancasEstruturaRoute
   '/app/financas/faturas': typeof AppFinancasFaturasRoute
   '/app/financas/projecao': typeof AppFinancasProjecaoRoute
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
@@ -486,6 +486,7 @@ export interface FileRoutesById {
   '/app/financas/planejamento/novo': typeof AppFinancasPlanejamentoNovoRoute
   '/app/casa/compras/': typeof AppCasaComprasIndexRoute
   '/app/financas/assinaturas/': typeof AppFinancasAssinaturasIndexRoute
+  '/app/financas/estrutura/': typeof AppFinancasEstruturaIndexRoute
   '/app/financas/planejamento/': typeof AppFinancasPlanejamentoIndexRoute
   '/app/cartoes/$cardId/faturas/$invoiceId': typeof AppCartoesCardIdFaturasInvoiceIdRoute
 }
@@ -521,7 +522,6 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/casa/compras'
     | '/app/financas/contas'
-    | '/app/financas/estrutura'
     | '/app/financas/faturas'
     | '/app/financas/projecao'
     | '/app/financas/simulacoes'
@@ -542,6 +542,7 @@ export interface FileRouteTypes {
     | '/app/financas/planejamento/novo'
     | '/app/casa/compras/'
     | '/app/financas/assinaturas/'
+    | '/app/financas/estrutura/'
     | '/app/financas/planejamento/'
     | '/app/cartoes/$cardId/faturas/$invoiceId'
   fileRoutesByTo: FileRoutesByTo
@@ -570,7 +571,6 @@ export interface FileRouteTypes {
     | '/convite/$code'
     | '/app'
     | '/app/financas/contas'
-    | '/app/financas/estrutura'
     | '/app/financas/faturas'
     | '/app/financas/projecao'
     | '/app/financas/simulacoes'
@@ -591,6 +591,7 @@ export interface FileRouteTypes {
     | '/app/financas/planejamento/novo'
     | '/app/casa/compras'
     | '/app/financas/assinaturas'
+    | '/app/financas/estrutura'
     | '/app/financas/planejamento'
     | '/app/cartoes/$cardId/faturas/$invoiceId'
   id:
@@ -624,7 +625,6 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/casa/compras'
     | '/app/financas/contas'
-    | '/app/financas/estrutura'
     | '/app/financas/faturas'
     | '/app/financas/projecao'
     | '/app/financas/simulacoes'
@@ -645,6 +645,7 @@ export interface FileRouteTypes {
     | '/app/financas/planejamento/novo'
     | '/app/casa/compras/'
     | '/app/financas/assinaturas/'
+    | '/app/financas/estrutura/'
     | '/app/financas/planejamento/'
     | '/app/cartoes/$cardId/faturas/$invoiceId'
   fileRoutesById: FileRoutesById
@@ -919,13 +920,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancasFaturasRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/app/financas/estrutura': {
-      id: '/app/financas/estrutura'
-      path: '/financas/estrutura'
-      fullPath: '/app/financas/estrutura'
-      preLoaderRoute: typeof AppFinancasEstruturaRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
     '/app/financas/contas': {
       id: '/app/financas/contas'
       path: '/financas/contas'
@@ -945,6 +939,13 @@ declare module '@tanstack/react-router' {
       path: '/financas/planejamento'
       fullPath: '/app/financas/planejamento/'
       preLoaderRoute: typeof AppFinancasPlanejamentoIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/financas/estrutura/': {
+      id: '/app/financas/estrutura/'
+      path: '/financas/estrutura'
+      fullPath: '/app/financas/estrutura/'
+      preLoaderRoute: typeof AppFinancasEstruturaIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/financas/assinaturas/': {
@@ -1125,7 +1126,6 @@ interface AppRouteRouteChildren {
   AppTarefasRoute: typeof AppTarefasRoute
   AppIndexRoute: typeof AppIndexRoute
   AppFinancasContasRoute: typeof AppFinancasContasRoute
-  AppFinancasEstruturaRoute: typeof AppFinancasEstruturaRoute
   AppFinancasFaturasRoute: typeof AppFinancasFaturasRoute
   AppFinancasProjecaoRoute: typeof AppFinancasProjecaoRoute
   AppFinancasSimulacoesRoute: typeof AppFinancasSimulacoesRoute
@@ -1136,6 +1136,7 @@ interface AppRouteRouteChildren {
   AppFinancasPlanejamentoIdRoute: typeof AppFinancasPlanejamentoIdRoute
   AppFinancasPlanejamentoNovoRoute: typeof AppFinancasPlanejamentoNovoRoute
   AppFinancasAssinaturasIndexRoute: typeof AppFinancasAssinaturasIndexRoute
+  AppFinancasEstruturaIndexRoute: typeof AppFinancasEstruturaIndexRoute
   AppFinancasPlanejamentoIndexRoute: typeof AppFinancasPlanejamentoIndexRoute
 }
 
@@ -1162,7 +1163,6 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppTarefasRoute: AppTarefasRoute,
   AppIndexRoute: AppIndexRoute,
   AppFinancasContasRoute: AppFinancasContasRoute,
-  AppFinancasEstruturaRoute: AppFinancasEstruturaRoute,
   AppFinancasFaturasRoute: AppFinancasFaturasRoute,
   AppFinancasProjecaoRoute: AppFinancasProjecaoRoute,
   AppFinancasSimulacoesRoute: AppFinancasSimulacoesRoute,
@@ -1173,6 +1173,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppFinancasPlanejamentoIdRoute: AppFinancasPlanejamentoIdRoute,
   AppFinancasPlanejamentoNovoRoute: AppFinancasPlanejamentoNovoRoute,
   AppFinancasAssinaturasIndexRoute: AppFinancasAssinaturasIndexRoute,
+  AppFinancasEstruturaIndexRoute: AppFinancasEstruturaIndexRoute,
   AppFinancasPlanejamentoIndexRoute: AppFinancasPlanejamentoIndexRoute,
 }
 

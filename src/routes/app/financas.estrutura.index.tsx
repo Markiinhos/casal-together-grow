@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowDownCircle, ArrowUpCircle, CalendarClock, Pencil, PiggyBank, Plus, Trash2, WalletCards } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/app/financas/estrutura")({ component: FinancialStructure });
+export const Route = createFileRoute("/app/financas/estrutura/")({ component: FinancialStructure });
 
 const incomeTypes: Record<string, string> = { salary: "Salário", scholarship: "Bolsa", freelance: "Freelance", benefit: "Benefício", commission: "Comissão", extra: "Renda extra", other: "Outro" };
 const paymentMethods: Record<string, string> = { pix: "Pix", debit: "Débito", bank_account: "Conta bancária", credit_card: "Cartão de crédito", boleto: "Boleto", cash: "Dinheiro", other: "Outro" };
