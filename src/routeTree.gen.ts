@@ -55,6 +55,8 @@ import { Route as AppFinancasAssinaturasIndexRouteImport } from './routes/app/fi
 import { Route as AppCasaComprasIndexRouteImport } from './routes/app/casa/compras.index'
 import { Route as AppFinancasPlanejamentoNovoRouteImport } from './routes/app/financas.planejamento.novo'
 import { Route as AppFinancasPlanejamentoIdRouteImport } from './routes/app/financas.planejamento.$id'
+import { Route as AppFinancasEstruturaInvestimentosRouteImport } from './routes/app/financas.estrutura.investimentos'
+import { Route as AppFinancasEstruturaDividasRouteImport } from './routes/app/financas.estrutura.dividas'
 import { Route as AppFinancasAssinaturasNovaRouteImport } from './routes/app/financas.assinaturas.nova'
 import { Route as AppFinancasAssinaturasIdRouteImport } from './routes/app/financas.assinaturas.$id'
 import { Route as AppCasaComprasNovaRouteImport } from './routes/app/casa/compras.nova'
@@ -298,6 +300,18 @@ const AppFinancasPlanejamentoIdRoute =
     path: '/financas/planejamento/$id',
     getParentRoute: () => AppRouteRoute,
   } as any)
+const AppFinancasEstruturaInvestimentosRoute =
+  AppFinancasEstruturaInvestimentosRouteImport.update({
+    id: '/investimentos',
+    path: '/investimentos',
+    getParentRoute: () => AppFinancasEstruturaRoute,
+  } as any)
+const AppFinancasEstruturaDividasRoute =
+  AppFinancasEstruturaDividasRouteImport.update({
+    id: '/dividas',
+    path: '/dividas',
+    getParentRoute: () => AppFinancasEstruturaRoute,
+  } as any)
 const AppFinancasAssinaturasNovaRoute =
   AppFinancasAssinaturasNovaRouteImport.update({
     id: '/financas/assinaturas/nova',
@@ -385,6 +399,8 @@ export interface FileRoutesByFullPath {
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
   '/app/financas/assinaturas/$id': typeof AppFinancasAssinaturasIdRoute
   '/app/financas/assinaturas/nova': typeof AppFinancasAssinaturasNovaRoute
+  '/app/financas/estrutura/dividas': typeof AppFinancasEstruturaDividasRoute
+  '/app/financas/estrutura/investimentos': typeof AppFinancasEstruturaInvestimentosRoute
   '/app/financas/planejamento/$id': typeof AppFinancasPlanejamentoIdRoute
   '/app/financas/planejamento/novo': typeof AppFinancasPlanejamentoNovoRoute
   '/app/casa/compras/': typeof AppCasaComprasIndexRoute
@@ -434,6 +450,8 @@ export interface FileRoutesByTo {
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
   '/app/financas/assinaturas/$id': typeof AppFinancasAssinaturasIdRoute
   '/app/financas/assinaturas/nova': typeof AppFinancasAssinaturasNovaRoute
+  '/app/financas/estrutura/dividas': typeof AppFinancasEstruturaDividasRoute
+  '/app/financas/estrutura/investimentos': typeof AppFinancasEstruturaInvestimentosRoute
   '/app/financas/planejamento/$id': typeof AppFinancasPlanejamentoIdRoute
   '/app/financas/planejamento/novo': typeof AppFinancasPlanejamentoNovoRoute
   '/app/casa/compras': typeof AppCasaComprasIndexRoute
@@ -490,6 +508,8 @@ export interface FileRoutesById {
   '/app/casa/compras/nova': typeof AppCasaComprasNovaRoute
   '/app/financas/assinaturas/$id': typeof AppFinancasAssinaturasIdRoute
   '/app/financas/assinaturas/nova': typeof AppFinancasAssinaturasNovaRoute
+  '/app/financas/estrutura/dividas': typeof AppFinancasEstruturaDividasRoute
+  '/app/financas/estrutura/investimentos': typeof AppFinancasEstruturaInvestimentosRoute
   '/app/financas/planejamento/$id': typeof AppFinancasPlanejamentoIdRoute
   '/app/financas/planejamento/novo': typeof AppFinancasPlanejamentoNovoRoute
   '/app/casa/compras/': typeof AppCasaComprasIndexRoute
@@ -547,6 +567,8 @@ export interface FileRouteTypes {
     | '/app/casa/compras/nova'
     | '/app/financas/assinaturas/$id'
     | '/app/financas/assinaturas/nova'
+    | '/app/financas/estrutura/dividas'
+    | '/app/financas/estrutura/investimentos'
     | '/app/financas/planejamento/$id'
     | '/app/financas/planejamento/novo'
     | '/app/casa/compras/'
@@ -596,6 +618,8 @@ export interface FileRouteTypes {
     | '/app/casa/compras/nova'
     | '/app/financas/assinaturas/$id'
     | '/app/financas/assinaturas/nova'
+    | '/app/financas/estrutura/dividas'
+    | '/app/financas/estrutura/investimentos'
     | '/app/financas/planejamento/$id'
     | '/app/financas/planejamento/novo'
     | '/app/casa/compras'
@@ -651,6 +675,8 @@ export interface FileRouteTypes {
     | '/app/casa/compras/nova'
     | '/app/financas/assinaturas/$id'
     | '/app/financas/assinaturas/nova'
+    | '/app/financas/estrutura/dividas'
+    | '/app/financas/estrutura/investimentos'
     | '/app/financas/planejamento/$id'
     | '/app/financas/planejamento/novo'
     | '/app/casa/compras/'
@@ -993,6 +1019,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancasPlanejamentoIdRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/financas/estrutura/investimentos': {
+      id: '/app/financas/estrutura/investimentos'
+      path: '/investimentos'
+      fullPath: '/app/financas/estrutura/investimentos'
+      preLoaderRoute: typeof AppFinancasEstruturaInvestimentosRouteImport
+      parentRoute: typeof AppFinancasEstruturaRoute
+    }
+    '/app/financas/estrutura/dividas': {
+      id: '/app/financas/estrutura/dividas'
+      path: '/dividas'
+      fullPath: '/app/financas/estrutura/dividas'
+      preLoaderRoute: typeof AppFinancasEstruturaDividasRouteImport
+      parentRoute: typeof AppFinancasEstruturaRoute
+    }
     '/app/financas/assinaturas/nova': {
       id: '/app/financas/assinaturas/nova'
       path: '/financas/assinaturas/nova'
@@ -1121,10 +1161,15 @@ const AppCartoesRouteWithChildren = AppCartoesRoute._addFileChildren(
 )
 
 interface AppFinancasEstruturaRouteChildren {
+  AppFinancasEstruturaDividasRoute: typeof AppFinancasEstruturaDividasRoute
+  AppFinancasEstruturaInvestimentosRoute: typeof AppFinancasEstruturaInvestimentosRoute
   AppFinancasEstruturaIndexRoute: typeof AppFinancasEstruturaIndexRoute
 }
 
 const AppFinancasEstruturaRouteChildren: AppFinancasEstruturaRouteChildren = {
+  AppFinancasEstruturaDividasRoute: AppFinancasEstruturaDividasRoute,
+  AppFinancasEstruturaInvestimentosRoute:
+    AppFinancasEstruturaInvestimentosRoute,
   AppFinancasEstruturaIndexRoute: AppFinancasEstruturaIndexRoute,
 }
 
