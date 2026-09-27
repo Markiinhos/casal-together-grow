@@ -16,7 +16,7 @@ import { type CardAggregate, OPEN_STATUSES } from "@/lib/card-aggregate";
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Wallet, CreditCard,
   TrendingUp, TrendingDown, Plus, ChartLine, Sparkles, PieChart,
-  Target,
+  Target, LayoutDashboard,
 } from "lucide-react";
 import {
   fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome,
@@ -231,7 +231,8 @@ function FinancasCentral() {
         </ErrorBoundary>
 
         {/* Atalhos */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <ShortcutTile to="/app/financas/estrutura" icon={LayoutDashboard} label="Estrutura" />
           <ShortcutTile to="/app/financas/planejamento" icon={Target} label="Planejamento" />
           <ShortcutTile to="/app/financas/projecao" icon={ChartLine} label="Projeção" />
           <ShortcutTile to="/app/financas/faturas" icon={CreditCard} label="Faturas" />

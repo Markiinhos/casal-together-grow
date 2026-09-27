@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { formatBRL, monthLabel, firstOfMonth } from "@/lib/finance";
+import { fetchPlannedIncome, formatBRL, monthLabel, firstOfMonth } from "@/lib/finance";
 import { AlertTriangle, Check } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalISODate } from "@/lib/date-utils";
@@ -55,6 +55,8 @@ function PlanWizard() {
   useEffect(() => {
     if (editingId || income > 0) return;
     (async () => {
+      const planned = await fetchPlannedIncome({ space, userId: user!.id, coupleId });
+      if (planned > 0) { setIncome(Number(planned.toFixed(2))); return; }
       const now = new Date(referenceMonth + "T12:00:00");
       const prevStart = getLocalISODate(new Date(now.getFullYear(), now.getMonth() - 1, 1));
       const prevEnd = getLocalISODate(new Date(now.getFullYear(), now.getMonth(), 0));
@@ -204,7 +206,7 @@ function PlanWizard() {
             <div>
               <Label>Receita mensal prevista</Label>
               <Input type="number" step="0.01" min="0" value={income || ""} onChange={(e) => setIncome(Number(e.target.value))} placeholder="0,00" />
-              <p className="text-[11px] text-muted-foreground mt-1">Sugerimos usar a soma das receitas do mês anterior.</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Preenchida pelas fontes de receita ativas; sem fontes, usamos o mês anterior.</p>
             </div>
           </Card>
         )}
