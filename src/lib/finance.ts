@@ -61,6 +61,39 @@ export interface SpaceOpts {
   coupleId: string | null;
 }
 
+export type PlanningFrequency = "once" | "weekly" | "biweekly" | "monthly" | "annual" | "yearly" | "variable";
+
+/** Normaliza uma recorrência para seu equivalente mensal de planejamento. */
+export function monthlyAmount(amount: number, frequency: PlanningFrequency | string): number {
+  const value = Number(amount) || 0;
+  switch (frequency) {
+    case "weekly": return value * 52 / 12;
+    case "biweekly": return value * 26 / 12;
+    case "annual":
+    case "yearly": return value / 12;
+    case "once": return 0;
+    default: return value;
+  }
+}
+
+export function planningFrequencyLabel(frequency: string): string {
+  const labels: Record<string, string> = {
+    once: "Única", weekly: "Semanal", biweekly: "Quinzenal",
+    monthly: "Mensal", annual: "Anual", yearly: "Anual", variable: "Variável",
+  };
+  return labels[frequency] ?? frequency;
+}
+
+export async function fetchPlannedIncome(opts: SpaceOpts): Promise<number> {
+  let q: any = supabase.from("income_sources").select("amount,frequency").eq("is_active", true);
+  if (opts.space === "private") q = q.eq("visibility", "private").eq("user_id", opts.userId);
+  else if (opts.coupleId) q = q.eq("visibility", "shared").eq("couple_id", opts.coupleId);
+  else q = q.eq("visibility", "shared").eq("user_id", opts.userId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).reduce((sum: number, source: any) => sum + monthlyAmount(source.amount, source.frequency), 0);
+}
+
 /** Soma saldos das contas ativas conforme espaço */
 export async function fetchAccountsTotal(opts: SpaceOpts): Promise<number> {
   let q: any = supabase.from("bank_accounts").select("balance").eq("hidden", false);
