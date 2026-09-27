@@ -916,13 +916,18 @@ export type Database = {
         Row: {
           amount: number
           category: string | null
+          category_id: string | null
           couple_id: string | null
           created_at: string
           due_date: string
           id: string
+          is_active: boolean
           notes: string | null
           paid: boolean
+          payment_method: string
           recurrence: string
+          responsible: string
+          responsible_user_id: string | null
           title: string
           updated_at: string
           user_id: string
@@ -931,13 +936,18 @@ export type Database = {
         Insert: {
           amount?: number
           category?: string | null
+          category_id?: string | null
           couple_id?: string | null
           created_at?: string
           due_date: string
           id?: string
+          is_active?: boolean
           notes?: string | null
           paid?: boolean
+          payment_method?: string
           recurrence?: string
+          responsible?: string
+          responsible_user_id?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -946,13 +956,18 @@ export type Database = {
         Update: {
           amount?: number
           category?: string | null
+          category_id?: string | null
           couple_id?: string | null
           created_at?: string
           due_date?: string
           id?: string
+          is_active?: boolean
           notes?: string | null
           paid?: boolean
+          payment_method?: string
           recurrence?: string
+          responsible?: string
+          responsible_user_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -960,10 +975,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "future_bills_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "future_bills_couple_id_fkey"
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "future_bills_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1533,6 +1562,89 @@ export type Database = {
           visibility?: string
         }
         Relationships: []
+      }
+      income_sources: {
+        Row: {
+          amount: number
+          couple_id: string | null
+          created_at: string
+          created_by: string
+          frequency: string
+          id: string
+          income_type: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          receipt_day: number | null
+          responsible_user_id: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          amount: number
+          couple_id?: string | null
+          created_at?: string
+          created_by: string
+          frequency?: string
+          id?: string
+          income_type: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          receipt_day?: number | null
+          responsible_user_id: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          amount?: number
+          couple_id?: string | null
+          created_at?: string
+          created_by?: string
+          frequency?: string
+          id?: string
+          income_type?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          receipt_day?: number | null
+          responsible_user_id?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "income_sources_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "income_sources_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "income_sources_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "income_sources_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       installments: {
         Row: {

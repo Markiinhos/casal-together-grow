@@ -16,6 +16,7 @@ import { format, addMonths, startOfMonth, isAfter, isValid, addDays, addYears } 
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { useCardAggregates } from "@/hooks/useCardAggregates";
+import { monthlyAmount } from "@/lib/finance";
 
 export const Route = createFileRoute("/app/financas/projecao")({
   component: ProjecaoPage,
@@ -60,6 +61,17 @@ function ProjecaoPage() {
       const { data } = await q;
       return (data ?? []) as any[];
     },
+    enabled: !!user?.id,
+  });
+
+  const { data: incomeSources = [], isLoading: isIncomeSourcesLoading } = useQuery({
+    queryKey: ["income-sources-projecao", space, coupleId, user?.id],
+    queryFn: async () => { let q: any = supabase.from("income_sources").select("*").eq("is_active", true); q = applySpaceFilter(q, { space, userId: user!.id, coupleId }); const { data, error } = await q; if (error) throw error; return data ?? []; },
+    enabled: !!user?.id,
+  });
+  const { data: fixedBills = [], isLoading: isFixedBillsLoading } = useQuery({
+    queryKey: ["fixed-bills-projecao", space, coupleId, user?.id],
+    queryFn: async () => { let q: any = supabase.from("future_bills").select("*").eq("is_active", true).neq("recurrence", "once"); q = applySpaceFilter(q, { space, userId: user!.id, coupleId }); const { data, error } = await q; if (error) throw error; return data ?? []; },
     enabled: !!user?.id,
   });
 
@@ -202,6 +214,27 @@ function ProjecaoPage() {
       }
     }
 
+    // Fontes estruturadas alimentam somente a previsão; não criam lançamentos reais.
+    for (let i = 0; i < months; i++) {
+      const month = addMonths(now, i);
+      const lbl = format(month, "MMM/yy", { locale: ptBR });
+      for (const source of incomeSources as any[]) {
+        const amount = monthlyAmount(source.amount, source.frequency);
+        dataByMonth[lbl].income += amount;
+        const day = Math.min(source.receipt_day || 1, new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate());
+        const projectedDate = new Date(month.getFullYear(), month.getMonth(), day, 12);
+        if (isAfter(projectedDate, now)) upc.push({ id: `income-source-${source.id}-${i}`, type: "income", description: source.name, projectedAmount: amount, projectedDate, isPlannedSource: true });
+      }
+      for (const bill of fixedBills as any[]) {
+        const amount = monthlyAmount(bill.amount, bill.recurrence);
+        dataByMonth[lbl].expense += amount;
+        const due = new Date(bill.due_date + "T12:00:00");
+        const day = Math.min(due.getDate(), new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate());
+        const projectedDate = new Date(month.getFullYear(), month.getMonth(), day, 12);
+        if (isAfter(projectedDate, now)) upc.push({ id: `fixed-bill-${bill.id}-${i}`, type: "expense", description: bill.title, projectedAmount: amount, projectedDate, isFixedBill: true });
+      }
+    }
+
     upc.sort((a, b) => {
         if (!isValid(a.projectedDate) || !isValid(b.projectedDate)) return 0;
         return a.projectedDate.getTime() - b.projectedDate.getTime();
@@ -251,9 +284,9 @@ function ProjecaoPage() {
         healthRatio: _healthRatio,
         healthStatus: _healthStatus
     };
-  }, [tx, aggregates, subs, monthsToProject]);
+  }, [tx, aggregates, subs, incomeSources, fixedBills, monthsToProject]);
 
-  if (!user || isProfileLoading || isLoadingTx || isLoadingCards || isSubsLoading) {
+  if (!user || isProfileLoading || isLoadingTx || isLoadingCards || isSubsLoading || isIncomeSourcesLoading || isFixedBillsLoading) {
       return (
           <>
              <PageHeader title="Projeção Financeira" subtitle="Carregando dados..." fallbackRoute="/app/financas" />
@@ -304,7 +337,7 @@ function ProjecaoPage() {
       )
   }
 
-  if (Array.isArray(tx) && tx.length === 0) {
+  if (Array.isArray(tx) && tx.length === 0 && incomeSources.length === 0 && fixedBills.length === 0 && subs.length === 0) {
       return (
           <>
              <PageHeader title="Projeção Financeira" subtitle="Previsão do seu saldo" fallbackRoute="/app/financas" />

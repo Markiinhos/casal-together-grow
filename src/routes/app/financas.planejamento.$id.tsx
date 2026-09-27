@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, AlertTriangle } from "lucide-react";
-import { formatBRL, monthLabel, daysRemaining, safePercent, budgetStatus, getCategoryExpenses } from "@/lib/finance";
+import { formatBRL, monthLabel, daysRemaining, safePercent, budgetStatus, getCategoryExpenses, monthlyAmount } from "@/lib/finance";
 import { fetchSubscriptions, buildSummary } from "@/lib/subscriptions";
 import { useSpace } from "@/lib/space";
 
@@ -55,6 +55,18 @@ function PlanDetail() {
       return buildSummary(allSubs);
     },
     enabled: !!user,
+  });
+
+  const fixedBills = useQuery({
+    queryKey: ["plan-fixed-bills", space, coupleId, user?.id],
+    queryFn: async () => {
+      let q: any = supabase.from("future_bills").select("amount,recurrence").eq("is_active", true).neq("recurrence", "once");
+      if (space === "private") q = q.eq("visibility", "private").eq("user_id", user!.id);
+      else if (coupleId) q = q.eq("visibility", "shared").eq("couple_id", coupleId);
+      else q = q.eq("visibility", "shared").eq("user_id", user!.id);
+      const { data, error } = await q; if (error) throw error;
+      return (data ?? []).reduce((sum: number, b: any) => sum + monthlyAmount(b.amount, b.recurrence), 0);
+    }, enabled: !!user,
   });
 
   if (plan.isLoading) return <><PageHeader title="Planejamento" fallbackRoute="/app/financas/planejamento" /><div className="p-4"><Skeleton className="h-40 rounded-2xl" /></div></>;
@@ -157,6 +169,14 @@ function PlanDetail() {
               </Card>
             </section>
         )}
+
+        <section>
+          <h3 className="font-semibold mb-2">Despesas fixas previstas</h3>
+          <Card className="rounded-2xl p-4 shadow-card flex items-center justify-between">
+            <div><p className="font-medium text-sm">Contas fixas + assinaturas</p><p className="text-xs text-muted-foreground">Previsão mensal, sem alterar o realizado</p></div>
+            <p className="font-bold">{formatBRL((fixedBills.data ?? 0) + (subs.data?.monthlyTotal ?? 0))}</p>
+          </Card>
+        </section>
 
         <Button asChild variant="outline" className="w-full rounded-2xl">
           <Link to="/app/financas/planejamento/novo" search={{ id: p.id }}>Editar planejamento</Link>
