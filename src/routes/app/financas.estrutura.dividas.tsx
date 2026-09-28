@@ -1,29 +1,103 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ReceiptText } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState, type FormEvent } from "react";
+import { CalendarDays, CheckCircle2, Pencil, Plus, ReceiptText, Trash2, TrendingDown, Wallet } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { usePartner, useProfile } from "@/lib/hooks";
+import { applySpaceFilter, useSpace } from "@/lib/space";
+import { formatBRL } from "@/lib/finance";
+import { formatDateOnly, getLocalISODate } from "@/lib/date-utils";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/app/financas/estrutura/dividas")({
-  head: () => ({
-    meta: [
-      { title: "Dívidas — CASAL" },
-      { name: "description", content: "Acompanhamento manual e plano de quitação das dívidas do casal." },
-      { property: "og:title", content: "Dívidas — CASAL" },
-      { property: "og:description", content: "Acompanhamento manual e plano de quitação das dívidas do casal." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: DebtsPage,
+  head: () => ({ meta: [
+    { title: "Dívidas — CASAL" },
+    { name: "description", content: "Acompanhamento manual e plano de quitação das dívidas do casal." },
+    { property: "og:title", content: "Dívidas — CASAL" },
+    { property: "og:description", content: "Acompanhamento manual e plano de quitação das dívidas do casal." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }), component: DebtsPage,
 });
 
+type Payment = { id: string; debt_id: string; user_id: string; amount: number; payment_date: string; notes: string | null; created_at: string };
+type Debt = { id: string; responsible_user_id: string; creditor: string; description: string; original_amount: number; current_amount: number; debt_date: string; status: string; notes: string | null; debt_payments: Payment[] };
+type DebtForm = { creditor: string; description: string; original_amount: string; debt_date: string; responsible_user_id: string; notes: string };
+type PaymentForm = { amount: string; payment_date: string; notes: string };
+
+const newDebtForm = (userId: string): DebtForm => ({ creditor: "", description: "", original_amount: "", debt_date: getLocalISODate(), responsible_user_id: userId, notes: "" });
+const newPaymentForm = (): PaymentForm => ({ amount: "", payment_date: getLocalISODate(), notes: "" });
+
 function DebtsPage() {
-  return (
-    <>
-      <PageHeader title="Dívidas" subtitle="Plano para limpar o nome" fallbackRoute="/app/financas/estrutura" />
-      <main className="px-4 py-6 pb-24">
-        <EmptyState icon={ReceiptText} title="Nenhuma dívida cadastrada" description="O cadastro e o plano de quitação ainda estão sendo preparados." />
-      </main>
-    </>
-  );
+  const { user } = useAuth(); const { data: profile } = useProfile(); const { data: partner } = usePartner(); const { space } = useSpace();
+  const queryClient = useQueryClient(); const coupleId = profile?.couple_id ?? null;
+  const [debtOpen, setDebtOpen] = useState(false); const [paymentOpen, setPaymentOpen] = useState(false);
+  const [editingDebt, setEditingDebt] = useState<Debt | null>(null); const [paymentDebt, setPaymentDebt] = useState<Debt | null>(null); const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [debtForm, setDebtForm] = useState<DebtForm>(() => newDebtForm("")); const [paymentForm, setPaymentForm] = useState<PaymentForm>(() => newPaymentForm());
+  const people = useMemo(() => [{ id: user?.id ?? "", name: profile?.full_name || "Você" }, ...(partner ? [{ id: partner.id, name: partner.full_name || "Parceiro(a)" }] : [])], [partner, profile?.full_name, user?.id]);
+
+  const debts = useQuery({ queryKey: ["debts", space, coupleId, user?.id], queryFn: async () => {
+    if (!user) return [];
+    let query: any = supabase.from("debts").select("*, debt_payments(*)").order("debt_date", { ascending: false });
+    query = applySpaceFilter(query, { space, userId: user.id, coupleId }); const { data, error } = await query; if (error) throw error;
+    return ((data ?? []) as Debt[]).map((debt: Debt) => ({ ...debt, debt_payments: [...(debt.debt_payments ?? [])].sort((a: Payment, b: Payment) => b.payment_date.localeCompare(a.payment_date)) }));
+  }, enabled: !!user });
+
+  const summary = useMemo(() => {
+    const rows = debts.data ?? []; const original = rows.reduce((sum: number, debt: Debt) => sum + Number(debt.original_amount), 0); const remaining = rows.reduce((sum: number, debt: Debt) => sum + Number(debt.current_amount), 0); const paid = original - remaining;
+    const payments = rows.flatMap((debt: Debt) => debt.debt_payments.map((payment: Payment) => ({ ...payment, debt })));
+    const monthly = new Map<string, { key: string; paid: number; byPerson: Map<string, number> }>();
+    payments.forEach(({ debt, ...payment }: Payment & { debt: Debt }) => { const key = payment.payment_date.slice(0, 7); const row = monthly.get(key) ?? { key, paid: 0, byPerson: new Map<string, number>() }; row.paid += Number(payment.amount); row.byPerson.set(debt.responsible_user_id, (row.byPerson.get(debt.responsible_user_id) ?? 0) + Number(payment.amount)); monthly.set(key, row); });
+    const monthlyRows = [...monthly.values()].sort((a, b) => a.key.localeCompare(b.key)); const average = monthlyRows.length ? monthlyRows.reduce((sum, row) => sum + row.paid, 0) / monthlyRows.length : 0;
+    let balance = original; const evolution = [{ month: "Início", balance }]; monthlyRows.forEach((row) => { balance = Math.max(0, balance - row.paid); evolution.push({ month: formatMonth(row.key), balance }); });
+    return { original, remaining, paid, percent: original ? Math.min(100, paid / original * 100) : 0, payments, monthlyRows, average, months: average > 0 ? Math.ceil(remaining / average) : null, evolution };
+  }, [debts.data]);
+
+  const saveDebt = useMutation({ mutationFn: async () => { if (!user) throw new Error("Sessão não encontrada"); const payload = { user_id: user.id, couple_id: space === "shared" ? coupleId : null, visibility: space, responsible_user_id: space === "private" ? user.id : debtForm.responsible_user_id, creditor: debtForm.creditor.trim(), description: debtForm.description.trim(), original_amount: Number(debtForm.original_amount), debt_date: debtForm.debt_date, notes: debtForm.notes.trim() || null }; const result = editingDebt ? await supabase.from("debts").update(payload).eq("id", editingDebt.id) : await supabase.from("debts").insert({ ...payload, current_amount: Number(debtForm.original_amount), status: "open" }); if (result.error) throw result.error; }, onSuccess: () => { toast.success(editingDebt ? "Dívida atualizada" : "Dívida adicionada"); setDebtOpen(false); queryClient.invalidateQueries({ queryKey: ["debts"] }); }, onError: (error: Error) => toast.error(error.message) });
+  const savePayment = useMutation({ mutationFn: async () => { if (!user || !paymentDebt) throw new Error("Dívida não encontrada"); const payload = { debt_id: paymentDebt.id, user_id: user.id, couple_id: space === "shared" ? coupleId : null, amount: Number(paymentForm.amount), payment_date: paymentForm.payment_date, notes: paymentForm.notes.trim() || null }; const result = editingPayment ? await supabase.from("debt_payments").update(payload).eq("id", editingPayment.id) : await supabase.from("debt_payments").insert(payload); if (result.error) throw result.error; }, onSuccess: () => { toast.success(editingPayment ? "Pagamento atualizado" : "Pagamento registrado"); setPaymentOpen(false); queryClient.invalidateQueries({ queryKey: ["debts"] }); }, onError: (error: Error) => toast.error(friendlyPaymentError(error.message)) });
+  const removeDebt = useMutation({ mutationFn: async (id: string) => { const { error } = await supabase.from("debts").delete().eq("id", id); if (error) throw error; }, onSuccess: () => { toast.success("Dívida excluída"); queryClient.invalidateQueries({ queryKey: ["debts"] }); }, onError: (error: Error) => toast.error(error.message) });
+  const removePayment = useMutation({ mutationFn: async (id: string) => { const { error } = await supabase.from("debt_payments").delete().eq("id", id); if (error) throw error; }, onSuccess: () => { toast.success("Pagamento excluído e saldo recalculado"); queryClient.invalidateQueries({ queryKey: ["debts"] }); }, onError: (error: Error) => toast.error(error.message) });
+
+  const showDebt = (debt?: Debt) => { setEditingDebt(debt ?? null); setDebtForm(debt ? { creditor: debt.creditor, description: debt.description, original_amount: String(debt.original_amount), debt_date: debt.debt_date, responsible_user_id: debt.responsible_user_id, notes: debt.notes ?? "" } : newDebtForm(user?.id ?? "")); setDebtOpen(true); };
+  const showPayment = (debt: Debt, payment?: Payment) => { setPaymentDebt(debt); setEditingPayment(payment ?? null); setPaymentForm(payment ? { amount: String(payment.amount), payment_date: payment.payment_date, notes: payment.notes ?? "" } : newPaymentForm()); setPaymentOpen(true); };
+
+  return <><PageHeader title="Dívidas" subtitle="Plano para limpar o nome" fallbackRoute="/app/financas/estrutura"><Button size="icon" variant="ghost" aria-label="Adicionar dívida" onClick={() => showDebt()}><Plus className="size-5" /></Button></PageHeader>
+    <main className="mx-auto max-w-3xl space-y-4 px-4 py-5 pb-24">
+      {debts.isLoading ? <><Skeleton className="h-44 rounded-2xl" /><Skeleton className="h-36 rounded-2xl" /></> : debts.isError ? <Card className="p-5 text-sm text-destructive">Não foi possível carregar as dívidas.</Card> : <>
+        <Card className="rounded-2xl p-5"><div className="flex items-center gap-2"><TrendingDown className="size-5 text-primary" /><h2 className="font-semibold">Zerar todas as dívidas</h2>{summary.remaining === 0 && summary.original > 0 && <CheckCircle2 className="ml-auto size-5 text-success" />}</div><div className="mt-4 flex items-end justify-between"><div><div className="text-xs text-muted-foreground">Falta quitar</div><div className="text-2xl font-bold">{formatBRL(summary.remaining)}</div></div><div className="text-right text-sm font-semibold">{summary.percent.toFixed(0)}%</div></div><Progress className="mt-3" value={summary.percent} /><div className="mt-3 grid grid-cols-2 gap-2 text-xs"><Metric label="Total pago" value={summary.paid} /><Metric label="Valor original" value={summary.original} /></div><p className="mt-3 text-xs text-muted-foreground">{summary.original === 0 ? "Cadastre uma dívida para iniciar o plano." : summary.remaining === 0 ? "Meta concluída. Todas as dívidas foram quitadas." : summary.months ? `Estimativa de ${summary.months} ${summary.months === 1 ? "mês" : "meses"}, com média mensal de ${formatBRL(summary.average)}.` : "Ainda não há pagamentos suficientes para estimar a quitação."}</p></Card>
+        {(debts.data ?? []).length === 0 ? <Card className="rounded-2xl"><EmptyState icon={ReceiptText} title="Nenhuma dívida cadastrada" description="Adicione a primeira dívida para montar o plano de quitação." action={<Button onClick={() => showDebt()}><Plus className="mr-1 size-4" />Adicionar</Button>} /></Card> : <Tabs defaultValue="debts"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="debts">Dívidas</TabsTrigger><TabsTrigger value="plan">Plano</TabsTrigger><TabsTrigger value="evolution">Evolução</TabsTrigger></TabsList>
+          <TabsContent value="debts" className="space-y-3">{(debts.data ?? []).map((debt: Debt) => <DebtCard key={debt.id} debt={debt} personName={people.find((person: { id: string; name: string }) => person.id === debt.responsible_user_id)?.name ?? "Pessoa"} onEdit={() => showDebt(debt)} onDelete={() => { if (window.confirm("Excluir esta dívida e todos os pagamentos?")) removeDebt.mutate(debt.id); }} onAddPayment={() => showPayment(debt)} onEditPayment={(payment: Payment) => showPayment(debt, payment)} onDeletePayment={(payment: Payment) => { if (window.confirm("Excluir este pagamento? O saldo será recalculado.")) removePayment.mutate(payment.id); }} />)}</TabsContent>
+          <TabsContent value="plan" className="space-y-3"><Card className="rounded-2xl p-4"><h3 className="font-semibold">Plano para limpar o nome</h3><p className="mt-1 text-xs text-muted-foreground">Pagamentos registrados por mês e responsável.</p></Card>{summary.monthlyRows.length === 0 ? <Card className="rounded-2xl p-5 text-sm text-muted-foreground">Registre um pagamento para formar o plano mensal.</Card> : [...summary.monthlyRows].reverse().map((row) => <Card key={row.key} className="rounded-2xl p-4"><div className="flex justify-between"><span className="font-medium capitalize">{formatMonth(row.key)}</span><b>{formatBRL(row.paid)}</b></div>{[...row.byPerson.entries()].map(([personId, amount]) => <div key={personId} className="mt-2 flex justify-between text-xs text-muted-foreground"><span>{people.find((person: { id: string; name: string }) => person.id === personId)?.name ?? "Pessoa"}</span><span>{formatBRL(amount)}</span></div>)}</Card>)}</TabsContent>
+          <TabsContent value="evolution"><Card className="rounded-2xl p-4"><h3 className="font-semibold">Saldo restante</h3><p className="mb-4 text-xs text-muted-foreground">Evolução baseada somente nos pagamentos registrados.</p><ChartContainer className="h-56 w-full" config={{ balance: { label: "Saldo", color: "hsl(var(--primary))" } }}><AreaChart data={summary.evolution} margin={{ left: 8, right: 8 }}><CartesianGrid vertical={false} /><XAxis dataKey="month" tickLine={false} axisLine={false} /><YAxis hide /><ChartTooltip content={<ChartTooltipContent formatter={(value) => formatBRL(Number(value))} />} /><Area dataKey="balance" type="monotone" fill="var(--color-balance)" fillOpacity={0.2} stroke="var(--color-balance)" strokeWidth={2} /></AreaChart></ChartContainer></Card></TabsContent>
+        </Tabs>}
+      </>}
+    </main>
+    <Dialog open={debtOpen} onOpenChange={setDebtOpen}><DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl"><DialogHeader><DialogTitle>{editingDebt ? "Editar dívida" : "Nova dívida"}</DialogTitle></DialogHeader><form className="space-y-3" onSubmit={(event: FormEvent) => { event.preventDefault(); saveDebt.mutate(); }}><Field label="Credor"><Input required value={debtForm.creditor} onChange={(event) => setDebtForm((current: DebtForm) => ({ ...current, creditor: event.target.value }))} /></Field><Field label="Descrição"><Input required value={debtForm.description} onChange={(event) => setDebtForm((current: DebtForm) => ({ ...current, description: event.target.value }))} /></Field><div className="grid grid-cols-2 gap-3"><Field label="Valor original"><Input required type="number" min="0.01" step="0.01" value={debtForm.original_amount} onChange={(event) => setDebtForm((current: DebtForm) => ({ ...current, original_amount: event.target.value }))} /></Field><Field label="Data"><Input required type="date" value={debtForm.debt_date} onChange={(event) => setDebtForm((current: DebtForm) => ({ ...current, debt_date: event.target.value }))} /></Field></div>{space === "shared" && <Field label="Responsável"><Select value={debtForm.responsible_user_id} onValueChange={(value: string) => setDebtForm((current: DebtForm) => ({ ...current, responsible_user_id: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{people.map((person: { id: string; name: string }) => <SelectItem key={person.id} value={person.id}>{person.name}</SelectItem>)}</SelectContent></Select></Field>}<Field label="Observação"><Textarea value={debtForm.notes} onChange={(event) => setDebtForm((current: DebtForm) => ({ ...current, notes: event.target.value }))} /></Field><Button className="w-full" disabled={saveDebt.isPending}>{saveDebt.isPending ? "Salvando..." : "Salvar dívida"}</Button></form></DialogContent></Dialog>
+    <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}><DialogContent className="rounded-2xl"><DialogHeader><DialogTitle>{editingPayment ? "Editar pagamento" : "Registrar pagamento"}</DialogTitle></DialogHeader><form className="space-y-3" onSubmit={(event: FormEvent) => { event.preventDefault(); savePayment.mutate(); }}><div className="rounded-xl bg-accent p-3 text-sm"><div className="text-muted-foreground">{paymentDebt?.creditor}</div><div className="font-semibold">Saldo atual: {formatBRL(Number(paymentDebt?.current_amount ?? 0))}</div></div><Field label="Valor"><Input required type="number" min="0.01" max={editingPayment ? Number(paymentDebt?.current_amount ?? 0) + Number(editingPayment.amount) : Number(paymentDebt?.current_amount ?? 0)} step="0.01" value={paymentForm.amount} onChange={(event) => setPaymentForm((current: PaymentForm) => ({ ...current, amount: event.target.value }))} /></Field><Field label="Data"><Input required type="date" value={paymentForm.payment_date} onChange={(event) => setPaymentForm((current: PaymentForm) => ({ ...current, payment_date: event.target.value }))} /></Field><Field label="Observação"><Textarea value={paymentForm.notes} onChange={(event) => setPaymentForm((current: PaymentForm) => ({ ...current, notes: event.target.value }))} /></Field><Button className="w-full" disabled={savePayment.isPending}>{savePayment.isPending ? "Salvando..." : "Salvar pagamento"}</Button></form></DialogContent></Dialog>
+  </>;
 }
+
+function DebtCard({ debt, personName, onEdit, onDelete, onAddPayment, onEditPayment, onDeletePayment }: { debt: Debt; personName: string; onEdit: () => void; onDelete: () => void; onAddPayment: () => void; onEditPayment: (payment: Payment) => void; onDeletePayment: (payment: Payment) => void }) {
+  const paid = Number(debt.original_amount) - Number(debt.current_amount); const percent = Number(debt.original_amount) ? paid / Number(debt.original_amount) * 100 : 0;
+  return <Card className="rounded-2xl p-4"><div className="flex items-start gap-3"><div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${debt.status === "paid" ? "bg-success/10" : "bg-destructive/10"}`}>{debt.status === "paid" ? <CheckCircle2 className="size-5 text-success" /> : <ReceiptText className="size-5 text-destructive" />}</div><div className="min-w-0 flex-1"><div className="truncate font-semibold">{debt.description}</div><div className="text-xs text-muted-foreground">{debt.creditor} · {personName}</div></div><div className="flex"><Button size="icon" variant="ghost" aria-label="Editar dívida" onClick={onEdit}><Pencil className="size-4" /></Button><Button size="icon" variant="ghost" className="text-destructive" aria-label="Excluir dívida" onClick={onDelete}><Trash2 className="size-4" /></Button></div></div><div className="mt-3 grid grid-cols-2 gap-2 text-xs"><Metric label="Pago" value={paid} /><Metric label="Restante" value={Number(debt.current_amount)} /></div><Progress className="mt-3" value={percent} /><div className="mt-3 flex items-center justify-between"><span className="text-xs text-muted-foreground">Criada em {formatDateOnly(debt.debt_date)}</span>{debt.status !== "paid" && <Button size="sm" onClick={onAddPayment}><Plus className="mr-1 size-3.5" />Pagamento</Button>}</div>{debt.debt_payments.length > 0 && <div className="mt-3 border-t border-border pt-3"><div className="mb-2 text-xs font-medium">Histórico de pagamentos</div>{debt.debt_payments.map((payment: Payment) => <div key={payment.id} className="flex items-center gap-2 py-1.5 text-xs"><CalendarDays className="size-3.5 text-muted-foreground" /><span className="text-muted-foreground">{formatDateOnly(payment.payment_date)}</span><b className="ml-auto">{formatBRL(Number(payment.amount))}</b><Button size="icon" variant="ghost" className="size-7" aria-label="Editar pagamento" onClick={() => onEditPayment(payment)}><Pencil className="size-3.5" /></Button><Button size="icon" variant="ghost" className="size-7 text-destructive" aria-label="Excluir pagamento" onClick={() => onDeletePayment(payment)}><Trash2 className="size-3.5" /></Button></div>)}</div>}</Card>;
+}
+
+function Metric({ label, value }: { label: string; value: number }) { return <div className="rounded-xl bg-accent/60 p-2"><div className="text-muted-foreground">{label}</div><b>{formatBRL(value)}</b></div>; }
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-1"><Label>{label}</Label>{children}</div>; }
+function formatMonth(value: string): string { const [year, month] = value.split("-"); return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" }); }
+function friendlyPaymentError(message: string): string { return message.toLowerCase().includes("exceed") || message.toLowerCase().includes("original") ? "O pagamento ultrapassa o saldo restante da dívida." : message; }
