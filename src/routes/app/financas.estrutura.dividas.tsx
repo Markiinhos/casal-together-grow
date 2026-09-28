@@ -59,13 +59,29 @@ function DebtsPage() {
   }, enabled: !!user });
 
   const summary = useMemo(() => {
-    const rows = debts.data ?? []; const original = rows.reduce((sum: number, debt: Debt) => sum + Number(debt.original_amount), 0); const remaining = rows.reduce((sum: number, debt: Debt) => sum + Number(debt.current_amount), 0); const paid = original - remaining;
+    const rows = debts.data ?? [];
+    const original = rows.reduce((sum: number, debt: Debt) => sum + Number(debt.original_amount), 0);
+    const remaining = rows.reduce((sum: number, debt: Debt) => sum + Number(debt.current_amount), 0);
+    const paid = original - remaining;
+
+    // Per-person breakdown
+    const byPerson = new Map<string, { remaining: number; original: number }>();
+    rows.forEach((debt: Debt) => {
+      const entry = byPerson.get(debt.responsible_user_id) ?? { remaining: 0, original: 0 };
+      entry.remaining += Number(debt.current_amount);
+      entry.original += Number(debt.original_amount);
+      byPerson.set(debt.responsible_user_id, entry);
+    });
+
     const payments = rows.flatMap((debt: Debt) => debt.debt_payments.map((payment: Payment) => ({ ...payment, debt })));
     const monthly = new Map<string, { key: string; paid: number; byPerson: Map<string, number> }>();
     payments.forEach(({ debt, ...payment }: Payment & { debt: Debt }) => { const key = payment.payment_date.slice(0, 7); const row = monthly.get(key) ?? { key, paid: 0, byPerson: new Map<string, number>() }; row.paid += Number(payment.amount); row.byPerson.set(debt.responsible_user_id, (row.byPerson.get(debt.responsible_user_id) ?? 0) + Number(payment.amount)); monthly.set(key, row); });
-    const monthlyRows = [...monthly.values()].sort((a, b) => a.key.localeCompare(b.key)); const average = monthlyRows.length ? monthlyRows.reduce((sum, row) => sum + row.paid, 0) / monthlyRows.length : 0;
-    let balance = original; const evolution = [{ month: "Início", balance }]; monthlyRows.forEach((row) => { balance = Math.max(0, balance - row.paid); evolution.push({ month: formatMonth(row.key), balance }); });
-    return { original, remaining, paid, percent: original ? Math.min(100, paid / original * 100) : 0, payments, monthlyRows, average, months: average > 0 ? Math.ceil(remaining / average) : null, evolution };
+    const monthlyRows = [...monthly.values()].sort((a, b) => a.key.localeCompare(b.key));
+    const average = monthlyRows.length ? monthlyRows.reduce((sum, row) => sum + row.paid, 0) / monthlyRows.length : 0;
+    let balance = original;
+    const evolution = [{ month: "Início", balance }];
+    monthlyRows.forEach((row) => { balance = Math.max(0, balance - row.paid); evolution.push({ month: formatMonth(row.key), balance }); });
+    return { original, remaining, paid, percent: original ? Math.min(100, paid / original * 100) : 0, payments, monthlyRows, average, months: average > 0 ? Math.ceil(remaining / average) : null, evolution, byPerson };
   }, [debts.data]);
 
   const saveDebt = useMutation({ mutationFn: async () => { if (!user) throw new Error("Sessão não encontrada"); const payload = { user_id: user.id, couple_id: space === "shared" ? coupleId : null, visibility: space, responsible_user_id: space === "private" ? user.id : debtForm.responsible_user_id, creditor: debtForm.creditor.trim(), description: debtForm.description.trim(), original_amount: Number(debtForm.original_amount), debt_date: debtForm.debt_date, notes: debtForm.notes.trim() || null }; const result = editingDebt ? await supabase.from("debts").update(payload).eq("id", editingDebt.id) : await supabase.from("debts").insert({ ...payload, current_amount: Number(debtForm.original_amount), status: "open" }); if (result.error) throw result.error; }, onSuccess: () => { toast.success(editingDebt ? "Dívida atualizada" : "Dívida adicionada"); setDebtOpen(false); queryClient.invalidateQueries({ queryKey: ["debts"] }); }, onError: (error: Error) => toast.error(error.message) });
@@ -79,7 +95,58 @@ function DebtsPage() {
   return <><PageHeader title="Dívidas" subtitle="Plano para limpar o nome" fallbackRoute="/app/financas/estrutura"><Button size="icon" variant="ghost" aria-label="Adicionar dívida" onClick={() => showDebt()}><Plus className="size-5" /></Button></PageHeader>
     <main className="mx-auto max-w-3xl space-y-4 px-4 py-5 pb-24">
       {debts.isLoading ? <><Skeleton className="h-44 rounded-2xl" /><Skeleton className="h-36 rounded-2xl" /></> : debts.isError ? <Card className="p-5 text-sm text-destructive">Não foi possível carregar as dívidas.</Card> : <>
-        <Card className="rounded-2xl p-5"><div className="flex items-center gap-2"><TrendingDown className="size-5 text-primary" /><h2 className="font-semibold">Zerar todas as dívidas</h2>{summary.remaining === 0 && summary.original > 0 && <CheckCircle2 className="ml-auto size-5 text-success" />}</div><div className="mt-4 flex items-end justify-between"><div><div className="text-xs text-muted-foreground">Falta quitar</div><div className="text-2xl font-bold">{formatBRL(summary.remaining)}</div></div><div className="text-right text-sm font-semibold">{summary.percent.toFixed(0)}%</div></div><Progress className="mt-3" value={summary.percent} /><div className="mt-3 grid grid-cols-2 gap-2 text-xs"><Metric label="Total pago" value={summary.paid} /><Metric label="Valor original" value={summary.original} /></div><p className="mt-3 text-xs text-muted-foreground">{summary.original === 0 ? "Cadastre uma dívida para iniciar o plano." : summary.remaining === 0 ? "Meta concluída. Todas as dívidas foram quitadas." : summary.months ? `Estimativa de ${summary.months} ${summary.months === 1 ? "mês" : "meses"}, com média mensal de ${formatBRL(summary.average)}.` : "Ainda não há pagamentos suficientes para estimar a quitação."}</p></Card>
+        <Card className="rounded-2xl p-5">
+          <div className="flex items-center gap-2">
+            <TrendingDown className="size-5 text-primary" />
+            <h2 className="font-semibold">Zerar todas as dívidas</h2>
+            {summary.remaining === 0 && summary.original > 0 && <CheckCircle2 className="ml-auto size-5 text-success" />}
+          </div>
+          <div className="mt-4 flex items-end justify-between">
+            <div>
+              <div className="text-xs text-muted-foreground">Falta quitar</div>
+              <div className="text-2xl font-bold">{formatBRL(summary.remaining)}</div>
+            </div>
+            <div className="text-right text-sm font-semibold">{summary.percent.toFixed(0)}%</div>
+          </div>
+          <Progress className="mt-3" value={summary.percent} />
+
+          {/* Per-person breakdown */}
+          {summary.byPerson.size > 0 && (
+            <div className="mt-4 space-y-2">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dívidas em aberto</div>
+              {[...summary.byPerson.entries()].map(([personId, data]) => (
+                <div key={personId} className="flex items-center justify-between rounded-xl bg-destructive/5 px-3 py-2">
+                  <span className="text-sm font-medium">{people.find((p: { id: string; name: string }) => p.id === personId)?.name ?? "Pessoa"}</span>
+                  <span className="text-sm font-bold text-destructive">{formatBRL(data.remaining)}</span>
+                </div>
+              ))}
+              {summary.byPerson.size > 1 && (
+                <div className="flex items-center justify-between rounded-xl bg-primary/10 px-3 py-2">
+                  <span className="text-sm font-semibold">Total do casal</span>
+                  <span className="text-sm font-bold">{formatBRL(summary.remaining)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+            <Metric label="Total pago" value={summary.paid} />
+            <Metric label="Valor original" value={summary.original} />
+            <Metric label="Restante" value={summary.remaining} />
+          </div>
+          {summary.original > 0 && (
+            <div className="mt-3 rounded-xl bg-accent/60 p-2 text-xs">
+              <span className="text-muted-foreground">Percentual quitado: </span>
+              <b className="text-success">{summary.percent.toFixed(1)}%</b>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            {summary.original === 0 ? "Cadastre uma dívida para iniciar o plano."
+              : summary.remaining === 0 ? "🎉 Parabéns! Todas as dívidas foram quitadas. Meta concluída!"
+              : summary.months ? `Estimativa de ${summary.months} ${summary.months === 1 ? "mês" : "meses"}, com média mensal de ${formatBRL(summary.average)}.`
+              : "Ainda não há pagamentos suficientes para estimar a quitação."}
+          </p>
+        </Card>
         {(debts.data ?? []).length === 0 ? <Card className="rounded-2xl"><EmptyState icon={ReceiptText} title="Nenhuma dívida cadastrada" description="Adicione a primeira dívida para montar o plano de quitação." action={<Button onClick={() => showDebt()}><Plus className="mr-1 size-4" />Adicionar</Button>} /></Card> : <Tabs defaultValue="debts"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="debts">Dívidas</TabsTrigger><TabsTrigger value="plan">Plano</TabsTrigger><TabsTrigger value="evolution">Evolução</TabsTrigger></TabsList>
           <TabsContent value="debts" className="space-y-3">{(debts.data ?? []).map((debt: Debt) => <DebtCard key={debt.id} debt={debt} personName={people.find((person: { id: string; name: string }) => person.id === debt.responsible_user_id)?.name ?? "Pessoa"} onEdit={() => showDebt(debt)} onDelete={() => { if (window.confirm("Excluir esta dívida e todos os pagamentos?")) removeDebt.mutate(debt.id); }} onAddPayment={() => showPayment(debt)} onEditPayment={(payment: Payment) => showPayment(debt, payment)} onDeletePayment={(payment: Payment) => { if (window.confirm("Excluir este pagamento? O saldo será recalculado.")) removePayment.mutate(payment.id); }} />)}</TabsContent>
           <TabsContent value="plan" className="space-y-3"><Card className="rounded-2xl p-4"><h3 className="font-semibold">Plano para limpar o nome</h3><p className="mt-1 text-xs text-muted-foreground">Pagamentos registrados por mês e responsável.</p></Card>{summary.monthlyRows.length === 0 ? <Card className="rounded-2xl p-5 text-sm text-muted-foreground">Registre um pagamento para formar o plano mensal.</Card> : [...summary.monthlyRows].reverse().map((row) => <Card key={row.key} className="rounded-2xl p-4"><div className="flex justify-between"><span className="font-medium capitalize">{formatMonth(row.key)}</span><b>{formatBRL(row.paid)}</b></div>{[...row.byPerson.entries()].map(([personId, amount]) => <div key={personId} className="mt-2 flex justify-between text-xs text-muted-foreground"><span>{people.find((person: { id: string; name: string }) => person.id === personId)?.name ?? "Pessoa"}</span><span>{formatBRL(amount)}</span></div>)}</Card>)}</TabsContent>
