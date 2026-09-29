@@ -3197,7 +3197,7 @@ export type Database = {
           category_id: string | null
           couple_id: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           estimated_amount: number
           id: string
           is_active: boolean
@@ -3212,8 +3212,8 @@ export type Database = {
           category_id?: string | null
           couple_id?: string | null
           created_at?: string
-          created_by: string
-          estimated_amount: number
+          created_by?: string | null
+          estimated_amount?: number
           id?: string
           is_active?: boolean
           name: string
@@ -3227,7 +3227,7 @@ export type Database = {
           category_id?: string | null
           couple_id?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           estimated_amount?: number
           id?: string
           is_active?: boolean

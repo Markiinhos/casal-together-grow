@@ -192,3 +192,21 @@ export function hideOrShow(v: number, hidden: boolean): string {
   return hidden ? "R$ ••••" : formatBRL(v);
 }
 
+/**
+ * Converte strings em formato monetário (ex: "280,00", "280.00", "1.280,50") para number float seguro.
+ */
+export function parseCurrencyInput(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  if (typeof value === "number") return isNaN(value) ? 0 : value;
+  let str = String(value).trim();
+  if (!str) return 0;
+  str = str.replace(/R\$\s?/g, "").trim();
+  if (str.includes(",") && str.includes(".")) {
+    str = str.replace(/\./g, "").replace(",", ".");
+  } else if (str.includes(",")) {
+    str = str.replace(",", ".");
+  }
+  const parsed = parseFloat(str);
+  return isNaN(parsed) ? 0 : parsed;
+}
+

@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import { usePartner, useProfile } from "@/lib/hooks";
 import { applySpaceFilter, useSpace } from "@/lib/space";
 import { buildSummary, fetchSubscriptions } from "@/lib/subscriptions";
-import { formatBRL, monthlyAmount, planningFrequencyLabel } from "@/lib/finance";
+import { formatBRL, monthlyAmount, parseCurrencyInput, planningFrequencyLabel } from "@/lib/finance";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
@@ -648,20 +648,23 @@ function VariableExpenseDialog({ open, onOpenChange, item, categories, opts }: a
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!values.name?.trim()) return toast.error("Informe o nome da despesa");
-    const amt = Number(values.estimated_amount);
+    const amt = parseCurrencyInput(values.estimated_amount);
     if (isNaN(amt) || amt < 0) return toast.error("Informe um valor previsto mensal válido");
 
-    const payload: any = {
+    if (values.visibility === "shared" && !opts.coupleId) {
+      return toast.error("Vincule seu parceiro antes de cadastrar uma despesa compartilhada.");
+    }
+
+    const payload = {
       name: values.name.trim(),
       estimated_amount: amt,
-      category_id: values.category_id === "none" ? null : values.category_id,
-      subcategory_id: values.subcategory_id === "none" ? null : values.subcategory_id,
+      category_id: values.category_id && values.category_id !== "none" ? values.category_id : null,
+      subcategory_id: values.subcategory_id && values.subcategory_id !== "none" ? values.subcategory_id : null,
       visibility: values.visibility,
       couple_id: values.visibility === "shared" ? opts.coupleId : null,
       user_id: user!.id,
-      created_by: user!.id,
-      notes: values.notes?.trim() || null,
-      is_active: values.is_active,
+      notes: values.notes !== undefined && values.notes !== null && String(values.notes).trim() !== "" ? String(values.notes).trim() : null,
+      is_active: values.is_active ?? true,
     };
 
     const { error } = item
@@ -669,7 +672,7 @@ function VariableExpenseDialog({ open, onOpenChange, item, categories, opts }: a
       : await supabase.from("variable_expenses").insert(payload);
 
     if (error) return toast.error(error.message);
-    toast.success("Despesa variável salva");
+    toast.success("Despesa variável salva com sucesso");
     setForm({});
     qc.invalidateQueries({ queryKey: ["variable-expenses"] });
     qc.invalidateQueries({ queryKey: ["variable-expenses-projecao"] });
@@ -704,9 +707,8 @@ function VariableExpenseDialog({ open, onOpenChange, item, categories, opts }: a
           <Field label="Valor previsto mensal *">
             <Input
               required
-              min="0"
-              type="number"
-              step="0.01"
+              type="text"
+              inputMode="decimal"
               placeholder="0,00"
               value={values.estimated_amount}
               onChange={(e) => set("estimated_amount", e.target.value)}
