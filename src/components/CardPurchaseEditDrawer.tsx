@@ -32,6 +32,11 @@ import {
   CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  deleteCardPurchaseCompletely,
+  invalidateAllCardQueries,
+  HasPaidPaymentsError,
+} from "@/lib/card-purchase-deletion";
 
 interface CardPurchaseEditDrawerProps {
   purchaseId: string | null;
@@ -40,6 +45,7 @@ interface CardPurchaseEditDrawerProps {
 }
 
 type EditScope = "single" | "future" | "all";
+type DeleteScope = "force_all" | "all" | "future" | "cancel";
 
 const KEYS = [
   "home-tx",
@@ -140,10 +146,11 @@ export function CardPurchaseEditDrawer({
   const [visibility, setVisibility] = useState<"private" | "shared">("shared");
   const [notes, setNotes] = useState("");
   const [editScope, setEditScope] = useState<EditScope>("all");
-  const [deleteScope, setDeleteScope] = useState<"all" | "future" | "cancel">("all");
+  const [deleteScope, setDeleteScope] = useState<DeleteScope>("all");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [strongConfirmOpen, setStrongConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (tx) {
@@ -156,14 +163,15 @@ export function CardPurchaseEditDrawer({
       setVisibility(tx.visibility ?? "shared");
       setNotes(tx.note ?? "");
       setConfirmDelete(false);
+      setStrongConfirmOpen(false);
       setEditScope("all");
       setDeleteScope(existingInstDefault(tx));
     }
   }, [tx]);
 
-  function existingInstDefault(t: any): "all" | "future" | "cancel" {
+  function existingInstDefault(t: any): DeleteScope {
     const anyPaid = (t?.installments ?? []).some((i: any) => i.paid);
-    return anyPaid ? "future" : "all";
+    return anyPaid ? "force_all" : "all";
   }
 
 
@@ -270,12 +278,58 @@ export function CardPurchaseEditDrawer({
     ]
   );
 
+  const executeDefinitiveDelete = useCallback(
+    async (force: boolean) => {
+      if (!user || !purchaseId) return;
+      setDeleting(true);
+      try {
+        await deleteCardPurchaseCompletely({
+          purchaseId,
+          force,
+          queryClient: qc,
+        });
+        toast.success("Compra excluída com sucesso!");
+        setStrongConfirmOpen(false);
+        setConfirmDelete(false);
+        onOpenChange(false);
+      } catch (err: any) {
+        if (
+          err instanceof HasPaidPaymentsError ||
+          err?.code === "23514" ||
+          err?.message?.includes("já registrados como pagos")
+        ) {
+          setStrongConfirmOpen(true);
+        } else {
+          console.error("[card-edit] delete error:", err);
+          toast.error(`Erro: ${err.message}`);
+        }
+      } finally {
+        setDeleting(false);
+      }
+    },
+    [user, purchaseId, qc, onOpenChange]
+  );
+
   const handleDelete = useCallback(async () => {
     if (!user || !purchaseId) return;
-    setDeleting(true);
-    try {
-      if (deleteScope === "cancel") {
-        // Mantém histórico: marca a transação como cancelada e apaga apenas parcelas futuras (não pagas)
+
+    if (deleteScope === "force_all") {
+      setStrongConfirmOpen(true);
+      return;
+    }
+
+    if (deleteScope === "all") {
+      if (hasPaid) {
+        setStrongConfirmOpen(true);
+        return;
+      }
+      await executeDefinitiveDelete(false);
+      return;
+    }
+
+    if (deleteScope === "cancel") {
+      setDeleting(true);
+      try {
         await supabase
           .from("installments")
           .delete()
@@ -287,8 +341,21 @@ export function CardPurchaseEditDrawer({
           .eq("id", purchaseId);
         if (error) throw error;
         toast.success("Compra cancelada. Parcelas pagas mantidas no histórico.");
-      } else if (deleteScope === "future") {
-        // Apaga só parcelas futuras (não pagas) e ajusta total_installments
+        invalidateAllCardQueries(qc);
+        onOpenChange(false);
+      } catch (err: any) {
+        console.error("[card-edit] cancel error:", err);
+        toast.error(`Erro: ${err.message}`);
+      } finally {
+        setDeleting(false);
+        setConfirmDelete(false);
+      }
+      return;
+    }
+
+    if (deleteScope === "future") {
+      setDeleting(true);
+      try {
         const remaining = existingInst.filter((i: any) => i.paid).length;
         await supabase
           .from("installments")
@@ -308,30 +375,32 @@ export function CardPurchaseEditDrawer({
           .eq("id", purchaseId);
         if (error) throw error;
         toast.success("Parcelas futuras removidas.");
-      } else {
-        if (hasPaid) {
-          toast.error("Existem parcelas pagas. Use 'Somente futuras' ou 'Cancelar'.");
-          setDeleting(false);
-          return;
-        }
-        await supabase.from("installments").delete().eq("transaction_id", purchaseId);
-        const { error } = await supabase.from("transactions").delete().eq("id", purchaseId);
-        if (error) throw error;
-        toast.success("Compra excluída com sucesso!");
+        invalidateAllCardQueries(qc);
+        onOpenChange(false);
+      } catch (err: any) {
+        console.error("[card-edit] delete future error:", err);
+        toast.error(`Erro: ${err.message}`);
+      } finally {
+        setDeleting(false);
+        setConfirmDelete(false);
       }
-      invalidateAll(qc);
-      onOpenChange(false);
-    } catch (err: any) {
-      console.error("[card-edit] delete error:", err);
-      toast.error(`Erro: ${err.message}`);
-    } finally {
-      setDeleting(false);
-      setConfirmDelete(false);
+      return;
     }
-  }, [user, purchaseId, hasPaid, deleteScope, existingInst, tx, qc, onOpenChange]);
+  }, [
+    user,
+    purchaseId,
+    deleteScope,
+    hasPaid,
+    executeDefinitiveDelete,
+    existingInst,
+    tx,
+    qc,
+    onOpenChange,
+  ]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="rounded-3xl border-0 shadow-xl sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -563,27 +632,43 @@ export function CardPurchaseEditDrawer({
 
             {confirmDelete && (
               <div className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive space-y-2">
-                {existingInst.length > 1 && (
-                  <div>
-                    <Label className="text-xs text-destructive">Modo de exclusão</Label>
-                    <Select value={deleteScope} onValueChange={(v) => setDeleteScope(v as any)}>
-                      <SelectTrigger className="mt-1 bg-background text-foreground">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" disabled={hasPaid}>
-                          Excluir tudo{hasPaid ? " (indisponível: há parcelas pagas)" : ""}
-                        </SelectItem>
-                        <SelectItem value="future">
-                          Somente parcelas futuras (mantém pagas)
-                        </SelectItem>
-                        <SelectItem value="cancel">
-                          Cancelar compra (mantém histórico)
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                <div>
+                  <Label className="text-xs text-destructive font-medium">Modo de exclusão</Label>
+                  <Select value={deleteScope} onValueChange={(v) => setDeleteScope(v as any)}>
+                    <SelectTrigger className="mt-1 bg-background text-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hasPaid ? (
+                        <>
+                          <SelectItem value="force_all" className="text-destructive font-semibold">
+                            Excluir toda a compra e desfazer pagamentos
+                          </SelectItem>
+                          <SelectItem value="future">
+                            Somente parcelas futuras (mantém pagas)
+                          </SelectItem>
+                          <SelectItem value="cancel">
+                            Cancelar compra (mantém histórico)
+                          </SelectItem>
+                        </>
+                      ) : (
+                        <>
+                          <SelectItem value="all">
+                            Excluir toda a compra
+                          </SelectItem>
+                          {existingInst.length > 1 && (
+                            <SelectItem value="future">
+                              Somente parcelas futuras
+                            </SelectItem>
+                          )}
+                          <SelectItem value="cancel">
+                            Cancelar compra (mantém histórico)
+                          </SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex items-start gap-1">
                   <AlertTriangle className="size-4 inline shrink-0 mt-0.5" />
                   <span>
@@ -591,6 +676,8 @@ export function CardPurchaseEditDrawer({
                       ? "A compra será marcada como cancelada. Parcelas pagas permanecem no histórico."
                       : deleteScope === "future"
                       ? "Somente as parcelas ainda não pagas serão removidas."
+                      : deleteScope === "force_all" || hasPaid
+                      ? "Irá desfazer os pagamentos vinculados, remover parcelas e recalcular as faturas e o limite do cartão."
                       : "A compra e todas as parcelas serão excluídas permanentemente."}
                   </span>
                   <Button
@@ -609,5 +696,42 @@ export function CardPurchaseEditDrawer({
         ) : null}
       </DialogContent>
     </Dialog>
+
+    <Dialog open={strongConfirmOpen} onOpenChange={setStrongConfirmOpen}>
+      <DialogContent className="rounded-3xl border-0 shadow-2xl sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="size-5 shrink-0" />
+            Esta compra possui valores já registrados como pagos.
+          </DialogTitle>
+          <DialogDescription className="text-sm pt-2 text-foreground/80 leading-relaxed">
+            A exclusão definitiva irá desfazer os pagamentos relacionados, remover as parcelas e recalcular as faturas e o limite do cartão.
+            <br /><br />
+            Deseja continuar?
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex gap-2 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 rounded-xl h-11"
+            onClick={() => setStrongConfirmOpen(false)}
+            disabled={deleting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            className="flex-1 rounded-xl h-11"
+            disabled={deleting}
+            onClick={() => executeDefinitiveDelete(true)}
+          >
+            {deleting ? <Loader2 className="size-4 animate-spin" /> : "Excluir definitivamente"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

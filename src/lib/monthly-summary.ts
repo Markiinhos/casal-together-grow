@@ -216,7 +216,10 @@ export async function getHomeMonthlySummary(ref: Date, opts: SpaceOpts): Promise
   for (const card of cardsList) {
     // 1. Procura se há fatura no banco para esse mês
     const existingInv = cardInvoicesList.find(
-      (inv: any) => inv.card_id === card.id && String(inv.reference_month).startsWith(targetMonthKey)
+      (inv: any) =>
+        inv.card_id === card.id &&
+        String(inv.reference_month).startsWith(targetMonthKey) &&
+        inv.status !== "cancelled"
     );
 
     if (existingInv) {
@@ -225,7 +228,7 @@ export async function getHomeMonthlySummary(ref: Date, opts: SpaceOpts): Promise
       // 2. Se não houver fatura fechada, calcula as compras e parcelas correspondentes ao mês
       let cardMonthSum = 0;
       const cardPurchases = cardPurchasesList.filter(
-        (p: any) => p.credit_card_id === card.id && !p.is_card_payment
+        (p: any) => p.credit_card_id === card.id && !p.is_card_payment && p.status !== "cancelled"
       );
 
       for (const p of cardPurchases) {

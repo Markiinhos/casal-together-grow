@@ -33,3 +33,6 @@ dist-ssr
 
 # Supabase CLI temp
 supabase/.temp/
+
+# Scratch test scripts
+scratch/

@@ -29,6 +29,10 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import {
+  deleteCardPurchaseCompletely,
+  invalidateAllCardQueries,
+} from "@/lib/card-purchase-deletion";
 
 // ── Types ────────────────────────────────────────────────────────
 interface TransactionEditDrawerProps {
@@ -258,27 +262,21 @@ export function TransactionEditDrawer({
     ]
   );
 
+  const isCardPurchase = !!creditCardId;
+  const hasInstallments = tx?.installments && tx.installments.length > 0;
+
   // Delete handler
   const handleDelete = useCallback(async () => {
     if (!user || !transactionId) return;
     setDeleting(true);
     try {
-      // Check if there are installments / history
-      const hasInstallments = tx?.installments && tx.installments.length > 0;
-
-      if (hasInstallments) {
-        // Preserve history: remove only unpaid installments and mark the transaction as cancelled
-        await supabase
-          .from("installments")
-          .delete()
-          .eq("transaction_id", transactionId)
-          .eq("paid", false);
-        const { error } = await supabase
-          .from("transactions")
-          .update({ status: "cancelled", updated_at: new Date().toISOString() } as never)
-          .eq("id", transactionId);
-        if (error) throw error;
-        toast.success("Lançamento cancelado. Parcelas pagas mantidas no histórico.");
+      if (isCardPurchase || hasInstallments) {
+        await deleteCardPurchaseCompletely({
+          purchaseId: transactionId,
+          force: true,
+          queryClient: qc,
+        });
+        toast.success("Lançamento do cartão e vínculos excluídos!");
       } else {
         const { error } = await supabase
           .from("transactions")
@@ -288,7 +286,7 @@ export function TransactionEditDrawer({
         toast.success("Lançamento excluído!");
       }
 
-      invalidateAll(qc);
+      invalidateAllCardQueries(qc);
       onOpenChange(false);
     } catch (err: any) {
       console.error("[tx-edit] delete error:", err);
@@ -297,10 +295,7 @@ export function TransactionEditDrawer({
       setDeleting(false);
       setConfirmDelete(false);
     }
-  }, [user, transactionId, tx, qc, onOpenChange]);
-
-  const isCardPurchase = !!creditCardId;
-  const hasInstallments = tx?.installments && tx.installments.length > 0;
+  }, [user, transactionId, isCardPurchase, hasInstallments, qc, onOpenChange]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

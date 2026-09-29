@@ -39,8 +39,8 @@ export function useCardMetrics(cards: any[], purchases: any[], invoices: any[]) 
       const cid = p.credit_card_id;
       if (!cid || !map[cid]) continue;
       
-      // Skip payment transactions
-      if (p.is_card_payment) continue;
+      // Skip payment transactions and cancelled purchases
+      if (p.is_card_payment || p.status === "cancelled") continue;
 
       const m = map[cid];
       if (!m.lastPurchase || String(p.date) > String(m.lastPurchase.date)) {

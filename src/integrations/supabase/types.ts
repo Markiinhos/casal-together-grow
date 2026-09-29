@@ -3550,6 +3550,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      audit_and_cleanup_card_orphans: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      delete_card_purchase_completely: {
+        Args: { p_purchase_id: string; p_force?: boolean }
+        Returns: Json
+      }
       undo_card_invoice_payment: {
         Args: { _invoice_id: string; _payment_transaction_id?: string }
         Returns: undefined
