@@ -13,17 +13,18 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { fetchPlannedIncome, formatBRL, monthLabel, firstOfMonth } from "@/lib/finance";
-import { AlertTriangle, Check } from "lucide-react";
+import { AlertTriangle, Check, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { getLocalISODate } from "@/lib/date-utils";
 
 
-type Search = { id?: string; month?: string };
+type Search = { id?: string; month?: string; import?: string };
 
 export const Route = createFileRoute("/app/financas/planejamento/novo")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     id: typeof s.id === "string" ? s.id : undefined,
     month: typeof s.month === "string" ? s.month : undefined,
+    import: typeof s.import === "string" ? s.import : undefined,
   }),
   component: PlanWizard,
 });
@@ -50,6 +51,44 @@ function PlanWizard() {
   const [distributeAll, setDistributeAll] = useState(false);
   const [editPolicy, setEditPolicy] = useState<"both" | "creator_only">("both");
   const [search_cat, setSearchCat] = useState("");
+
+  const importStructure = async () => {
+    if (!user?.id) return;
+    let q: any = supabase.from("variable_expenses").select("*").eq("is_active", true);
+    if (space === "private") q = q.eq("visibility", "private").eq("user_id", user.id);
+    else if (coupleId) q = q.eq("visibility", "shared").eq("couple_id", coupleId);
+    else q = q.eq("visibility", "shared").eq("user_id", user.id);
+    const { data: vExpenses, error } = await q;
+    if (error) {
+      toast.error("Erro ao importar estrutura: " + error.message);
+      return;
+    }
+    if (!vExpenses || vExpenses.length === 0) {
+      toast.info("Nenhuma despesa variável ativa na estrutura financeira.");
+      return;
+    }
+    const newSelected = [...selectedCats];
+    const newAmounts = { ...amounts };
+    let importedCount = 0;
+    for (const v of vExpenses) {
+      if (v.category_id) {
+        if (!newSelected.includes(v.category_id)) {
+          newSelected.push(v.category_id);
+        }
+        newAmounts[v.category_id] = (newAmounts[v.category_id] || 0) + Number(v.estimated_amount || 0);
+        importedCount++;
+      }
+    }
+    setSelectedCats(newSelected);
+    setAmounts(newAmounts);
+    toast.success(`${importedCount} categoria(s) importada(s) da estrutura financeira!`);
+  };
+
+  useEffect(() => {
+    if (search.import === "structure" && !editingId && user?.id) {
+      importStructure();
+    }
+  }, [search.import, editingId, user?.id]);
 
   // Autopopula receita a partir das últimas receitas do mês anterior
   useEffect(() => {
@@ -250,7 +289,19 @@ function PlanWizard() {
 
         {step === 3 && (
           <Card className="rounded-2xl p-4 shadow-card space-y-3">
-            <h3 className="font-semibold">Categorias e subcategorias</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold">Categorias e subcategorias</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-xl text-xs gap-1.5"
+                onClick={importStructure}
+              >
+                <Layers className="size-3.5 text-primary" />
+                Importar estrutura
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">Escolha para quais categorias você deseja definir um orçamento.</p>
             <Input placeholder="Buscar categoria" value={search_cat} onChange={(e) => setSearchCat(e.target.value)} />
             <div className="space-y-1 max-h-96 overflow-y-auto">
@@ -277,7 +328,19 @@ function PlanWizard() {
 
         {step === 4 && (
           <Card className="rounded-2xl p-4 shadow-card space-y-3">
-            <h3 className="font-semibold">Metas e orçamentos</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-semibold">Metas e orçamentos</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-xl text-xs gap-1.5"
+                onClick={importStructure}
+              >
+                <Layers className="size-3.5 text-primary" />
+                Importar estrutura
+              </Button>
+            </div>
             <div className="rounded-xl bg-accent/50 p-3 text-xs space-y-1">
               <div className="flex justify-between"><span>Limite total</span><b>{formatBRL(limit + reserve + goals)}</b></div>
               <div className="flex justify-between"><span>Distribuído</span><b>{formatBRL(distributed)}</b></div>

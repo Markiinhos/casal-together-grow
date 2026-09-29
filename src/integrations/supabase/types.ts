@@ -3192,6 +3192,90 @@ export type Database = {
           },
         ]
       }
+      variable_expenses: {
+        Row: {
+          category_id: string | null
+          couple_id: string | null
+          created_at: string
+          created_by: string
+          estimated_amount: number
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          subcategory_id: string | null
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          category_id?: string | null
+          couple_id?: string | null
+          created_at?: string
+          created_by: string
+          estimated_amount: number
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          subcategory_id?: string | null
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          category_id?: string | null
+          couple_id?: string | null
+          created_at?: string
+          created_by?: string
+          estimated_amount?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          subcategory_id?: string | null
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variable_expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_expenses_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_expenses_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_expenses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workouts: {
         Row: {
           calories: number | null

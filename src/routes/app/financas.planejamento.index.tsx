@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Target, Plus, Copy, Archive, Trash2 } from "lucide-react";
+import { Target, Plus, Copy, Archive, Trash2, Layers } from "lucide-react";
 import { formatBRL, monthLabel } from "@/lib/finance";
 import { toast } from "sonner";
 
@@ -109,6 +109,12 @@ function PlanList() {
             <Copy className="size-4 mr-1" /> Copiar anterior
           </Button>
         </div>
+        <Button asChild variant="outline" className="w-full rounded-2xl text-xs gap-2 h-auto py-2.5">
+          <Link to="/app/financas/planejamento/novo" search={{ import: "structure" }}>
+            <Layers className="size-4 text-primary shrink-0" />
+            <span>Importar estrutura financeira</span>
+          </Link>
+        </Button>
 
         {plans.isLoading ? (
           <Skeleton className="h-24 rounded-2xl" />

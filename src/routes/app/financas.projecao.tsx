@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
-import { TrendingUp, TrendingDown, CalendarDays, Wallet, RefreshCw, RefreshCcw } from "lucide-react";
+import { TrendingUp, TrendingDown, CalendarDays, Wallet, RefreshCw, RefreshCcw, ShoppingBag } from "lucide-react";
 import { format, addMonths, startOfMonth, isAfter, isValid, addDays, addYears } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,20 @@ function ProjecaoPage() {
   const { data: fixedBills = [], isLoading: isFixedBillsLoading } = useQuery({
     queryKey: ["fixed-bills-projecao", space, coupleId, user?.id],
     queryFn: async () => { let q: any = supabase.from("future_bills").select("*").eq("is_active", true).neq("recurrence", "once"); q = applySpaceFilter(q, { space, userId: user!.id, coupleId }); const { data, error } = await q; if (error) throw error; return data ?? []; },
+    enabled: !!user?.id,
+  });
+  const { data: variableExpenses = [], isLoading: isVariableExpensesLoading } = useQuery({
+    queryKey: ["variable-expenses-projecao", space, coupleId, user?.id],
+    queryFn: async () => {
+      let q: any = supabase.from("variable_expenses").select("*, categories(name,color,icon)").eq("is_active", true);
+      q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
+      const { data, error } = await q;
+      if (error) {
+        console.error("Erro ao carregar despesas variáveis na projeção:", error);
+        return [];
+      }
+      return data ?? [];
+    },
     enabled: !!user?.id,
   });
 
@@ -233,6 +247,57 @@ function ProjecaoPage() {
         const projectedDate = new Date(month.getFullYear(), month.getMonth(), day, 12);
         if (isAfter(projectedDate, now)) upc.push({ id: `fixed-bill-${bill.id}-${i}`, type: "expense", description: bill.title, projectedAmount: amount, projectedDate, isFixedBill: true });
       }
+      for (const varExp of variableExpenses as any[]) {
+        const amount = Number(varExp.estimated_amount || 0);
+        if (amount <= 0) continue;
+
+        if (i === 0) {
+          // Mês atual: evitar duplicidade com despesas reais já registradas
+          const catId = varExp.category_id;
+          const currentCatExpense = transactionsList.reduce((acc: number, t: any) => {
+            if (t.type === "expense" && (!catId || t.category_id === catId)) {
+              const d = new Date(t.date);
+              if (isValid(d) && d <= now && d >= startOfMonth(now)) {
+                return acc + Number(t.amount || 0);
+              }
+            }
+            return acc;
+          }, 0);
+
+          const remainingInBudget = Math.max(0, amount - currentCatExpense);
+          if (remainingInBudget > 0) {
+            dataByMonth[lbl].expense += remainingInBudget;
+            const endOfMonthDate = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+            const remainingDays = Math.max(1, endOfMonthDate.getDate() - now.getDate());
+            const projDay = Math.min(endOfMonthDate.getDate(), now.getDate() + Math.ceil(remainingDays / 2));
+            const projectedDate = new Date(month.getFullYear(), month.getMonth(), projDay, 12);
+            if (isAfter(projectedDate, now)) {
+              upc.push({
+                id: `variable-expense-${varExp.id}-${i}`,
+                type: "expense",
+                description: `${varExp.name} (previsão restante)`,
+                projectedAmount: remainingInBudget,
+                projectedDate,
+                isVariableExpense: true,
+                color: varExp.categories?.color,
+              });
+            }
+          }
+        } else {
+          // Meses futuros: aplica o valor previsto integral das despesas variáveis ativas
+          dataByMonth[lbl].expense += amount;
+          const projectedDate = new Date(month.getFullYear(), month.getMonth(), 15, 12);
+          upc.push({
+            id: `variable-expense-${varExp.id}-${i}`,
+            type: "expense",
+            description: varExp.name,
+            projectedAmount: amount,
+            projectedDate,
+            isVariableExpense: true,
+            color: varExp.categories?.color,
+          });
+        }
+      }
     }
 
     upc.sort((a, b) => {
@@ -284,9 +349,9 @@ function ProjecaoPage() {
         healthRatio: _healthRatio,
         healthStatus: _healthStatus
     };
-  }, [tx, aggregates, subs, incomeSources, fixedBills, monthsToProject]);
+  }, [tx, aggregates, subs, incomeSources, fixedBills, variableExpenses, monthsToProject]);
 
-  if (!user || isProfileLoading || isLoadingTx || isLoadingCards || isSubsLoading || isIncomeSourcesLoading || isFixedBillsLoading) {
+  if (!user || isProfileLoading || isLoadingTx || isLoadingCards || isSubsLoading || isIncomeSourcesLoading || isFixedBillsLoading || isVariableExpensesLoading) {
       return (
           <>
              <PageHeader title="Projeção Financeira" subtitle="Carregando dados..." fallbackRoute="/app/financas" />
@@ -506,6 +571,12 @@ function ProjecaoPage() {
                                     <>
                                         <span>•</span>
                                         <RefreshCcw className="size-3 text-primary" />
+                                    </>
+                                )}
+                                {u.isVariableExpense && (
+                                    <>
+                                        <span>•</span>
+                                        <ShoppingBag className="size-3 text-primary" />
                                     </>
                                 )}
                             </div>
