@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,15 +6,13 @@ import { useAuth } from "@/lib/auth";
 import { usePartner, useProfile } from "@/lib/hooks";
 import { applySpaceFilter, useSpace } from "@/lib/space";
 import { buildSummary, fetchSubscriptions } from "@/lib/subscriptions";
-import { formatBRL, getCategoryExpenses, monthlyAmount, planningFrequencyLabel } from "@/lib/finance";
+import { formatBRL, monthlyAmount, planningFrequencyLabel } from "@/lib/finance";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,7 +29,6 @@ import {
   CalendarClock,
   ChevronRight,
   Landmark,
-  Layers,
   MoreVertical,
   Pencil,
   PiggyBank,
@@ -45,26 +42,44 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/financas/estrutura/")({
-  head: () => ({ meta: [
-    { title: "Estrutura financeira — CASAL" },
-    { name: "description", content: "Organize receitas previstas, despesas fixas, investimentos e dívidas do casal." },
-    { property: "og:title", content: "Estrutura financeira — CASAL" },
-    { property: "og:description", content: "Organize receitas previstas, despesas fixas, investimentos e dívidas do casal." },
-    { property: "og:type", content: "website" },
-    { name: "twitter:card", content: "summary" },
-  ] }),
+  head: () => ({
+    meta: [
+      { title: "Estrutura financeira — CASAL" },
+      { name: "description", content: "Organize receitas previstas, despesas fixas, variáveis, investimentos e dívidas do casal." },
+      { property: "og:title", content: "Estrutura financeira — CASAL" },
+      { property: "og:description", content: "Organize receitas previstas, despesas fixas, variáveis, investimentos e dívidas do casal." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: FinancialStructure,
 });
 
-const incomeTypes: Record<string, string> = { salary: "Salário", scholarship: "Bolsa", freelance: "Freelance", benefit: "Benefício", commission: "Comissão", extra: "Renda extra", other: "Outro" };
-const paymentMethods: Record<string, string> = { pix: "Pix", debit: "Débito", bank_account: "Conta bancária", credit_card: "Cartão de crédito", boleto: "Boleto", cash: "Dinheiro", other: "Outro" };
+const incomeTypes: Record<string, string> = {
+  salary: "Salário",
+  scholarship: "Bolsa",
+  freelance: "Freelance",
+  benefit: "Benefício",
+  commission: "Comissão",
+  extra: "Renda extra",
+  other: "Outro",
+};
+
+const paymentMethods: Record<string, string> = {
+  pix: "Pix",
+  debit: "Débito",
+  bank_account: "Conta bancária",
+  credit_card: "Cartão de crédito",
+  boleto: "Boleto",
+  cash: "Dinheiro",
+  other: "Outro",
+};
 
 function FinancialStructure() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const { data: partner } = usePartner();
   const { space } = useSpace();
-  const navigate = useNavigate();
   const coupleId = profile?.couple_id ?? null;
   const opts = { space, userId: user?.id ?? "", coupleId };
   const qc = useQueryClient();
@@ -76,6 +91,7 @@ function FinancialStructure() {
   const [editingBill, setEditingBill] = useState<any>(null);
   const [editingVariable, setEditingVariable] = useState<any>(null);
 
+  // Receitas previstas
   const incomes = useQuery({
     queryKey: ["income-sources", space, coupleId, user?.id],
     queryFn: async () => {
@@ -88,6 +104,7 @@ function FinancialStructure() {
     enabled: !!user,
   });
 
+  // Despesas fixas
   const bills = useQuery({
     queryKey: ["fixed-bills", space, coupleId, user?.id],
     queryFn: async () => {
@@ -100,6 +117,7 @@ function FinancialStructure() {
     enabled: !!user,
   });
 
+  // Despesas variáveis (aba própria e independente)
   const variableExpenses = useQuery({
     queryKey: ["variable-expenses", space, coupleId, user?.id],
     queryFn: async () => {
@@ -115,11 +133,22 @@ function FinancialStructure() {
     enabled: !!user,
   });
 
+  // Categorias de despesas
   const categories = useQuery({
     queryKey: ["structure-categories", space, coupleId, user?.id],
     queryFn: async () => {
-      let q: any = supabase.from("categories").select("id,name,color,type").eq("type", "expense").eq("is_archived", false).order("name");
-      if (coupleId) q = q.or(`couple_id.eq.${coupleId},user_id.eq.${user!.id}`); else q = q.eq("user_id", user!.id);
+      let q: any = supabase
+        .from("categories")
+        .select("id,name,color,type")
+        .eq("type", "expense")
+        .is("parent_id", null)
+        .eq("is_archived", false)
+        .order("name");
+      if (coupleId) {
+        q = q.or(`couple_id.eq.${coupleId},user_id.eq.${user!.id}`);
+      } else {
+        q = q.eq("user_id", user!.id);
+      }
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
@@ -127,18 +156,24 @@ function FinancialStructure() {
     enabled: !!user,
   });
 
+  // Assinaturas ativas
   const subscriptions = useQuery({
     queryKey: ["structure-subscriptions", space, coupleId, user?.id],
     queryFn: async () => buildSummary(await fetchSubscriptions(opts)),
     enabled: !!user,
   });
 
+  // Planejamento atual (utilizado apenas para compor reserva/metas na aba Resumo)
   const currentPlan = useQuery({
     queryKey: ["structure-plan", space, coupleId, user?.id],
     queryFn: async () => {
       const ref = new Date();
       const month = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}-01`;
-      let q: any = supabase.from("monthly_financial_plans").select("*, monthly_budget_allocations(*, categories(name,color))").eq("reference_month", month).eq("status", "active");
+      let q: any = supabase
+        .from("monthly_financial_plans")
+        .select("*, monthly_budget_allocations(*, categories(name,color))")
+        .eq("reference_month", month)
+        .eq("status", "active");
       q = applySpaceFilter(q, opts);
       const { data, error } = await q.maybeSingle();
       if (error) throw error;
@@ -147,6 +182,7 @@ function FinancialStructure() {
     enabled: !!user,
   });
 
+  // Totais previstos
   const plannedIncome = useMemo(
     () => (incomes.data ?? []).filter((x: any) => x.is_active).reduce((s: number, x: any) => s + monthlyAmount(x.amount, x.frequency), 0),
     [incomes.data]
@@ -163,8 +199,13 @@ function FinancialStructure() {
   const fixedTotal = fixedBills + (subscriptions.data?.monthlyTotal ?? 0);
   const monthlyEstimatedBalance = plannedIncome - fixedTotal - variableTotal;
   const available = monthlyEstimatedBalance - Number(currentPlan.data?.planned_reserve ?? 0) - Number(currentPlan.data?.planned_goals ?? 0);
-  const people = [{ id: user?.id ?? "", name: profile?.full_name || "Você" }, ...(partner ? [{ id: partner.id, name: partner.full_name || "Parceiro(a)" }] : [])];
 
+  const people = [
+    { id: user?.id ?? "", name: profile?.full_name || "Você" },
+    ...(partner ? [{ id: partner.id, name: partner.full_name || "Parceiro(a)" }] : []),
+  ];
+
+  // Mutações CRUD
   const remove = useMutation({
     mutationFn: async ({ table, id }: { table: "income_sources" | "future_bills" | "variable_expenses"; id: string }) => {
       const { error } = await supabase.from(table).delete().eq("id", id);
@@ -176,7 +217,7 @@ function FinancialStructure() {
       qc.invalidateQueries({ queryKey: ["variable-expenses-projecao"] });
       qc.invalidateQueries({ queryKey: ["structure-plan"] });
       qc.invalidateQueries({ queryKey: ["tx-projecao"] });
-      toast.success("Item excluído");
+      toast.success("Item excluído com sucesso");
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -246,6 +287,7 @@ function FinancialStructure() {
             <TabsTrigger value="variable" className="text-xs">Variáveis</TabsTrigger>
           </TabsList>
 
+          {/* ABA RESUMO */}
           <TabsContent value="summary" className="space-y-3 mt-3">
             <PlanRow icon={ArrowUpCircle} label="Receitas previstas" value={plannedIncome} color="text-success" />
             <PlanRow icon={CalendarClock} label="Contas fixas" value={fixedBills} color="text-destructive" />
@@ -273,6 +315,7 @@ function FinancialStructure() {
             </Card>
           </TabsContent>
 
+          {/* ABA RECEITAS */}
           <TabsContent value="income" className="space-y-3 mt-3">
             <Button
               className="w-full rounded-2xl"
@@ -310,6 +353,7 @@ function FinancialStructure() {
             )}
           </TabsContent>
 
+          {/* ABA FIXAS */}
           <TabsContent value="fixed" className="space-y-3 mt-3">
             <Button
               className="w-full rounded-2xl"
@@ -353,80 +397,23 @@ function FinancialStructure() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="variable" className="space-y-3 mt-3">
-            <Card className="rounded-2xl p-4 bg-muted/40 border flex items-center justify-between">
-              <div>
-                <div className="text-xs text-muted-foreground">Previsto por mês</div>
-                <div className="text-xl font-bold">{formatBRL(variableTotal)}</div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl text-xs gap-1.5"
-                  asChild
-                >
-                  <Link to="/app/financas/planejamento/novo" search={{ import: "structure" }}>
-                    <Layers className="size-3.5" />
-                    Usar no planejamento
-                  </Link>
-                </Button>
-                <Button
-                  size="sm"
-                  className="rounded-xl text-xs"
-                  onClick={() => {
-                    setEditingVariable(null);
-                    setVariableOpen(true);
-                  }}
-                >
-                  <Plus className="size-3.5 mr-1" /> Adicionar despesa variável
-                </Button>
-              </div>
-            </Card>
-
-            {variableExpenses.isLoading ? (
-              <Skeleton className="h-24 rounded-2xl" />
-            ) : (variableExpenses.data ?? []).length === 0 ? (
-              <Card className="p-6 rounded-2xl">
-                <EmptyState
-                  icon={ShoppingBag}
-                  title="Nenhuma despesa variável cadastrada"
-                  description="Adicione uma estimativa mensal para gastos que podem variar, como mercado, combustível e lazer."
-                />
-                <Button
-                  className="w-full mt-4 rounded-xl"
-                  onClick={() => {
-                    setEditingVariable(null);
-                    setVariableOpen(true);
-                  }}
-                >
-                  <Plus className="size-4 mr-1" /> Adicionar despesa variável
-                </Button>
-              </Card>
-            ) : (
-              (variableExpenses.data ?? []).map((x: any) => (
-                <VariableItemCard
-                  key={x.id}
-                  item={x}
-                  onToggle={(v: boolean) => toggle("variable_expenses", x.id, v)}
-                  onEdit={() => {
-                    setEditingVariable(x);
-                    setVariableOpen(true);
-                  }}
-                  onDelete={() => {
-                    if (confirm(`Excluir "${x.name}" da estrutura financeira?`)) {
-                      remove.mutate({ table: "variable_expenses", id: x.id });
-                    }
-                  }}
-                  onUseInPlan={() => {
-                    navigate({
-                      to: "/app/financas/planejamento/novo",
-                      search: { import: "structure" },
-                    });
-                  }}
-                />
-              ))
-            )}
+          {/* ABA VARIÁVEIS (DEDICADA E INDEPENDENTE) */}
+          <TabsContent value="variable" className="mt-3">
+            <VariableExpensesSection
+              variableExpenses={variableExpenses}
+              variableTotal={variableTotal}
+              loading={variableExpenses.isLoading}
+              onAdd={() => {
+                setEditingVariable(null);
+                setVariableOpen(true);
+              }}
+              onEdit={(item: any) => {
+                setEditingVariable(item);
+                setVariableOpen(true);
+              }}
+              onToggle={(id: string, val: boolean) => toggle("variable_expenses", id, val)}
+              onDelete={(id: string) => remove.mutate({ table: "variable_expenses", id })}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -480,10 +467,10 @@ function ItemCard({ title, subtitle, value, active, onToggle, onEdit, onDelete }
           <div className="text-xs text-muted-foreground truncate">{subtitle}</div>
         </div>
         <b className="text-sm">{formatBRL(value)}/mês</b>
-        <button type="button" onClick={onEdit}>
+        <button type="button" onClick={onEdit} aria-label="Editar">
           <Pencil className="size-4" />
         </button>
-        <button type="button" onClick={onDelete} className="text-destructive">
+        <button type="button" onClick={onDelete} className="text-destructive" aria-label="Excluir">
           <Trash2 className="size-4" />
         </button>
       </div>
@@ -491,10 +478,84 @@ function ItemCard({ title, subtitle, value, active, onToggle, onEdit, onDelete }
   );
 }
 
-function VariableItemCard({ item, onToggle, onEdit, onDelete, onUseInPlan }: any) {
+/**
+ * Componente dedicado para gerenciamento de despesas variáveis na estrutura financeira
+ */
+function VariableExpensesSection({
+  variableExpenses,
+  variableTotal,
+  loading,
+  onAdd,
+  onEdit,
+  onToggle,
+  onDelete,
+}: {
+  variableExpenses: any;
+  variableTotal: number;
+  loading: boolean;
+  onAdd: () => void;
+  onEdit: (item: any) => void;
+  onToggle: (id: string, value: boolean) => void;
+  onDelete: (id: string) => void;
+}) {
+  const items = variableExpenses.data ?? [];
+
+  return (
+    <div className="space-y-3">
+      <Button className="w-full rounded-2xl" onClick={onAdd}>
+        <Plus className="size-4 mr-1" /> Adicionar despesa variável
+      </Button>
+
+      <Card className="rounded-2xl p-4 bg-muted/40 border flex items-center justify-between">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Despesas variáveis</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Previsto por mês</div>
+        </div>
+        <div className="text-xl font-bold">{formatBRL(variableTotal)}</div>
+      </Card>
+
+      {loading ? (
+        <Skeleton className="h-24 rounded-2xl" />
+      ) : items.length === 0 ? (
+        <Card className="p-6 rounded-2xl">
+          <EmptyState
+            icon={ShoppingBag}
+            title="Nenhuma despesa variável cadastrada"
+            description="Cadastre uma estimativa mensal para gastos que podem variar, como mercado, combustível, farmácia, lazer ou delivery."
+          />
+          <Button className="w-full mt-4 rounded-xl" onClick={onAdd}>
+            <Plus className="size-4 mr-1" /> Adicionar despesa variável
+          </Button>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {items.map((x: any) => (
+            <VariableItemCard
+              key={x.id}
+              item={x}
+              onToggle={(v: boolean) => onToggle(x.id, v)}
+              onEdit={() => onEdit(x)}
+              onDelete={() => {
+                if (confirm(`Excluir "${x.name}" da estrutura financeira?`)) {
+                  onDelete(x.id);
+                }
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VariableItemCard({ item, onToggle, onEdit, onDelete }: any) {
   const catName = item.categories?.name ?? "Sem categoria";
   const subcatName = item.subcategories?.name;
   const isShared = item.visibility === "shared";
+  const details = [catName];
+  if (subcatName) details.push(subcatName);
+  details.push(isShared ? "Nosso" : "Meu");
+  if (item.notes) details.push(item.notes);
 
   return (
     <Card className={`rounded-2xl p-4 transition-opacity ${!item.is_active ? "opacity-60 bg-muted/30" : ""}`}>
@@ -509,24 +570,17 @@ function VariableItemCard({ item, onToggle, onEdit, onDelete, onUseInPlan }: any
           aria-label={item.is_active ? "Desativar" : "Ativar"}
         />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm truncate">{item.name}</span>
-            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
-              {isShared ? "Nosso" : "Meu"}
-            </Badge>
-          </div>
+          <div className="font-medium text-sm truncate">{item.name}</div>
           <div className="text-xs text-muted-foreground truncate mt-0.5">
-            {catName}
-            {subcatName ? ` · ${subcatName}` : ""}
-            {item.notes ? ` · ${item.notes}` : ""}
+            {details.join(" · ")}
           </div>
         </div>
         <div className="text-right shrink-0">
-          <b className="text-sm font-semibold block">{formatBRL(Number(item.estimated_amount || 0))}/mês</b>
+          <b className="text-sm font-semibold">{formatBRL(Number(item.estimated_amount || 0))}/mês</b>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8 rounded-lg shrink-0">
+            <Button variant="ghost" size="icon" className="size-8 rounded-lg shrink-0" aria-label="Opções">
               <MoreVertical className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -536,9 +590,6 @@ function VariableItemCard({ item, onToggle, onEdit, onDelete, onUseInPlan }: any
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onToggle(!item.is_active)} className="gap-2">
               <Power className="size-3.5" /> {item.is_active ? "Desativar" : "Ativar"}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onUseInPlan} className="gap-2">
-              <Layers className="size-3.5" /> Usar no planejamento
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onDelete} className="gap-2 text-destructive focus:text-destructive">
@@ -598,7 +649,7 @@ function VariableExpenseDialog({ open, onOpenChange, item, categories, opts }: a
     e.preventDefault();
     if (!values.name?.trim()) return toast.error("Informe o nome da despesa");
     const amt = Number(values.estimated_amount);
-    if (isNaN(amt) || amt < 0) return toast.error("Informe um valor previsto válido");
+    if (isNaN(amt) || amt < 0) return toast.error("Informe um valor previsto mensal válido");
 
     const payload: any = {
       name: values.name.trim(),
@@ -642,7 +693,7 @@ function VariableExpenseDialog({ open, onOpenChange, item, categories, opts }: a
           <DialogTitle>{item ? "Editar despesa variável" : "Nova despesa variável"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={save} className="space-y-3">
-          <Field label="Nome *">
+          <Field label="Nome da despesa *">
             <Input
               required
               placeholder="Ex: Mercado, Combustível, Lazer"
@@ -650,7 +701,7 @@ function VariableExpenseDialog({ open, onOpenChange, item, categories, opts }: a
               onChange={(e) => set("name", e.target.value)}
             />
           </Field>
-          <Field label="Valor previsto *">
+          <Field label="Valor previsto mensal *">
             <Input
               required
               min="0"
@@ -681,22 +732,20 @@ function VariableExpenseDialog({ open, onOpenChange, item, categories, opts }: a
             setValue={(v: string) => set("visibility", v)}
             options={{ shared: "Nosso (Compartilhado)", private: "Meu (Privado)" }}
           />
-          <Field label="Observação">
+          <Field label="Observações">
             <Input
               placeholder="Ex: Estimativa mensal média"
               value={values.notes}
               onChange={(e) => set("notes", e.target.value)}
             />
           </Field>
-          <div className="flex items-center justify-between pt-1">
-            <Label htmlFor="var-active" className="text-sm">Ativa na estrutura</Label>
-            <Switch
-              id="var-active"
-              checked={values.is_active}
-              onCheckedChange={(v) => set("is_active", v)}
-            />
-          </div>
-          <Button className="w-full rounded-xl mt-2">Salvar despesa variável</Button>
+          <Choice
+            label="Ativa"
+            value={values.is_active ? "true" : "false"}
+            setValue={(v: string) => set("is_active", v === "true")}
+            options={{ true: "Sim (ativa na estrutura)", false: "Não (desativada)" }}
+          />
+          <Button className="w-full rounded-xl mt-3">Salvar despesa variável</Button>
         </form>
       </DialogContent>
     </Dialog>
