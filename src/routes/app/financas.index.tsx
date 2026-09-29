@@ -19,7 +19,7 @@ import {
   Target, LayoutDashboard,
 } from "lucide-react";
 import {
-  fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome,
+  fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, getHomeMonthlySummary,
   formatBRL, hideOrShow, monthLabel, monthRange,
 } from "@/lib/finance";
 import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
@@ -51,6 +51,12 @@ function FinancasCentral() {
 
   const opts = { space, userId: user?.id ?? "", coupleId };
   const monthKey = `${ref.getFullYear()}-${ref.getMonth()}`;
+
+  const monthlySummary = useQuery({
+    queryKey: ["home-monthly-summary", monthKey, space, coupleId, user?.id],
+    queryFn: () => getHomeMonthlySummary(ref, opts),
+    enabled: !!user,
+  });
 
   const accountsTotal = useQuery({
     queryKey: ["fin-accounts-total", monthKey, space, coupleId, user?.id],
@@ -115,22 +121,41 @@ function FinancasCentral() {
   // Realtime — invalida no update
   useEffect(() => {
     if (!user) return;
+    const invalidateAllFinance = () => {
+      qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
+      qc.invalidateQueries({ queryKey: ["home-tx"] });
+      qc.invalidateQueries({ queryKey: ["fin-income"] });
+      qc.invalidateQueries({ queryKey: ["fin-expenses"] });
+      qc.invalidateQueries({ queryKey: ["fin-invoices"] });
+      qc.invalidateQueries({ queryKey: ["recent-txs"] });
+      qc.invalidateQueries({ queryKey: ["fin-accounts"] });
+      qc.invalidateQueries({ queryKey: ["fin-accounts-total"] });
+      qc.invalidateQueries({ queryKey: ["income-sources"] });
+      qc.invalidateQueries({ queryKey: ["fixed-bills"] });
+      qc.invalidateQueries({ queryKey: ["variable-expenses"] });
+      qc.invalidateQueries({ queryKey: ["subscriptions"] });
+      qc.invalidateQueries({ queryKey: ["cards"] });
+      qc.invalidateQueries({ queryKey: ["card-invoices"] });
+    };
+
     const ch = supabase.channel("fin-central")
-      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
-        qc.invalidateQueries({ queryKey: ["fin-income"] });
-        qc.invalidateQueries({ queryKey: ["fin-expenses"] });
-        qc.invalidateQueries({ queryKey: ["fin-invoices"] });
-        qc.invalidateQueries({ queryKey: ["recent-txs"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "bank_accounts" }, () => {
-        qc.invalidateQueries({ queryKey: ["fin-accounts"] });
-        qc.invalidateQueries({ queryKey: ["fin-accounts-total"] });
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "installments" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "bank_accounts" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "income_sources" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "future_bills" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "variable_expenses" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "credit_cards" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "card_invoices" }, invalidateAllFinance)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, qc]);
 
-  const balance = (income.data ?? 0) - (expenses.data?.total ?? 0);
+  const displayIncome = monthlySummary.data?.income ?? income.data ?? 0;
+  const displayExpenses = monthlySummary.data?.expenses ?? expenses.data?.total ?? 0;
+  const displayAccounts = monthlySummary.data?.accountsBalance ?? accountsTotal.data ?? 0;
+  const balance = monthlySummary.data?.monthlyBalance ?? (displayIncome - displayExpenses);
   const { aggregates: cardAggregates, cards: cardsData } = useCardAggregates();
   const cardsList = cardsData;
   const openInvoices = cardsList; // todas aparecem em "abertas"; "fechadas" é view alternativa
@@ -207,26 +232,105 @@ function FinancasCentral() {
         {/* Card principal */}
         <ErrorBoundary>
         <Card className="rounded-3xl p-5 shadow-card">
-          {accountsTotal.isPending ? (
+          {monthlySummary.isPending && accountsTotal.isPending ? (
             <Skeleton className="h-9 w-40 rounded-xl" />
           ) : (
-            <div className="text-3xl font-bold">{hideOrShow(accountsTotal.data ?? 0, hidden)}</div>
+            <div className="text-3xl font-bold">{hideOrShow(displayAccounts, hidden)}</div>
           )}
           <p className="text-xs text-muted-foreground mt-1">Saldo em contas</p>
           <div className="grid grid-cols-3 gap-2 mt-4">
             <div className="rounded-2xl bg-success/10 p-3">
-              <div className="flex items-center gap-1.5 text-success mb-1"><TrendingUp className="size-3.5" /><span className="text-[11px] font-medium">Receitas</span></div>
-              {income.isPending ? <Skeleton className="h-4 w-16" /> : <div className="font-semibold text-sm">{hideOrShow(income.data ?? 0, hidden)}</div>}
+              <div className="flex items-center gap-1.5 text-success mb-1">
+                <TrendingUp className="size-3.5" />
+                <span className="text-[11px] font-medium">Receitas</span>
+              </div>
+              {monthlySummary.isPending ? (
+                <Skeleton className="h-4 w-16" />
+              ) : (
+                <div className="font-semibold text-sm">{hideOrShow(displayIncome, hidden)}</div>
+              )}
             </div>
             <div className="rounded-2xl bg-destructive/10 p-3">
-              <div className="flex items-center gap-1.5 text-destructive mb-1"><TrendingDown className="size-3.5" /><span className="text-[11px] font-medium">Despesas</span></div>
-              {expenses.isPending ? <Skeleton className="h-4 w-16" /> : <div className="font-semibold text-sm">{hideOrShow(expenses.data?.total ?? 0, hidden)}</div>}
+              <div className="flex items-center gap-1.5 text-destructive mb-1">
+                <TrendingDown className="size-3.5" />
+                <span className="text-[11px] font-medium">Despesas</span>
+              </div>
+              {monthlySummary.isPending ? (
+                <Skeleton className="h-4 w-16" />
+              ) : (
+                <div className="font-semibold text-sm">{hideOrShow(displayExpenses, hidden)}</div>
+              )}
             </div>
             <div className="rounded-2xl bg-accent-purple/10 p-3">
-              <div className="flex items-center gap-1.5 text-accent-purple mb-1"><ChartLine className="size-3.5" /><span className="text-[11px] font-medium">Saldo mês</span></div>
-              <div className={`font-semibold text-sm ${balance < 0 ? "text-destructive" : ""}`}>{hideOrShow(balance, hidden)}</div>
+              <div className="flex items-center gap-1.5 text-accent-purple mb-1">
+                <ChartLine className="size-3.5" />
+                <span className="text-[11px] font-medium">Saldo mês</span>
+              </div>
+              <div className={`font-semibold text-sm ${balance < 0 ? "text-destructive" : ""}`}>
+                {hideOrShow(balance, hidden)}
+              </div>
             </div>
           </div>
+
+          {/* Item 18: Composição detalhada da Estrutura Financeira e Movimentações */}
+          {monthlySummary.data?.breakdown && (
+            <div className="mt-4 pt-4 border-t border-border/60 space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <span>Composição do Mês</span>
+                <span className="font-normal text-[11px] lowercase">previsão estrutural</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {/* Bloco Receitas */}
+                <div className="rounded-2xl bg-success/5 border border-success/20 p-3 space-y-1.5">
+                  <div className="font-semibold text-success flex justify-between">
+                    <span>Receitas</span>
+                    <span>{hideOrShow(displayIncome, hidden)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground pl-1.5 text-[11px]">
+                    <span>Estruturais (Salário/Fixas)</span>
+                    <span>{hideOrShow(monthlySummary.data.breakdown.structuredIncome, hidden)}</span>
+                  </div>
+                  {monthlySummary.data.breakdown.extraIncome > 0 && (
+                    <div className="flex justify-between text-muted-foreground pl-1.5 text-[11px]">
+                      <span>Avulsas / Extras</span>
+                      <span>{hideOrShow(monthlySummary.data.breakdown.extraIncome, hidden)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bloco Despesas */}
+                <div className="rounded-2xl bg-destructive/5 border border-destructive/20 p-3 space-y-1.5">
+                  <div className="font-semibold text-destructive flex justify-between">
+                    <span>Despesas</span>
+                    <span>{hideOrShow(displayExpenses, hidden)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground pl-1.5 text-[11px]">
+                    <span>Fixas</span>
+                    <span>{hideOrShow(monthlySummary.data.breakdown.fixedExpenses, hidden)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground pl-1.5 text-[11px]">
+                    <span>Variáveis</span>
+                    <span>{hideOrShow(monthlySummary.data.breakdown.variableExpenses, hidden)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground pl-1.5 text-[11px]">
+                    <span>Assinaturas</span>
+                    <span>{hideOrShow(monthlySummary.data.breakdown.subscriptions, hidden)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground pl-1.5 text-[11px]">
+                    <span>Cartões</span>
+                    <span>{hideOrShow(monthlySummary.data.breakdown.cardExpenses, hidden)}</span>
+                  </div>
+                  {monthlySummary.data.breakdown.otherExpenses > 0 && (
+                    <div className="flex justify-between text-muted-foreground pl-1.5 text-[11px]">
+                      <span>Outras avulsas</span>
+                      <span>{hideOrShow(monthlySummary.data.breakdown.otherExpenses, hidden)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </Card>
         </ErrorBoundary>
 

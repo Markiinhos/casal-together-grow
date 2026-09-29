@@ -67,6 +67,8 @@ const KEYS = [
   "transactions",
   "finance-dashboard",
   "monthly-financial-summary",
+  "home-monthly-summary",
+  "home-tx",
   "monthly-plans",
   "financial-projection"
 ];

@@ -60,6 +60,8 @@ const KEYS = [
   "installments",
   "category-expenses",
   "monthly-financial-summary",
+  "home-monthly-summary",
+  "home-tx",
   "finance-dashboard",
   "monthly-plans",
   "financial-projection",

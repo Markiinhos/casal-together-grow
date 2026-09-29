@@ -113,6 +113,8 @@ function SubDetailPage() {
       qc.invalidateQueries({ queryKey: ["subscription", id] });
       qc.invalidateQueries({ queryKey: ["subscription-history", id] });
       qc.invalidateQueries({ queryKey: ["subscriptions"] });
+      qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
+      qc.invalidateQueries({ queryKey: ["home-tx"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
@@ -141,6 +143,8 @@ function SubDetailPage() {
       qc.invalidateQueries({ queryKey: ["subscription", id] });
       qc.invalidateQueries({ queryKey: ["subscription-history", id] });
       qc.invalidateQueries({ queryKey: ["subscriptions"] });
+      qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
+      qc.invalidateQueries({ queryKey: ["home-tx"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
   });
@@ -160,6 +164,8 @@ function SubDetailPage() {
     onSuccess: () => {
       toast.success(linkedTx.length > 0 ? "Assinatura encerrada (transações mantidas)" : "Excluída!");
       qc.invalidateQueries({ queryKey: ["subscriptions"] });
+      qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
+      qc.invalidateQueries({ queryKey: ["home-tx"] });
       navigate({ to: "/app/financas/assinaturas" });
     },
     onError: (e: any) => toast.error(e?.message ?? "Erro"),
@@ -214,6 +220,8 @@ function SubDetailPage() {
       qc.invalidateQueries({ queryKey: ["subscription", id] });
       qc.invalidateQueries({ queryKey: ["subscription-tx", id] });
       qc.invalidateQueries({ queryKey: ["subscriptions"] });
+      qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
+      qc.invalidateQueries({ queryKey: ["home-tx"] });
       qc.invalidateQueries({ queryKey: ["fin-expenses"] });
       qc.invalidateQueries({ queryKey: ["fin-invoices"] });
     },

@@ -186,6 +186,8 @@ function NewSubPage() {
 
     toast.success("Assinatura criada!");
     qc.invalidateQueries({ queryKey: ["subscriptions"] });
+    qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
+    qc.invalidateQueries({ queryKey: ["home-tx"] });
     qc.invalidateQueries({ queryKey: ["fin-expenses"] });
     setSaving(false);
     navigate({ to: "/app/financas/assinaturas" });

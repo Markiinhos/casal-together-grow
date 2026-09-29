@@ -210,3 +210,5 @@ export function parseCurrencyInput(value: string | number | null | undefined): n
   return isNaN(parsed) ? 0 : parsed;
 }
 
+export { getHomeMonthlySummary, type HomeMonthlySummary, type MonthlySummaryBreakdown } from "./monthly-summary";
+

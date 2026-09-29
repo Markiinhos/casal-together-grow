@@ -59,6 +59,8 @@ const QUERY_KEYS_TO_INVALIDATE = [
   "installments",
   "category-expenses",
   "monthly-financial-summary",
+  "home-monthly-summary",
+  "home-tx",
   "finance-dashboard",
   "monthly-plans",
   "financial-projection",

@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { useProfile, useCouple, usePartner } from "@/lib/hooks";
 import { useSpace, applySpaceFilter } from "@/lib/space";
 import { formatBRL } from "@/lib/couple";
-import { getCategoryExpenses, fetchMonthIncome, fetchAccountsTotal } from "@/lib/finance";
+import { getHomeMonthlySummary, fetchAccountsTotal } from "@/lib/finance";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,20 +53,8 @@ function HomePage() {
   const monthKey = `${ref.getFullYear()}-${ref.getMonth()}`;
 
   const { data: txSummary, isLoading: isTxLoading } = useQuery({
-    queryKey: ["home-tx", monthKey, space, coupleId, user?.id],
-    queryFn: async () => {
-      const [expData, incomeTotal, accountsBalance] = await Promise.all([
-        getCategoryExpenses(ref, opts),
-        fetchMonthIncome(ref, opts),
-        fetchAccountsTotal(opts),
-      ]);
-      return {
-        income: incomeTotal,
-        expense: expData.total,
-        balance: incomeTotal - expData.total,
-        accountBalance: accountsBalance,
-      };
-    },
+    queryKey: ["home-monthly-summary", monthKey, space, coupleId, user?.id],
+    queryFn: () => getHomeMonthlySummary(ref, opts),
     enabled: !!user,
   });
 
@@ -101,25 +89,27 @@ function HomePage() {
   // Realtime cache invalidation for financial data
   useEffect(() => {
     if (!user) return;
+    const invalidateFinance = () => {
+      qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
+      qc.invalidateQueries({ queryKey: ["home-tx"] });
+      qc.invalidateQueries({ queryKey: ["fin-monthly-summary"] });
+      qc.invalidateQueries({ queryKey: ["fin-income"] });
+      qc.invalidateQueries({ queryKey: ["fin-expenses"] });
+      qc.invalidateQueries({ queryKey: ["fin-accounts-total"] });
+      qc.invalidateQueries({ queryKey: ["home-accounts"] });
+      qc.invalidateQueries({ queryKey: ["home-subs"] });
+    };
+
     const ch = supabase.channel("home-finance-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => {
-        qc.invalidateQueries({ queryKey: ["home-tx"] });
-        qc.invalidateQueries({ queryKey: ["fin-income"] });
-        qc.invalidateQueries({ queryKey: ["fin-expenses"] });
-        qc.invalidateQueries({ queryKey: ["fin-invoices"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "installments" }, () => {
-        qc.invalidateQueries({ queryKey: ["home-tx"] });
-        qc.invalidateQueries({ queryKey: ["fin-expenses"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "bank_accounts" }, () => {
-        qc.invalidateQueries({ queryKey: ["home-tx"] });
-        qc.invalidateQueries({ queryKey: ["fin-accounts"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, () => {
-        qc.invalidateQueries({ queryKey: ["home-tx"] });
-        qc.invalidateQueries({ queryKey: ["subscriptions"] });
-      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "installments" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "bank_accounts" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "income_sources" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "future_bills" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "variable_expenses" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "credit_cards" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "card_invoices" }, invalidateFinance)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, qc]);
@@ -304,7 +294,7 @@ function HomePage() {
             </div>
           ) : (
             <>
-              <div className="text-3xl font-bold mb-1">{formatBRL(txSummary?.balance ?? 0)}</div>
+              <div className="text-3xl font-bold mb-1">{formatBRL(txSummary?.monthlyBalance ?? 0)}</div>
               <p className="text-xs text-muted-foreground mb-4">Saldo do mês</p>
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-2xl bg-success/10 p-3">
@@ -319,16 +309,37 @@ function HomePage() {
                     <TrendingDown className="size-3.5" />
                     <span className="text-[11px] font-medium">Despesas</span>
                   </div>
-                  <div className="font-semibold text-sm">{formatBRL(txSummary?.expense ?? 0)}</div>
+                  <div className="font-semibold text-sm">{formatBRL(txSummary?.expenses ?? 0)}</div>
                 </div>
                 <div className="rounded-2xl bg-accent-purple/10 p-3">
                   <div className="flex items-center gap-1.5 text-accent-purple mb-1">
                     <Target className="size-3.5" />
                     <span className="text-[11px] font-medium">Contas</span>
                   </div>
-                  <div className="font-semibold text-sm">{formatBRL(txSummary?.accountBalance ?? 0)}</div>
+                  <div className="font-semibold text-sm">{formatBRL(txSummary?.accountsBalance ?? 0)}</div>
                 </div>
               </div>
+
+              {txSummary?.breakdown && (
+                <div className="mt-3.5 pt-3 border-t border-border/50 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="p-2 rounded-xl bg-muted/30">
+                    <div className="text-[10px] text-muted-foreground">Fixas</div>
+                    <div className="font-semibold mt-0.5">{formatBRL(txSummary.breakdown.fixedExpenses)}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-muted/30">
+                    <div className="text-[10px] text-muted-foreground">Variáveis</div>
+                    <div className="font-semibold mt-0.5">{formatBRL(txSummary.breakdown.variableExpenses)}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-muted/30">
+                    <div className="text-[10px] text-muted-foreground">Assinaturas</div>
+                    <div className="font-semibold mt-0.5">{formatBRL(txSummary.breakdown.subscriptions)}</div>
+                  </div>
+                  <div className="p-2 rounded-xl bg-muted/30">
+                    <div className="text-[10px] text-muted-foreground">Cartões</div>
+                    <div className="font-semibold mt-0.5">{formatBRL(txSummary.breakdown.cardExpenses)}</div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </Card>
