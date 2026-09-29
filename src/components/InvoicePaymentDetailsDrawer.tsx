@@ -9,6 +9,21 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 
+import { formatDateOnly } from "@/lib/date-utils";
+
+const KEYS = [
+  "home-tx", "recent-txs", "fin-income", "fin-expenses", "fin-invoices",
+  "fin-accounts", "fin-accounts-total", "card-purchases", "cards", "card-metrics",
+  "card-aggregate", "card-invoices", "all-card-invoices", "all-card-invoice-payments",
+  "all-card-invoice-edits", "card-invoice-detail", "tx-projecao", "plans",
+  "installments", "transactions", "finance-dashboard", "monthly-financial-summary",
+  "monthly-plans", "financial-projection"
+];
+
+function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
+  for (const k of KEYS) qc.invalidateQueries({ queryKey: [k] });
+}
+
 export function InvoicePaymentDetailsDrawer({ 
   paymentId, 
   open, 
@@ -42,21 +57,20 @@ export function InvoicePaymentDetailsDrawer({
     
     try {
       setDeleting(true);
-      // O banco deve ter triggers para reverter o status da fatura se a transação for deletada,
-      // ou o usuário precisa rodar uma reavaliação. Mas o hard delete é seguro aqui.
-      const { error } = await supabase.from("transactions").delete().eq("id", tx.id);
-      if (error) throw error;
+      const invoiceId = tx.source?.startsWith("card_invoice_payment:") ? tx.source.split(":")[1] : null;
+      if (invoiceId) {
+        const { error } = await supabase.rpc("undo_card_invoice_payment", {
+          _invoice_id: invoiceId,
+          _payment_transaction_id: tx.id,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("transactions").delete().eq("id", tx.id);
+        if (error) throw error;
+      }
       
-      // Recalcular fatura atual
-      // (a trigger no banco deve disparar e recalcular, mas vamos garantir)
       toast.success("Pagamento desfeito com sucesso.");
-      
-      qc.invalidateQueries({ queryKey: ["fin-invoices"] });
-      qc.invalidateQueries({ queryKey: ["card-invoices"] });
-      qc.invalidateQueries({ queryKey: ["recent-txs"] });
-      qc.invalidateQueries({ queryKey: ["fin-income"] });
-      qc.invalidateQueries({ queryKey: ["fin-expenses"] });
-      
+      invalidateAll(qc);
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || "Erro ao desfazer pagamento");
@@ -108,7 +122,7 @@ export function InvoicePaymentDetailsDrawer({
                   <div>
                     <div className="font-semibold text-sm">Data do Pagamento</div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(tx.date + "T12:00:00").toLocaleDateString("pt-BR")}
+                      {formatDateOnly(tx.date)}
                     </div>
                   </div>
                 </div>

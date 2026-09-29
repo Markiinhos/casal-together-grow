@@ -10,12 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatBRL } from "@/lib/finance";
+import { formatDateOnly, formatReferenceMonth } from "@/lib/date-utils";
 import { ShoppingBag, CreditCard, Pencil, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InvoicePaymentDrawer } from "@/components/InvoicePaymentDrawer";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useCardAggregates } from "@/hooks/useCardAggregates";
+import { getInvoiceStatusLabel, getInvoiceStatusColor } from "@/lib/card-aggregate";
 import { toast } from "sonner";
 
 const EDIT_FIELD_LABELS: Record<string, string> = {
@@ -27,20 +29,8 @@ const EDIT_FIELD_LABELS: Record<string, string> = {
 function formatEditValue(field: string, value: string | null): string {
   if (value == null) return "—";
   if (field === "manual_adjustment") return formatBRL(Number(value));
-  if (field === "reference_month") {
-    try {
-      return new Date(value.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-    } catch {
-      return value;
-    }
-  }
-  if (field === "due_date") {
-    try {
-      return new Date(value.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR");
-    } catch {
-      return value;
-    }
-  }
+  if (field === "reference_month") return formatReferenceMonth(value);
+  if (field === "due_date") return formatDateOnly(value);
   return value;
 }
 
@@ -199,15 +189,7 @@ export function InvoiceDetailPage() {
   return (
     <>
       <PageHeader 
-        title={`Fatura ${(() => {
-          try {
-            const mk = invoice.reference_month.substring(0, 7);
-            const d = new Date(mk + "-01T12:00:00");
-            return d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-          } catch {
-            return invoice.reference_month;
-          }
-        })()}`}
+        title={`Fatura ${formatReferenceMonth(invoice.reference_month)}`}
         subtitle={invoice.credit_cards?.name ?? "Cartão"}
         fallbackRoute={`/app/cartoes/${cardId}/faturas`} 
       />
@@ -233,11 +215,11 @@ export function InvoiceDetailPage() {
            <div className="flex justify-between mt-4 text-sm bg-black/10 p-3 rounded-xl">
              <div>
                 <div className="opacity-80 text-[11px]">Vencimento</div>
-                <div className="font-semibold">{new Date(invoice.due_date).toLocaleDateString("pt-BR")}</div>
+                <div className="font-semibold">{formatDateOnly(invoice.due_date)}</div>
              </div>
              <div className="text-right">
                 <div className="opacity-80 text-[11px]">Status</div>
-                <div className="font-semibold uppercase">{invoice.status === "paid" ? "Paga" : invoice.status === "open" ? "Aberta" : invoice.status}</div>
+                <div className="font-semibold uppercase">{getInvoiceStatusLabel(invoice.status)}</div>
              </div>
            </div>
            
@@ -393,7 +375,7 @@ export function InvoiceDetailPage() {
                       {inst && <span className="ml-1.5 text-[10px] text-muted-foreground">{inst.installment_number}/{inst.total_installments}</span>}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(p.date + "T12:00:00").toLocaleDateString("pt-BR")}
+                      {formatDateOnly(p.date)}
                       {p.categories?.name && <> · {p.categories.name}</>}
                       {inst?.paid && <span className="text-success"> · Paga</span>}
                     </div>

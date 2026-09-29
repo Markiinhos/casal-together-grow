@@ -51,29 +51,21 @@ const EDIT_FIELD_LABELS: Record<string, string> = {
   manual_adjustment: "Ajuste manual",
 };
 
+import { formatDateOnly, formatReferenceMonth } from "@/lib/date-utils";
+
 function fmtDate(v?: string | null) {
-  if (!v) return "—";
-  try {
-    return new Date(v.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR");
-  } catch {
-    return v;
-  }
+  return formatDateOnly(v);
 }
 
 function fmtMonth(v?: string | null) {
-  if (!v) return "—";
-  try {
-    return new Date(v.slice(0, 7) + "-01T12:00:00").toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-  } catch {
-    return v;
-  }
+  return formatReferenceMonth(v);
 }
 
 function fmtEditValue(field: string, value: string | null) {
   if (value == null) return "—";
   if (field === "manual_adjustment") return formatBRL(Number(value));
-  if (field === "reference_month") return fmtMonth(value);
-  if (field === "due_date") return fmtDate(value);
+  if (field === "reference_month") return formatReferenceMonth(value);
+  if (field === "due_date") return formatDateOnly(value);
   return value;
 }
 
@@ -154,12 +146,12 @@ function InvoicesPage() {
 
   const filtered = useMemo(() => {
     if (filter === "paid") return invoices.filter((i) => i.status === "paid");
-    if (filter === "open") return invoices.filter((i) => i.status !== "paid" && i.status !== "cancelled");
+    if (filter === "open") return invoices.filter((i) => ["open", "closed", "due", "overdue", "partially_paid"].includes(i.status));
     return invoices;
   }, [invoices, filter]);
 
   const totalOpen = invoices
-    .filter((i) => i.status !== "paid" && i.status !== "cancelled")
+    .filter((i) => ["open", "closed", "due", "overdue", "partially_paid"].includes(i.status))
     .reduce((s, i) => s + (Number(i.total_amount) - Number(i.paid_amount ?? 0)), 0);
 
   return (

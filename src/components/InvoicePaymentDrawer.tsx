@@ -29,7 +29,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getLocalISODate } from "@/lib/date-utils";
+import { getLocalISODate, formatDateOnly, formatReferenceMonth } from "@/lib/date-utils";
 
 interface InvoicePaymentDrawerProps {
   open: boolean;
@@ -54,7 +54,13 @@ const KEYS = [
   "fin-accounts-total",
   "card-purchases",
   "cards",
+  "card-metrics",
+  "card-aggregate",
   "card-invoices",
+  "all-card-invoices",
+  "all-card-invoice-payments",
+  "all-card-invoice-edits",
+  "card-invoice-detail",
   "tx-projecao",
   "plans",
   "installments",
@@ -83,11 +89,9 @@ export function InvoicePaymentDrawer({
 }: InvoicePaymentDrawerProps) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const remaining = invoiceTotal - paidAmount;
+  const remaining = Math.max(0, invoiceTotal - paidAmount);
   const cycleOpen = status === "open";
-  const closingDateLabel = closingDate
-    ? new Date(closingDate + "T12:00:00").toLocaleDateString("pt-BR")
-    : null;
+  const closingDateLabel = closingDate ? formatDateOnly(closingDate) : null;
 
   const [payAmount, setPayAmount] = useState(String(remaining));
   const [payDate, setPayDate] = useState(() => getLocalISODate());
@@ -112,6 +116,12 @@ export function InvoicePaymentDrawer({
 
       if (val <= 0) {
         toast.error("Informe um valor válido");
+        setSaving(false);
+        return;
+      }
+
+      if (val > remaining) {
+        toast.error(`O valor do pagamento (${formatBRL(val)}) não pode ultrapassar o saldo restante (${formatBRL(remaining)})`);
         setSaving(false);
         return;
       }
@@ -206,17 +216,7 @@ export function InvoicePaymentDrawer({
             {remaining > 0 ? "Marcar fatura como paga" : "Fatura já paga"}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {card?.name ?? "Cartão"} — Fatura de{" "}
-            {(() => {
-              try {
-                const mk = (refMonth || "").substring(0, 7);
-                if (!mk) return "Vencimento não definido";
-                const d = new Date(mk + "-01T12:00:00");
-                return d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-              } catch {
-                return refMonth || "Vencimento não definido";
-              }
-            })()}
+            {card?.name ?? "Cartão"} — Fatura de {formatReferenceMonth(refMonth)}
           </DialogDescription>
         </DialogHeader>
 

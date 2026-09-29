@@ -15,13 +15,37 @@ export function getLocalISODate(dateObj: Date = new Date()): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+const MONTH_NAMES_FULL = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+];
+
 /**
- * Converte YYYY-MM-DD para DD/MM/YYYY
+ * Converte YYYY-MM ou YYYY-MM-DD para "Mês de AAAA" (ex: "Setembro de 2026")
+ * sem usar `new Date()` para evitar bugs de timezone e "Invalid Date".
+ */
+export function formatReferenceMonth(refMonth?: string | null): string {
+  if (!refMonth) return "—";
+  const clean = refMonth.substring(0, 7);
+  const parts = clean.split("-");
+  if (parts.length < 2) return refMonth;
+  const year = parts[0];
+  const monthNum = parseInt(parts[1], 10);
+  if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) return refMonth;
+  return `${MONTH_NAMES_FULL[monthNum - 1]} de ${year}`;
+}
+
+/**
+ * Converte YYYY-MM-DD (ou ISO) para DD/MM/YYYY
+ * Seguro contra timezone shift: não instancia objeto Date sem hora local.
  */
 export function formatDateOnly(date?: string | null): string {
-  if (!date) return "";
-  const [year, month, day] = date.substring(0, 10).split("-");
-  if (!year || !month || !day) return "";
+  if (!date) return "—";
+  const str = String(date).substring(0, 10);
+  const parts = str.split("-");
+  if (parts.length !== 3) return date;
+  const [year, month, day] = parts;
+  if (!year || !month || !day) return "—";
   return `${day}/${month}/${year}`;
 }
 
@@ -30,7 +54,7 @@ export function formatDateOnly(date?: string | null): string {
  */
 export function normalizeDateOnly(date?: string | null): string | null {
   if (!date) return null;
-  return date.substring(0, 10);
+  return String(date).substring(0, 10);
 }
 
 /**
@@ -46,42 +70,90 @@ export function toDatabaseDate(value: string): string {
 /**
  * Resolve o ciclo de fatura de cartão exatamente como a função PostgreSQL (resolve_card_invoice_cycle).
  * 
- * @param purchaseDate Data da compra (Date object)
- * @param closingDay Dia de fechamento do cartão
- * @param dueDay Dia de vencimento do cartão
- * @param installmentNumber Número da parcela (default 1)
+ * Regra canônica:
+ * - Compra realizada antes ou NO DIA do fechamento (dia <= closingDay): entra na fatura que fecha nesse mês.
+ * - Compra realizada APÓS o fechamento (dia > closingDay): cai para o fechamento do mês seguinte.
+ * - Para parcelas i > 1: avança (i - 1) meses a partir do fechamento inicial.
+ * - Se dueDay >= closingDay: vencimento no MESMO mês do fechamento (ex: fecha 20/09, vence 28/09).
+ * - Se dueDay < closingDay: vencimento no MÊS SEGUINTE ao fechamento (ex: fecha 25/08, vence 05/09).
+ * - referenceMonth: YYYY-MM-01 correspondente ao mês do vencimento.
  */
 export function resolveCardInvoiceCycle(
-  purchaseDate: Date,
+  purchaseDate: Date | string,
   closingDay: number,
   dueDay: number,
   installmentNumber: number = 1
-): { closingDate: Date; dueDate: Date; referenceMonth: string } {
-  const baseYear = purchaseDate.getFullYear();
-  const baseMonth = purchaseDate.getMonth();
-  
-  // Último dia do mês base
-  const lastDay = new Date(baseYear, baseMonth + 1, 0).getDate();
-  const effectiveClose = new Date(baseYear, baseMonth, Math.min(closingDay, lastDay));
-  
-  let cd = new Date(effectiveClose);
-  // Se a compra foi após o fechamento, cai para o próximo fechamento
-  if (purchaseDate > effectiveClose) {
-    cd.setMonth(cd.getMonth() + 1);
+): { closingDate: Date; dueDate: Date; referenceMonth: string; closingDateStr: string; dueDateStr: string } {
+  let pYear: number;
+  let pMonth: number; // 0-based
+  let pDay: number;
+
+  if (typeof purchaseDate === "string") {
+    const parts = purchaseDate.substring(0, 10).split("-").map(Number);
+    pYear = parts[0];
+    pMonth = parts[1] - 1;
+    pDay = parts[2];
+  } else {
+    pYear = purchaseDate.getFullYear();
+    pMonth = purchaseDate.getMonth();
+    pDay = purchaseDate.getDate();
   }
-  
-  // Adiciona meses para as parcelas
+
+  // Último dia do mês da compra
+  const lastDayPurchMonth = new Date(pYear, pMonth + 1, 0).getDate();
+  const effectiveCloseDay = Math.min(closingDay, lastDayPurchMonth);
+
+  // Determina mês/ano do fechamento base
+  let closeYear = pYear;
+  let closeMonth = pMonth;
+
+  if (pDay > effectiveCloseDay) {
+    closeMonth += 1;
+    if (closeMonth > 11) {
+      closeYear += 1;
+      closeMonth = 0;
+    }
+  }
+
+  // Para parcelas > 1, avança meses
   if (installmentNumber > 1) {
-    cd.setMonth(cd.getMonth() + (installmentNumber - 1));
+    const totalMonths = closeMonth + (installmentNumber - 1);
+    closeYear += Math.floor(totalMonths / 12);
+    closeMonth = totalMonths % 12;
   }
-  
-  // O vencimento ocorre no mês seguinte ao fechamento
-  const dd = new Date(cd.getFullYear(), cd.getMonth() + 1, dueDay);
-  
-  // O mês de referência é YYYY-MM correspondente ao mês do vencimento (primeiro dia do mês)
-  const refYear = dd.getFullYear();
-  const refMonth = String(dd.getMonth() + 1).padStart(2, "0");
-  const referenceMonthStr = `${refYear}-${refMonth}-01`;
-  
-  return { closingDate: cd, dueDate: dd, referenceMonth: referenceMonthStr };
+
+  const lastDayCloseMonth = new Date(closeYear, closeMonth + 1, 0).getDate();
+  const finalCloseDay = Math.min(closingDay, lastDayCloseMonth);
+
+  // Vencimento:
+  // Se dueDay >= closingDay -> mesmo mês do fechamento
+  // Se dueDay < closingDay -> mês seguinte ao fechamento
+  let dueYear = closeYear;
+  let dueMonth = closeMonth;
+
+  if (dueDay < closingDay) {
+    dueMonth += 1;
+    if (dueMonth > 11) {
+      dueYear += 1;
+      dueMonth = 0;
+    }
+  }
+
+  const lastDayDueMonth = new Date(dueYear, dueMonth + 1, 0).getDate();
+  const finalDueDay = Math.min(dueDay, lastDayDueMonth);
+
+  const closingDateStr = `${closeYear}-${String(closeMonth + 1).padStart(2, "0")}-${String(finalCloseDay).padStart(2, "0")}`;
+  const dueDateStr = `${dueYear}-${String(dueMonth + 1).padStart(2, "0")}-${String(finalDueDay).padStart(2, "0")}`;
+  const referenceMonthStr = `${dueYear}-${String(dueMonth + 1).padStart(2, "0")}-01`;
+
+  const cd = new Date(closeYear, closeMonth, finalCloseDay, 12, 0, 0);
+  const dd = new Date(dueYear, dueMonth, finalDueDay, 12, 0, 0);
+
+  return {
+    closingDate: cd,
+    dueDate: dd,
+    referenceMonth: referenceMonthStr,
+    closingDateStr,
+    dueDateStr,
+  };
 }

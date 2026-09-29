@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useSpace } from "@/lib/space";
 import { formatBRL } from "@/lib/finance";
-import { getInvoiceStatusLabel, getInvoiceStatusColor } from "@/lib/card-aggregate";
+import { formatDateOnly, formatReferenceMonth } from "@/lib/date-utils";
+import { getInvoiceStatusLabel, getInvoiceStatusColor, OPEN_STATUSES } from "@/lib/card-aggregate";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,8 +65,10 @@ export function InvoicesPage() {
     enabled: !!user,
   });
 
-  const abertas = invoices?.filter((i) => i.status === "open" || i.status === "due" || i.status === "overdue" || i.status === "partially_paid") || [];
-  const fechadas = invoices?.filter((i) => i.status === "closed" || i.status === "paid") || [];
+  // Faturas em aberto: open, closed, due, overdue, partially_paid
+  const abertas = invoices?.filter((i) => OPEN_STATUSES.includes(i.status)) || [];
+  // Faturas pagas: unicamente status = paid
+  const pagas = invoices?.filter((i) => i.status === "paid") || [];
 
   if (loadingCard || loadingInvoices) {
     return (
@@ -104,7 +107,6 @@ export function InvoicesPage() {
     return (
       <div className="space-y-3">
         {list.map((inv) => {
-          const date = new Date(inv.reference_month + "-01T12:00:00");
           const isPaid = inv.status === "paid";
           const remaining = Math.max(0, inv.total_amount - (inv.paid_amount || 0));
           const statusLabel = getInvoiceStatusLabel(inv.status);
@@ -115,13 +117,13 @@ export function InvoicesPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="font-semibold capitalize text-lg flex items-center gap-2">
-                    {date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                    {formatReferenceMonth(inv.reference_month)}
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${statusColor}`}>
                       {statusLabel}
                     </span>
                   </div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Vencimento: {new Date(inv.due_date).toLocaleDateString("pt-BR")}
+                    Vencimento: {formatDateOnly(inv.due_date)}
                   </div>
                 </div>
                 <div className="text-right">
@@ -180,16 +182,16 @@ export function InvoicesPage() {
         ) : (
           <Tabs defaultValue="abertas">
             <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="abertas">Abertas ({abertas.length})</TabsTrigger>
-              <TabsTrigger value="fechadas">Fechadas ({fechadas.length})</TabsTrigger>
+              <TabsTrigger value="abertas">Em aberto ({abertas.length})</TabsTrigger>
+              <TabsTrigger value="pagas">Pagas ({pagas.length})</TabsTrigger>
             </TabsList>
             
             <TabsContent value="abertas" className="mt-4">
               {renderList(abertas)}
             </TabsContent>
             
-            <TabsContent value="fechadas" className="mt-4">
-              {renderList(fechadas)}
+            <TabsContent value="pagas" className="mt-4">
+              {renderList(pagas)}
             </TabsContent>
           </Tabs>
         )}

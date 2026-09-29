@@ -73,9 +73,11 @@ export function getUsageLevel(pct: number): "safe" | "warning" | "danger" {
   return "safe";
 }
 
-export const OPEN_STATUSES = ["open", "due", "overdue", "partially_paid"];
+export const OPEN_STATUSES = ["open", "closed", "due", "overdue", "partially_paid"];
 
 // ─── Função principal ───────────────────────────────────────────────────────
+
+import { formatReferenceMonth, normalizeDateOnly } from "./date-utils";
 
 /**
  * Transforma um cartão + suas métricas brutas (de useCardMetrics)
@@ -102,7 +104,8 @@ export function getCardAggregate(card: any, rawMetrics: any): CardAggregate {
   const invoicePaid = inv?.paid_amount ?? 0;
   const invoiceRemaining = Math.max(0, invoiceTotal - invoicePaid);
   const invoiceStatus = inv?.status ?? "open";
-  const invoiceIsPaid = invoiceStatus === "paid" || invoiceStatus === "closed";
+  // Regra fundamental: closed é fatura fechada para novas compras, NÃO é fatura paga!
+  const invoiceIsPaid = invoiceStatus === "paid";
   const invoiceIsOverdue = invoiceStatus === "overdue";
   const invoiceRefMonth = inv?.reference_month
     ? inv.reference_month.slice(0, 7)
@@ -110,14 +113,7 @@ export function getCardAggregate(card: any, rawMetrics: any): CardAggregate {
         const now = new Date();
         return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       })();
-  const invoiceRefLabel = (() => {
-    try {
-      const d = new Date(invoiceRefMonth + "-01T12:00:00");
-      return d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-    } catch {
-      return invoiceRefMonth;
-    }
-  })();
+  const invoiceRefLabel = formatReferenceMonth(invoiceRefMonth);
 
   // Limites
   const limitTotal = Number(card.limit_amount ?? 0);
@@ -148,7 +144,7 @@ export function getCardAggregate(card: any, rawMetrics: any): CardAggregate {
     invoiceStatusColor: getInvoiceStatusColor(invoiceStatus),
     invoiceRefMonth,
     invoiceRefLabel,
-    invoiceDueDate: inv?.due_date ?? "",
+    invoiceDueDate: normalizeDateOnly(inv?.due_date) ?? "",
     invoiceIsPaid,
     invoiceIsOverdue,
     invoiceId: inv?.id ?? null,

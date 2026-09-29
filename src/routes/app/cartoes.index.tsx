@@ -16,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
-import { getLocalISODate } from "@/lib/date-utils";
+import { getLocalISODate, formatDateOnly, formatReferenceMonth, normalizeDateOnly } from "@/lib/date-utils";
 import { CreditCard, Plus, Trash2, Pencil, ChevronDown, ShoppingBag, TrendingUp, Calendar, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
@@ -212,15 +212,23 @@ function CardsPage() {
                       <div className="bg-card p-3 flex flex-col justify-between">
                         <div>
                           <div className="text-[10px] text-muted-foreground uppercase">
-                            {agg.activeInv
-                              ? (agg.invoiceIsPaid ? "Última fatura" : "Próxima fatura em aberto")
+                            {agg.invoiceStatus === "paid"
+                              ? "Fatura paga"
+                              : agg.invoiceStatus === "closed"
+                              ? "Fatura fechada"
+                              : agg.invoiceStatus === "due"
+                              ? "Vence hoje"
+                              : agg.invoiceStatus === "overdue"
+                              ? "Fatura atrasada"
+                              : agg.isSynthetic
+                              ? "Próxima fatura"
                               : "Fatura atual"}
                           </div>
                           <div className="font-semibold text-sm capitalize">{agg.invoiceRefLabel}</div>
                           <div className="text-[11px] text-muted-foreground">{formatBRL(agg.invoiceTotal)}</div>
                           {agg.activeInv?.due_date && (
                             <div className="text-[10px] text-muted-foreground mt-0.5">
-                              Vence em {new Date(String(agg.activeInv.due_date).slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR")}
+                              Vence em {formatDateOnly(agg.activeInv.due_date)}
                             </div>
                           )}
                           {agg.activeInv && (
@@ -416,7 +424,7 @@ function PurchasesList({ purchases, cards }: { purchases: any[]; cards: any[] })
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="px-4 pb-3 space-y-1">
-                  <div className="text-[11px] text-muted-foreground">Quita em {lastDue ? new Date(lastDue).toLocaleDateString("pt-BR", { month: "short", year: "numeric" }) : "—"}</div>
+                  <div className="text-[11px] text-muted-foreground">Quita em {lastDue ? formatReferenceMonth(lastDue) : "—"}</div>
                   <div className="grid grid-cols-2 gap-1.5 mt-2">
                     {insts.map((i: any) => (
                       <InstallmentPill key={i.id} inst={i} />
@@ -660,7 +668,7 @@ function History({ purchases, cards, cats }: { purchases: any[]; cards: any[]; c
                     {isQuitada && !isCancelled && <span className="ml-2 text-[10px] bg-success/10 text-success px-1.5 py-0.5 rounded uppercase no-underline">Quitada</span>}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(p.date + "T12:00:00").toLocaleDateString("pt-BR")} · {cardName}
+                    {formatDateOnly(p.date)} · {cardName}
                     {insts > 1 && <> · {insts}x</>}
                     {p.categories?.name && <> · {p.categories.name}</>}
                   </div>
