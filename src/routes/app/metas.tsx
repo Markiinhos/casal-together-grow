@@ -5,17 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/hooks";
 import { useSpace, applySpaceFilter } from "@/lib/space";
-import { formatBRL } from "@/lib/couple";
+import { formatBRL } from "@/lib/finance";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/EmptyState";
-import { Target, Plus, Trash2, Pause, Play, Check } from "lucide-react";
-import { toast } from "sonner";
+import { Target, Plus, Sparkles, CheckCircle2, PauseCircle } from "lucide-react";
+import { GoalCard } from "@/components/goals/GoalCard";
+import { GoalFormDialog } from "@/components/goals/GoalFormDialog";
+import { GoalDetailSheet } from "@/components/goals/GoalDetailSheet";
+import { AddContributionDialog } from "@/components/goals/AddContributionDialog";
+import { ExtendDeadlineDialog } from "@/components/goals/ExtendDeadlineDialog";
+import { calculateGoalProgress } from "@/lib/financial-goals";
 
 export const Route = createFileRoute("/app/metas")({
   component: GoalsPage,
@@ -27,14 +29,23 @@ function GoalsPage() {
   const coupleId = profile?.couple_id ?? null;
   const { space } = useSpace();
   const qc = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [contribOpen, setContribOpen] = useState<string | null>(null);
-  const [contribAmount, setContribAmount] = useState("");
 
-  const { data: goals = [] } = useQuery({
+  // Modais e gaveta de detalhes
+  const [openNewGoal, setOpenNewGoal] = useState(false);
+  const [selectedGoalForDetail, setSelectedGoalForDetail] = useState<any | null>(null);
+  const [selectedGoalForContribution, setSelectedGoalForContribution] = useState<any | null>(null);
+  const [selectedGoalForExtend, setSelectedGoalForExtend] = useState<any | null>(null);
+
+  // Filtro de abas: "all" | "active" | "completed" | "paused"
+  const [activeTab, setActiveTab] = useState<string>("all");
+
+  const { data: goals = [], refetch } = useQuery({
     queryKey: ["goals", space, coupleId, user?.id],
     queryFn: async () => {
-      let q: any = supabase.from("goals").select("*").order("created_at", { ascending: false });
+      let q: any = supabase
+        .from("goals")
+        .select("*")
+        .order("created_at", { ascending: false });
       q = applySpaceFilter(q, { space, userId: user!.id, coupleId });
       const { data } = await q;
       return data ?? [];
@@ -42,139 +53,206 @@ function GoalsPage() {
     enabled: !!user,
   });
 
+  // Atualização em tempo real para goals e aportes
   useEffect(() => {
-    const ch = supabase.channel("goals-rt").on("postgres_changes",
-      { event: "*", schema: "public", table: "goals" },
-      () => qc.invalidateQueries({ queryKey: ["goals"] })
-    ).subscribe();
-    return () => { supabase.removeChannel(ch); };
+    const ch = supabase
+      .channel("goals-page-rt")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "goals" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["goals"] });
+          qc.invalidateQueries({ queryKey: ["home-goals"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "goal_contributions" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["goals"] });
+          qc.invalidateQueries({ queryKey: ["home-goals"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ch);
+    };
   }, [qc]);
 
-  async function del(id: string) {
-    if (!confirm("Excluir meta?")) return;
-    const { error } = await supabase.from("goals").delete().eq("id", id);
-    if (error) toast.error(error.message); else qc.invalidateQueries();
-  }
-  async function setStatus(id: string, status: string) {
-    const { error } = await supabase.from("goals").update({ status }).eq("id", id);
-    if (error) toast.error(error.message); else qc.invalidateQueries();
-  }
-  async function addContribution(goalId: string) {
-    const amount = parseFloat(contribAmount.replace(",", "."));
-    if (!amount || !user) return;
-    const goal = (goals as any[]).find((g) => g.id === goalId);
-    if (!goal) return;
-    await supabase.from("goal_contributions").insert({ goal_id: goalId, user_id: user.id, amount });
-    await supabase.from("goals").update({ current_amount: Number(goal.current_amount) + amount }).eq("id", goalId);
-    setContribOpen(null); setContribAmount(""); qc.invalidateQueries(); toast.success("Aporte registrado");
-  }
+  // Se a meta selecionada para detalhes for atualizada, atualizar a referência
+  useEffect(() => {
+    if (selectedGoalForDetail) {
+      const updated = goals.find((g: any) => g.id === selectedGoalForDetail.id);
+      if (updated) setSelectedGoalForDetail(updated);
+    }
+  }, [goals]);
+
+  // Estatísticas globais
+  const totalTarget = goals.reduce((acc: number, g: any) => acc + Number(g.target_amount || 0), 0);
+  const totalAccumulated = goals.reduce((acc: number, g: any) => acc + Number(g.current_amount || 0), 0);
+  const totalRemaining = Math.max(0, totalTarget - totalAccumulated);
+  const completedGoalsCount = goals.filter((g: any) => g.status === "completed" || Number(g.current_amount) >= Number(g.target_amount)).length;
+  const activeGoalsCount = goals.filter((g: any) => g.status !== "completed" && g.status !== "paused").length;
+
+  // Filtragem por aba
+  const filteredGoals = goals.filter((g: any) => {
+    const isCompleted = g.status === "completed" || Number(g.current_amount) >= Number(g.target_amount);
+    const isPaused = g.status === "paused";
+
+    if (activeTab === "active") return !isCompleted && !isPaused;
+    if (activeTab === "completed") return isCompleted;
+    if (activeTab === "paused") return isPaused;
+    return true;
+  });
 
   return (
     <>
-      <AppHeader title="Metas" subtitle="Sonhos a dois" />
-      <div className="px-4 py-4 space-y-4">
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full rounded-xl gradient-coral text-white border-0 h-11">
-              <Plus className="size-4 mr-1" /> Nova meta
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-3xl">
-            <DialogHeader><DialogTitle>Nova meta</DialogTitle></DialogHeader>
-            <GoalForm onDone={() => setOpen(false)} />
-          </DialogContent>
-        </Dialog>
+      <AppHeader
+        title="Metas Financeiras"
+        subtitle="Planeje, acompanhe o ritmo e realize seus sonhos"
+      />
 
-        {goals.length === 0 ? (
-          <Card className="rounded-2xl p-4 shadow-card">
-            <EmptyState icon={Target} title="Sem metas" description="Comprar casa, viajar, casamento... vocês escolhem!" />
-          </Card>
-        ) : (
-          (goals as any[]).map((g) => {
-            const pct = g.target_amount > 0 ? Math.min(100, (Number(g.current_amount) / Number(g.target_amount)) * 100) : 0;
-            return (
-              <Card key={g.id} className="rounded-3xl p-5 shadow-card">
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="size-12 rounded-2xl bg-accent flex items-center justify-center">
-                    <Target className="size-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{g.name}</div>
-                    {g.description && <div className="text-xs text-muted-foreground line-clamp-1">{g.description}</div>}
-                  </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    g.status === "active" ? "bg-success/10 text-success" :
-                    g.status === "paused" ? "bg-warning/10 text-warning-foreground" : "bg-muted text-muted-foreground"
-                  }`}>{g.status === "active" ? "Ativa" : g.status === "paused" ? "Pausada" : "Concluída"}</span>
-                </div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="font-semibold">{formatBRL(Number(g.current_amount))}</span>
-                  <span className="text-muted-foreground">{formatBRL(Number(g.target_amount))}</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden mb-3">
-                  <div className="h-full gradient-coral transition-all" style={{ width: `${pct}%` }} />
-                </div>
-                {g.deadline && <div className="text-xs text-muted-foreground mb-3">Prazo: {new Date(g.deadline).toLocaleDateString("pt-BR")}</div>}
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={() => setContribOpen(g.id)} className="flex-1 rounded-xl gradient-coral text-white border-0">+ Aporte</Button>
-                  {g.status !== "completed" && (
-                    <Button size="sm" variant="outline" onClick={() => setStatus(g.id, g.status === "paused" ? "active" : "paused")} className="rounded-xl">
-                      {g.status === "paused" ? <Play className="size-4" /> : <Pause className="size-4" />}
-                    </Button>
-                  )}
-                  {g.status !== "completed" && (
-                    <Button size="sm" variant="outline" onClick={() => setStatus(g.id, "completed")} className="rounded-xl">
-                      <Check className="size-4" />
-                    </Button>
-                  )}
-                  <Button size="sm" variant="outline" onClick={() => del(g.id)} className="rounded-xl text-destructive">
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-                {contribOpen === g.id && (
-                  <div className="mt-3 flex gap-2">
-                    <Input inputMode="decimal" value={contribAmount} onChange={(e) => setContribAmount(e.target.value)} placeholder="Valor do aporte" />
-                    <Button size="sm" onClick={() => addContribution(g.id)} className="rounded-xl gradient-coral text-white border-0">OK</Button>
-                  </div>
-                )}
-              </Card>
-            );
-          })
+      <div className="px-4 py-4 space-y-4 max-w-4xl mx-auto pb-24">
+        {/* Botão de Criação */}
+        <Button
+          onClick={() => setOpenNewGoal(true)}
+          className="w-full rounded-2xl gradient-coral text-white border-0 h-12 text-sm font-semibold shadow-md hover:opacity-95 transition-all flex items-center justify-center gap-2"
+        >
+          <Plus className="size-5" /> Nova Meta Financeira
+        </Button>
+
+        {/* Resumo Rápido de Metas */}
+        {goals.length > 0 && (
+          <div className="grid grid-cols-3 gap-2.5">
+            <Card className="p-3 rounded-2xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] text-muted-foreground block mb-0.5">Acumulado</span>
+              <span className="text-sm sm:text-base font-bold text-foreground block truncate">
+                {formatBRL(totalAccumulated)}
+              </span>
+            </Card>
+
+            <Card className="p-3 rounded-2xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] text-muted-foreground block mb-0.5">Restante</span>
+              <span className="text-sm sm:text-base font-bold text-primary block truncate">
+                {formatBRL(totalRemaining)}
+              </span>
+            </Card>
+
+            <Card className="p-3 rounded-2xl border border-border/80 bg-card shadow-xs">
+              <span className="text-[11px] text-muted-foreground block mb-0.5">Concluídas</span>
+              <span className="text-sm sm:text-base font-bold text-success block truncate">
+                {completedGoalsCount} de {goals.length}
+              </span>
+            </Card>
+          </div>
         )}
+
+        {/* Abas de Navegação */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-4 rounded-2xl p-1 bg-muted/60 h-10">
+            <TabsTrigger value="all" className="rounded-xl text-xs">
+              Todas ({goals.length})
+            </TabsTrigger>
+            <TabsTrigger value="active" className="rounded-xl text-xs">
+              Ativas ({activeGoalsCount})
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="rounded-xl text-xs">
+              Concluídas ({completedGoalsCount})
+            </TabsTrigger>
+            <TabsTrigger value="paused" className="rounded-xl text-xs">
+              Pausadas
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value={activeTab} className="mt-4 space-y-3">
+            {filteredGoals.length === 0 ? (
+              <Card className="rounded-3xl p-8 shadow-card text-center border-dashed">
+                <EmptyState
+                  icon={Target}
+                  title={
+                    activeTab === "completed"
+                      ? "Nenhuma meta concluída ainda"
+                      : activeTab === "paused"
+                      ? "Nenhuma meta pausada"
+                      : "Sem metas financeiras"
+                  }
+                  description={
+                    activeTab === "all"
+                      ? "Crie uma meta com prazo e valor para acompanhar o ritmo necessário dia a dia!"
+                      : "Alterne o filtro ou crie um novo objetivo."
+                  }
+                />
+              </Card>
+            ) : (
+              filteredGoals.map((g: any) => (
+                <GoalCard
+                  key={g.id}
+                  goal={g}
+                  onOpenDetail={(goal) => setSelectedGoalForDetail(goal)}
+                  onAddContribution={(goal) => setSelectedGoalForContribution(goal)}
+                  onExtendDeadline={(goal) => setSelectedGoalForExtend(goal)}
+                  onUpdate={() => {
+                    refetch();
+                    qc.invalidateQueries({ queryKey: ["goals"] });
+                  }}
+                />
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Modal: Nova Meta Financeira */}
+      <GoalFormDialog
+        open={openNewGoal}
+        onOpenChange={setOpenNewGoal}
+        onSuccess={() => {
+          refetch();
+          qc.invalidateQueries({ queryKey: ["goals"] });
+        }}
+      />
+
+      {/* Sheet: Detalhes e Ritmo da Meta */}
+      <GoalDetailSheet
+        open={!!selectedGoalForDetail}
+        onOpenChange={(op) => !op && setSelectedGoalForDetail(null)}
+        goal={selectedGoalForDetail}
+        onUpdate={() => {
+          refetch();
+          qc.invalidateQueries({ queryKey: ["goals"] });
+        }}
+      />
+
+      {/* Modal: Aporte Rápido */}
+      {selectedGoalForContribution && (
+        <AddContributionDialog
+          open={!!selectedGoalForContribution}
+          onOpenChange={(op) => !op && setSelectedGoalForContribution(null)}
+          goalId={selectedGoalForContribution.id}
+          goalName={selectedGoalForContribution.name}
+          remainingAmount={calculateGoalProgress(selectedGoalForContribution).remainingAmount}
+          onSuccess={() => {
+            refetch();
+            qc.invalidateQueries({ queryKey: ["goals"] });
+          }}
+        />
+      )}
+
+      {/* Modal: Prorrogar Prazo */}
+      {selectedGoalForExtend && (
+        <ExtendDeadlineDialog
+          open={!!selectedGoalForExtend}
+          onOpenChange={(op) => !op && setSelectedGoalForExtend(null)}
+          goalId={selectedGoalForExtend.id}
+          goalName={selectedGoalForExtend.name}
+          currentDeadline={selectedGoalForExtend.deadline}
+          onSuccess={() => {
+            refetch();
+            qc.invalidateQueries({ queryKey: ["goals"] });
+          }}
+        />
+      )}
     </>
-  );
-}
-
-function GoalForm({ onDone }: { onDone: () => void }) {
-  const [name, setName] = useState("");
-  const [target, setTarget] = useState("");
-  const [deadline, setDeadline] = useState("");
-  const [description, setDescription] = useState("");
-  const { user } = useAuth();
-  const { data: profile } = useProfile();
-  const { space } = useSpace();
-  const qc = useQueryClient();
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user) return;
-    const { error } = await supabase.from("goals").insert({
-      user_id: user.id,
-      couple_id: space === "shared" ? profile?.couple_id ?? null : null,
-      visibility: space,
-      name, description, target_amount: parseFloat(target.replace(",", ".")) || 0, deadline: deadline || null,
-    } as any);
-    if (error) toast.error(error.message);
-    else { toast.success("Criada!"); qc.invalidateQueries(); onDone(); }
-  }
-  return (
-    <form onSubmit={submit} className="space-y-3">
-      <div><Label>Nome</Label><Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Viagem" /></div>
-      <div><Label>Valor alvo</Label><Input inputMode="decimal" required value={target} onChange={(e) => setTarget(e.target.value)} /></div>
-      <div><Label>Prazo</Label><Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} /></div>
-      <div><Label>Descrição</Label><Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} /></div>
-      <Button type="submit" className="w-full rounded-xl gradient-coral text-white border-0 h-11">Salvar</Button>
-    </form>
   );
 }

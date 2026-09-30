@@ -17,6 +17,7 @@ import { CoupleAvatar } from "@/components/CouplePhotoUploader";
 import { FinanceInsights } from "@/components/FinanceInsights";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { buildSummary, fetchSubscriptions, monthlyEquivalent } from "@/lib/subscriptions";
+import { calculateGoalProgress } from "@/lib/financial-goals";
 import {
   TrendingUp,
   TrendingDown,
@@ -110,6 +111,8 @@ function HomePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "variable_expenses" }, invalidateFinance)
       .on("postgres_changes", { event: "*", schema: "public", table: "credit_cards" }, invalidateFinance)
       .on("postgres_changes", { event: "*", schema: "public", table: "card_invoices" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, () => qc.invalidateQueries({ queryKey: ["home-goals"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "goal_contributions" }, () => qc.invalidateQueries({ queryKey: ["home-goals"] }))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, qc]);
@@ -545,30 +548,59 @@ function HomePage() {
             </Link>
           </div>
           {goals && goals.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {goals.map((g: any) => {
-                const pct =
-                  g.target_amount > 0
-                    ? Math.min(100, (Number(g.current_amount) / Number(g.target_amount)) * 100)
-                    : 0;
+                const pacing = calculateGoalProgress(g);
                 return (
-                  <Card key={g.id} className="rounded-2xl p-4 shadow-card">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="size-9 rounded-xl bg-accent flex items-center justify-center">
-                        <Target className="size-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{g.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatBRL(Number(g.current_amount))} de {formatBRL(Number(g.target_amount))}
+                  <Link key={g.id} to="/app/metas" className="block">
+                    <Card className="rounded-2xl p-3.5 shadow-card hover:shadow-md transition-all border border-border/80">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="size-9 rounded-xl bg-accent flex items-center justify-center shrink-0">
+                          <Target className="size-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-semibold text-sm truncate">{g.name}</span>
+                            <span className="text-xs font-bold text-primary">{pacing.progressPct}%</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground flex items-center justify-between gap-1 mt-0.5">
+                            <span>
+                              {formatBRL(pacing.currentAmount)} de {formatBRL(pacing.targetAmount)}
+                            </span>
+                            {pacing.remainingAmount > 0 ? (
+                              <span className="text-[11px] font-medium text-foreground">
+                                Falta {formatBRL(pacing.remainingAmount)}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-semibold text-success">
+                                Atingida 🎉
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <div className="text-sm font-semibold text-primary">{Math.round(pct)}%</div>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full gradient-coral transition-all" style={{ width: `${pct}%` }} />
-                    </div>
-                  </Card>
+
+                      <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">
+                        <div
+                          className="h-full gradient-coral transition-all rounded-full"
+                          style={{ width: `${pacing.displayPct}%` }}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+                        <span className={`px-2 py-0.5 rounded-full font-medium border ${pacing.statusColor}`}>
+                          {pacing.statusLabel}
+                        </span>
+                        {pacing.daysRemaining > 0 && pacing.remainingAmount > 0 ? (
+                          <span>
+                            Precisa: <strong className="text-primary">{formatBRL(pacing.neededPerDay)}/dia</strong> ({pacing.daysRemaining}d)
+                          </span>
+                        ) : pacing.deadline ? (
+                          <span>Prazo encerrado</span>
+                        ) : null}
+                      </div>
+                    </Card>
+                  </Link>
                 );
               })}
             </div>
