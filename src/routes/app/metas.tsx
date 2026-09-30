@@ -17,7 +17,9 @@ import { GoalFormDialog } from "@/components/goals/GoalFormDialog";
 import { GoalDetailSheet } from "@/components/goals/GoalDetailSheet";
 import { AddContributionDialog } from "@/components/goals/AddContributionDialog";
 import { ExtendDeadlineDialog } from "@/components/goals/ExtendDeadlineDialog";
+import { EmergencyFundCard } from "@/components/goals/EmergencyFundCard";
 import { calculateGoalProgress } from "@/lib/financial-goals";
+import { useEmergencyFund } from "@/lib/emergency-fund";
 
 export const Route = createFileRoute("/app/metas")({
   component: GoalsPage,
@@ -39,6 +41,13 @@ function GoalsPage() {
   // Filtro de abas: "all" | "active" | "completed" | "paused"
   const [activeTab, setActiveTab] = useState<string>("all");
 
+  const opts = { space, userId: user?.id ?? "", coupleId };
+
+  const { data: emergencyFundData, refetch: refetchEmergencyFund } = useEmergencyFund(
+    opts,
+    !!user
+  );
+
   const { data: goals = [], refetch } = useQuery({
     queryKey: ["goals", space, coupleId, user?.id],
     queryFn: async () => {
@@ -53,26 +62,22 @@ function GoalsPage() {
     enabled: !!user,
   });
 
-  // Atualização em tempo real para goals e aportes
+  // Atualização em tempo real para goals, aportes e despesas essenciais
   useEffect(() => {
+    const invalidateGoalsAndEmergency = () => {
+      qc.invalidateQueries({ queryKey: ["goals"] });
+      qc.invalidateQueries({ queryKey: ["emergency-fund"] });
+      qc.invalidateQueries({ queryKey: ["home-goals"] });
+      qc.invalidateQueries({ queryKey: ["spending-power"] });
+    };
+
     const ch = supabase
       .channel("goals-page-rt")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "goals" },
-        () => {
-          qc.invalidateQueries({ queryKey: ["goals"] });
-          qc.invalidateQueries({ queryKey: ["home-goals"] });
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "goal_contributions" },
-        () => {
-          qc.invalidateQueries({ queryKey: ["goals"] });
-          qc.invalidateQueries({ queryKey: ["home-goals"] });
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, invalidateGoalsAndEmergency)
+      .on("postgres_changes", { event: "*", schema: "public", table: "goal_contributions" }, invalidateGoalsAndEmergency)
+      .on("postgres_changes", { event: "*", schema: "public", table: "future_bills" }, () => qc.invalidateQueries({ queryKey: ["emergency-fund"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "variable_expenses" }, () => qc.invalidateQueries({ queryKey: ["emergency-fund"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, () => qc.invalidateQueries({ queryKey: ["emergency-fund"] }))
       .subscribe();
 
     return () => {
@@ -114,6 +119,22 @@ function GoalsPage() {
       />
 
       <div className="px-4 py-4 space-y-4 max-w-4xl mx-auto pb-24">
+        {/* ETAPA 5: Meta Especial de Reserva de Emergência */}
+        {emergencyFundData && (
+          <EmergencyFundCard
+            data={emergencyFundData}
+            opts={opts}
+            onOpenAddContribution={(g) => setSelectedGoalForContribution(g)}
+            onOpenDetail={(g) => setSelectedGoalForDetail(g)}
+            onRefetch={() => {
+              refetch();
+              refetchEmergencyFund();
+              qc.invalidateQueries({ queryKey: ["goals"] });
+              qc.invalidateQueries({ queryKey: ["emergency-fund"] });
+            }}
+          />
+        )}
+
         {/* Botão de Criação */}
         <Button
           onClick={() => setOpenNewGoal(true)}
@@ -166,26 +187,31 @@ function GoalsPage() {
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-4 space-y-3">
-            {filteredGoals.length === 0 ? (
-              <Card className="rounded-3xl p-8 shadow-card text-center border-dashed">
-                <EmptyState
-                  icon={Target}
-                  title={
-                    activeTab === "completed"
-                      ? "Nenhuma meta concluída ainda"
-                      : activeTab === "paused"
-                      ? "Nenhuma meta pausada"
-                      : "Sem metas financeiras"
-                  }
-                  description={
-                    activeTab === "all"
-                      ? "Crie uma meta com prazo e valor para acompanhar o ritmo necessário dia a dia!"
-                      : "Alterne o filtro ou crie um novo objetivo."
-                  }
-                />
-              </Card>
-            ) : (
-              filteredGoals.map((g: any) => (
+            {(() => {
+              const regularGoals = filteredGoals.filter((g: any) => g.id !== emergencyFundData?.goalId);
+              if (regularGoals.length === 0) {
+                return (
+                  <Card className="rounded-3xl p-8 shadow-card text-center border-dashed">
+                    <EmptyState
+                      icon={Target}
+                      title={
+                        activeTab === "completed"
+                          ? "Nenhuma meta concluída ainda"
+                          : activeTab === "paused"
+                          ? "Nenhuma meta pausada"
+                          : "Nenhuma outra meta criada"
+                      }
+                      description={
+                        activeTab === "all"
+                          ? "Sua Reserva de Emergência está em destaque acima! Crie metas adicionais para viagens, compras e projetos do casal."
+                          : "Alterne o filtro ou crie um novo objetivo."
+                      }
+                    />
+                  </Card>
+                );
+              }
+
+              return regularGoals.map((g: any) => (
                 <GoalCard
                   key={g.id}
                   goal={g}
@@ -194,11 +220,13 @@ function GoalsPage() {
                   onExtendDeadline={(goal) => setSelectedGoalForExtend(goal)}
                   onUpdate={() => {
                     refetch();
+                    refetchEmergencyFund();
                     qc.invalidateQueries({ queryKey: ["goals"] });
+                    qc.invalidateQueries({ queryKey: ["emergency-fund"] });
                   }}
                 />
-              ))
-            )}
+              ));
+            })()}
           </TabsContent>
         </Tabs>
       </div>
