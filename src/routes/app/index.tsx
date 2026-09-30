@@ -91,6 +91,12 @@ function HomePage() {
   useEffect(() => {
     if (!user) return;
     const invalidateFinance = () => {
+      qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
+      qc.invalidateQueries({ queryKey: ["financial-actuals"] });
+      qc.invalidateQueries({ queryKey: ["financial-forecast"] });
+      qc.invalidateQueries({ queryKey: ["financial-commitments"] });
+      qc.invalidateQueries({ queryKey: ["financial-accounts-balance"] });
+      qc.invalidateQueries({ queryKey: ["financial-net-worth"] });
       qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
       qc.invalidateQueries({ queryKey: ["home-tx"] });
       qc.invalidateQueries({ queryKey: ["fin-monthly-summary"] });

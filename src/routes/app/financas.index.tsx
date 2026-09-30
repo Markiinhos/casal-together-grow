@@ -122,6 +122,12 @@ function FinancasCentral() {
   useEffect(() => {
     if (!user) return;
     const invalidateAllFinance = () => {
+      qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
+      qc.invalidateQueries({ queryKey: ["financial-actuals"] });
+      qc.invalidateQueries({ queryKey: ["financial-forecast"] });
+      qc.invalidateQueries({ queryKey: ["financial-commitments"] });
+      qc.invalidateQueries({ queryKey: ["financial-accounts-balance"] });
+      qc.invalidateQueries({ queryKey: ["financial-net-worth"] });
       qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
       qc.invalidateQueries({ queryKey: ["home-tx"] });
       qc.invalidateQueries({ queryKey: ["fin-income"] });
@@ -152,8 +158,8 @@ function FinancasCentral() {
     return () => { supabase.removeChannel(ch); };
   }, [user, qc]);
 
-  const displayIncome = monthlySummary.data?.income ?? income.data ?? 0;
-  const displayExpenses = monthlySummary.data?.expenses ?? expenses.data?.total ?? 0;
+  const displayIncome = monthlySummary.data?.income ?? 0;
+  const displayExpenses = monthlySummary.data?.expenses ?? 0;
   const displayAccounts = monthlySummary.data?.accountsBalance ?? accountsTotal.data ?? 0;
   const balance = monthlySummary.data?.monthlyBalance ?? (displayIncome - displayExpenses);
   const { aggregates: cardAggregates, cards: cardsData } = useCardAggregates();

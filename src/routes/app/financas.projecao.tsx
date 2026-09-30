@@ -17,6 +17,7 @@ import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { useCardAggregates } from "@/hooks/useCardAggregates";
 import { monthlyAmount } from "@/lib/finance";
+import { useFinancialSnapshot } from "@/lib/financial-engine";
 
 export const Route = createFileRoute("/app/financas/projecao")({
   component: ProjecaoPage,
@@ -30,6 +31,10 @@ function ProjecaoPage() {
   const [monthsToProject, setMonthsToProject] = useState("6");
   const [mounted, setMounted] = useState(false);
   const navigate = useNavigate();
+
+  const now = useMemo(() => new Date(), []);
+  const engineOpts = useMemo(() => ({ space, userId: user?.id ?? "", coupleId }), [space, user?.id, coupleId]);
+  const { data: snapshot } = useFinancialSnapshot(now, engineOpts, !!user?.id);
 
   useEffect(() => {
     setMounted(true);
@@ -92,23 +97,9 @@ function ProjecaoPage() {
   const { chartData, upcoming, currentBalance, projectedBalance, isHealthy, totalFutureDebt, healthRatio, healthStatus } = useMemo(() => {
     const transactionsList = Array.isArray(tx) ? tx : [];
     
-    let currentBalanceAccum = 0;
+    // Saldo atual real obtido diretamente do motor financeiro central
+    const currentBalanceAccum = snapshot?.accounts.total ?? 0;
     const now = new Date();
-    
-    for (const t of transactionsList) {
-      if (!t.date || !t.type || t.amount == null) continue;
-      
-      const d = new Date(t.date);
-      if (!isValid(d)) continue;
-      
-      if (d <= now && !t.credit_card_id) {
-        const amt = Number(t.amount || 0);
-        if (Number.isFinite(amt)) {
-          if (t.type === "income") currentBalanceAccum += amt;
-          if (t.type === "expense") currentBalanceAccum -= amt;
-        }
-      }
-    }
 
     const months = parseInt(monthsToProject) || 6;
     const dataByMonth: Record<string, { income: number; expense: number }> = {};
@@ -320,6 +311,15 @@ function ProjecaoPage() {
         if (!isValid(m)) continue;
         
         const l = format(m, "MMM/yy", { locale: ptBR });
+
+        // Mês 0 (corrente): sincroniza estritamente com a verdade canônica do Snapshot
+        if (i === 0 && snapshot) {
+          dataByMonth[l] = {
+            income: snapshot.summary.totalIncome,
+            expense: snapshot.summary.totalExpenses,
+          };
+        }
+
         const dict = dataByMonth[l] || { income: 0, expense: 0 };
         running = running + dict.income - dict.expense;
         finalChartData.push({
@@ -349,7 +349,7 @@ function ProjecaoPage() {
         healthRatio: _healthRatio,
         healthStatus: _healthStatus
     };
-  }, [tx, aggregates, subs, incomeSources, fixedBills, variableExpenses, monthsToProject]);
+  }, [tx, aggregates, subs, incomeSources, fixedBills, variableExpenses, monthsToProject, snapshot]);
 
   if (!user || isProfileLoading || isLoadingTx || isLoadingCards || isSubsLoading || isIncomeSourcesLoading || isFixedBillsLoading || isVariableExpensesLoading) {
       return (

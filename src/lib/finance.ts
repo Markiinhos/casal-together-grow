@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Space } from "@/lib/space";
 import { getLocalISODate } from "./date-utils";
+import { getAccountsBalance, getMonthlyActuals, getMonthlyForecast } from "@/lib/financial-engine";
 
 export function monthRange(ref: Date): { start: string; end: string; startDate: Date; endDate: Date } {
   const start = new Date(ref.getFullYear(), ref.getMonth(), 1);
@@ -85,103 +86,46 @@ export function planningFrequencyLabel(frequency: string): string {
 }
 
 export async function fetchPlannedIncome(opts: SpaceOpts): Promise<number> {
-  let q: any = supabase.from("income_sources").select("amount,frequency").eq("is_active", true);
-  if (opts.space === "private") q = q.eq("visibility", "private").eq("user_id", opts.userId);
-  else if (opts.coupleId) q = q.eq("visibility", "shared").eq("couple_id", opts.coupleId);
-  else q = q.eq("visibility", "shared").eq("user_id", opts.userId);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []).reduce((sum: number, source: any) => sum + monthlyAmount(source.amount, source.frequency), 0);
+  const forecast = await getMonthlyForecast(new Date(), {
+    space: opts.space,
+    userId: opts.userId,
+    coupleId: opts.coupleId,
+  });
+  return forecast.plannedIncome;
 }
 
-/** Soma saldos das contas ativas conforme espaço */
+/** Soma saldos das contas ativas conforme espaço usando o motor financeiro central */
 export async function fetchAccountsTotal(opts: SpaceOpts): Promise<number> {
-  let q: any = supabase.from("bank_accounts").select("balance").eq("hidden", false);
-  if (opts.space === "private") {
-    q = q.eq("visibility", "private").eq("user_id", opts.userId);
-  } else if (opts.coupleId) {
-    q = q.eq("visibility", "shared").eq("couple_id", opts.coupleId);
-  } else {
-    q = q.eq("visibility", "shared").eq("user_id", opts.userId);
-  }
-  const { data } = await q;
-  return (data ?? []).reduce((s: number, a: any) => s + Number(a.balance ?? 0), 0);
+  const accounts = await getAccountsBalance({
+    space: opts.space,
+    userId: opts.userId,
+    coupleId: opts.coupleId,
+  });
+  return accounts.total;
 }
 
 /**
- * Despesas contabilizadas do mês:
- * - Transações à vista (Pix/dinheiro/débito) na data da transação (sem credit_card_id)
- * - Parcelas do mês (installments.due_date) — inclui compras parceladas
- * - Compras no cartão à vista → contabilizadas na data da transação
- * - EXCLUI transferências (type='transfer') e pagamentos de fatura (is_card_payment=true)
+ * Despesas realizadas do mês pelo motor financeiro central.
  */
-export async function getCategoryExpenses(ref: Date, opts: SpaceOpts): Promise<{ total: number; byCategory: Record<string, number> }> {
-  const { start, end } = monthRange(ref);
-  const byCategory: Record<string, number> = {};
-  let total = 0;
-
-  // 1. Transações à vista (dinheiro ou cartão 1x)
-  let q1: any = supabase
-    .from("transactions")
-    .select("amount,category_id,is_card_payment")
-    .eq("type", "expense")
-    .is("is_card_payment", false)
-    .is("total_installments", null)
-    .gte("date", start)
-    .lte("date", end);
-    
-  if (opts.space === "private") q1 = q1.eq("visibility", "private").eq("user_id", opts.userId);
-  else if (opts.coupleId) q1 = q1.eq("visibility", "shared").eq("couple_id", opts.coupleId);
-  else q1 = q1.eq("visibility", "shared").eq("user_id", opts.userId);
-  
-  const { data: cash } = await q1;
-  for (const t of (cash ?? []) as any[]) {
-    const v = Number(t.amount);
-    total += v;
-    const k = t.category_id ?? "__none__";
-    byCategory[k] = (byCategory[k] ?? 0) + v;
-  }
-
-  // 2. Parcelas
-  let q2: any = supabase
-    .from("installments")
-    .select("amount,transactions!inner(category_id,visibility,couple_id,user_id,type,is_card_payment)")
-    .gte("due_date", start)
-    .lte("due_date", end);
-    
-  const { data: inst } = await q2;
-  for (const i of (inst ?? []) as any[]) {
-    const tx = i.transactions;
-    if (!tx || tx.type !== "expense" || tx.is_card_payment) continue;
-    if (opts.space === "private") {
-      if (tx.visibility !== "private" || tx.user_id !== opts.userId) continue;
-    } else if (opts.coupleId) {
-      if (tx.visibility !== "shared" || tx.couple_id !== opts.coupleId) continue;
-    } else {
-      if (tx.visibility !== "shared" || tx.user_id !== opts.userId) continue;
-    }
-    const v = Number(i.amount);
-    total += v;
-    const k = tx.category_id ?? "__none__";
-    byCategory[k] = (byCategory[k] ?? 0) + v;
-  }
-
-  return { total, byCategory };
+export async function getCategoryExpenses(
+  ref: Date,
+  opts: SpaceOpts
+): Promise<{ total: number; byCategory: Record<string, number> }> {
+  const actuals = await getMonthlyActuals(ref, {
+    space: opts.space,
+    userId: opts.userId,
+    coupleId: opts.coupleId,
+  });
+  return { total: actuals.totalExpenses, byCategory: actuals.byCategory };
 }
 
 export async function fetchMonthIncome(ref: Date, opts: SpaceOpts): Promise<number> {
-  const { start, end } = monthRange(ref);
-  let q: any = supabase
-    .from("transactions")
-    .select("amount")
-    .eq("type", "income")
-    .gte("date", start)
-    .lte("date", end);
-  if (opts.space === "private") q = q.eq("visibility", "private").eq("user_id", opts.userId);
-  else if (opts.coupleId) q = q.eq("visibility", "shared").eq("couple_id", opts.coupleId);
-  else q = q.eq("visibility", "shared").eq("user_id", opts.userId);
-  const { data } = await q;
-  return (data ?? []).reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const actuals = await getMonthlyActuals(ref, {
+    space: opts.space,
+    userId: opts.userId,
+    coupleId: opts.coupleId,
+  });
+  return actuals.totalIncome;
 }
 
 export function formatBRL(v: number | null | undefined): string {
@@ -211,4 +155,5 @@ export function parseCurrencyInput(value: string | number | null | undefined): n
 }
 
 export { getHomeMonthlySummary, type HomeMonthlySummary, type MonthlySummaryBreakdown } from "./monthly-summary";
+export * from "./financial-engine";
 

@@ -214,6 +214,8 @@ function FinancialStructure() {
     onSuccess: (_, vars) => {
       const key = vars.table === "income_sources" ? "income-sources" : vars.table === "future_bills" ? "fixed-bills" : "variable-expenses";
       qc.invalidateQueries({ queryKey: [key] });
+      qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
+      qc.invalidateQueries({ queryKey: ["financial-forecast"] });
       qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
       qc.invalidateQueries({ queryKey: ["home-tx"] });
       qc.invalidateQueries({ queryKey: ["variable-expenses-projecao"] });
@@ -231,6 +233,8 @@ function FinancialStructure() {
     } else {
       const key = table === "income_sources" ? "income-sources" : table === "future_bills" ? "fixed-bills" : "variable-expenses";
       qc.invalidateQueries({ queryKey: [key] });
+      qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
+      qc.invalidateQueries({ queryKey: ["financial-forecast"] });
       qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
       qc.invalidateQueries({ queryKey: ["home-tx"] });
       qc.invalidateQueries({ queryKey: ["variable-expenses-projecao"] });
@@ -679,6 +683,8 @@ function VariableExpenseDialog({ open, onOpenChange, item, categories, opts }: a
     toast.success("Despesa variável salva com sucesso");
     setForm({});
     qc.invalidateQueries({ queryKey: ["variable-expenses"] });
+    qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
+    qc.invalidateQueries({ queryKey: ["financial-forecast"] });
     qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
     qc.invalidateQueries({ queryKey: ["home-tx"] });
     qc.invalidateQueries({ queryKey: ["variable-expenses-projecao"] });
@@ -794,6 +800,8 @@ function IncomeDialog({ open, onOpenChange, item, people, opts }: any) {
     toast.success("Fonte de receita salva");
     setForm({});
     qc.invalidateQueries({ queryKey: ["income-sources"] });
+    qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
+    qc.invalidateQueries({ queryKey: ["financial-forecast"] });
     qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
     qc.invalidateQueries({ queryKey: ["home-tx"] });
     onOpenChange(false);
@@ -881,6 +889,8 @@ function BillDialog({ open, onOpenChange, item, people, categories, opts }: any)
     toast.success("Despesa fixa salva");
     setForm({});
     qc.invalidateQueries({ queryKey: ["fixed-bills"] });
+    qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
+    qc.invalidateQueries({ queryKey: ["financial-forecast"] });
     qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
     qc.invalidateQueries({ queryKey: ["home-tx"] });
     onOpenChange(false);
