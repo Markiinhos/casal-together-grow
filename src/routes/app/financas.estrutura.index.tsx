@@ -264,6 +264,23 @@ function FinancialStructure() {
           </p>
         </Card>
 
+        <Button asChild variant="outline" className="w-full h-auto justify-between rounded-2xl p-4 bg-muted/40 hover:bg-muted/70 border text-left">
+          <Link to="/app/financas/patrimonio">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <Landmark className="size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block font-bold text-sm">Patrimônio Líquido</span>
+                <span className="block text-xs text-muted-foreground font-normal">
+                  Ativos (contas, investimentos, bens) − Passivos (dívidas)
+                </span>
+              </div>
+            </div>
+            <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
+          </Link>
+        </Button>
+
         <div className="grid grid-cols-2 gap-3">
           <Button asChild variant="outline" className="h-auto justify-start gap-3 rounded-2xl p-4 text-left">
             <Link to="/app/financas/estrutura/investimentos">

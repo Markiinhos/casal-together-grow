@@ -156,15 +156,28 @@ export interface DebtItem {
   responsibleUserId?: string | null;
 }
 
+export interface AssetGoodItem {
+  id: string;
+  name: string;
+  category: "vehicle" | "real_estate" | "electronics" | "jewelry" | "other" | string;
+  estimatedValue: number;
+  acquisitionDate?: string | null;
+  acquisitionValue?: number | null;
+  responsibleUserId?: string | null;
+  notes?: string | null;
+}
+
 export interface NetWorth {
   accountsBalance: number;
   investments: number;
+  goods: number;
   otherAssets: number;
   totalAssets: number;
   debts: number;
   netWorth: number;
   investmentsList: InvestmentItem[];
   debtsList: DebtItem[];
+  assetsList: AssetGoodItem[];
 }
 
 /**

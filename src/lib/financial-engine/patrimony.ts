@@ -7,6 +7,7 @@ import type {
   NetWorth,
   InvestmentItem,
   DebtItem,
+  AssetGoodItem,
 } from "./types";
 
 /**
@@ -72,10 +73,12 @@ export function computeNetWorthFromData({
   accountsBalance,
   investments,
   debts,
+  assets = [],
 }: {
   accountsBalance: number;
   investments: any[];
   debts: any[];
+  assets?: any[];
 }): NetWorth {
   let totalInvestments = 0;
   const investmentsList: InvestmentItem[] = [];
@@ -91,6 +94,25 @@ export function computeNetWorthFromData({
       amount: Math.round(amount * 100) / 100,
       investmentDate: inv.investment_date,
       responsibleUserId: inv.responsible_user_id || inv.user_id,
+    });
+  }
+
+  let totalGoods = 0;
+  const assetsList: AssetGoodItem[] = [];
+
+  for (const a of assets) {
+    if (a.is_active === false) continue;
+    const estVal = Number(a.estimated_value || a.amount || 0);
+    totalGoods += estVal;
+    assetsList.push({
+      id: a.id,
+      name: a.name,
+      category: a.category || "other",
+      estimatedValue: Math.round(estVal * 100) / 100,
+      acquisitionDate: a.acquisition_date || null,
+      acquisitionValue: a.acquisition_value ? Number(a.acquisition_value) : null,
+      responsibleUserId: a.responsible_user_id || a.user_id,
+      notes: a.notes || null,
     });
   }
 
@@ -115,25 +137,28 @@ export function computeNetWorthFromData({
 
   const accountsTotal = Math.round(accountsBalance * 100) / 100;
   const invTotal = Math.round(totalInvestments * 100) / 100;
+  const goodsTotal = Math.round(totalGoods * 100) / 100;
   const debtTotal = Math.round(totalDebts * 100) / 100;
   const otherAssets = 0;
-  const totalAssets = Math.round((accountsTotal + invTotal + otherAssets) * 100) / 100;
+  const totalAssets = Math.round((accountsTotal + invTotal + goodsTotal + otherAssets) * 100) / 100;
   const netWorth = Math.round((totalAssets - debtTotal) * 100) / 100;
 
   return {
     accountsBalance: accountsTotal,
     investments: invTotal,
+    goods: goodsTotal,
     otherAssets,
     totalAssets,
     debts: debtTotal,
     netWorth,
     investmentsList,
     debtsList,
+    assetsList,
   };
 }
 
 /**
- * Consulta e calcula o PATRIMÔNIO consolidado (saldo em contas + investimentos - dívidas).
+ * Consulta e calcula o PATRIMÔNIO consolidado (saldo em contas + investimentos + bens - dívidas).
  * ESTRITAMENTE ISOLADO DO FLUXO DE CAIXA MENSAL DE RECEITAS/DESPESAS.
  */
 export async function getNetWorth(
@@ -142,6 +167,7 @@ export async function getNetWorth(
     accountsBalance?: number;
     investments?: any[];
     debts?: any[];
+    assets?: any[];
   }
 ): Promise<NetWorth> {
   if (
@@ -154,10 +180,11 @@ export async function getNetWorth(
       accountsBalance: prefetchedData.accountsBalance,
       investments: prefetchedData.investments,
       debts: prefetchedData.debts,
+      assets: prefetchedData.assets ?? [],
     });
   }
 
-  const [accBalance, invRes, debtsRes] = await Promise.all([
+  const [accBalance, invRes, debtsRes, assetsRes] = await Promise.all([
     getAccountsBalance(opts).then((res) => res.total),
 
     (async () => {
@@ -189,11 +216,28 @@ export async function getNetWorth(
         return [];
       }
     })(),
+
+    (async () => {
+      try {
+        let q = supabase
+          .from("patrimony_assets" as any)
+          .select("*")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+        q = applySpaceFilter(q, opts);
+        const { data, error } = await q;
+        if (error) return [];
+        return (data ?? []) as any[];
+      } catch {
+        return [];
+      }
+    })(),
   ]);
 
   return computeNetWorthFromData({
     accountsBalance: accBalance,
     investments: invRes,
     debts: debtsRes,
+    assets: assetsRes,
   });
 }
