@@ -7,8 +7,9 @@ import { useAuth } from "@/lib/auth";
 import { useProfile, useCouple, usePartner } from "@/lib/hooks";
 import { useSpace, applySpaceFilter } from "@/lib/space";
 import { formatBRL } from "@/lib/couple";
-import { getHomeMonthlySummary, fetchAccountsTotal } from "@/lib/finance";
+import { getHomeMonthlySummary, fetchAccountsTotal, useSpendingPower } from "@/lib/finance";
 import { AppHeader } from "@/components/AppHeader";
+import { SpendingPowerCard } from "@/components/SpendingPowerCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/EmptyState";
@@ -53,6 +54,12 @@ function HomePage() {
   const opts = { space, userId: user?.id ?? "", coupleId };
   const monthKey = `${ref.getFullYear()}-${ref.getMonth()}`;
 
+  const { data: spendingPower, isLoading: isSpendingPowerLoading } = useSpendingPower(
+    ref,
+    opts,
+    !!user
+  );
+
   const { data: txSummary, isLoading: isTxLoading } = useQuery({
     queryKey: ["home-monthly-summary", monthKey, space, coupleId, user?.id],
     queryFn: () => getHomeMonthlySummary(ref, opts),
@@ -91,6 +98,7 @@ function HomePage() {
   useEffect(() => {
     if (!user) return;
     const invalidateFinance = () => {
+      qc.invalidateQueries({ queryKey: ["spending-power"] });
       qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
       qc.invalidateQueries({ queryKey: ["financial-actuals"] });
       qc.invalidateQueries({ queryKey: ["financial-forecast"] });
@@ -117,8 +125,15 @@ function HomePage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "variable_expenses" }, invalidateFinance)
       .on("postgres_changes", { event: "*", schema: "public", table: "credit_cards" }, invalidateFinance)
       .on("postgres_changes", { event: "*", schema: "public", table: "card_invoices" }, invalidateFinance)
-      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, () => qc.invalidateQueries({ queryKey: ["home-goals"] }))
-      .on("postgres_changes", { event: "*", schema: "public", table: "goal_contributions" }, () => qc.invalidateQueries({ queryKey: ["home-goals"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "monthly_financial_plans" }, invalidateFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, () => {
+        qc.invalidateQueries({ queryKey: ["home-goals"] });
+        qc.invalidateQueries({ queryKey: ["spending-power"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "goal_contributions" }, () => {
+        qc.invalidateQueries({ queryKey: ["home-goals"] });
+        qc.invalidateQueries({ queryKey: ["spending-power"] });
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, qc]);
@@ -283,6 +298,14 @@ function HomePage() {
             </div>
           </Card>
         )}
+
+        <ErrorBoundary>
+          <SpendingPowerCard
+            data={spendingPower}
+            isLoading={isSpendingPowerLoading}
+            isPrivate={isPrivate}
+          />
+        </ErrorBoundary>
 
         <ErrorBoundary>
         <Card className="rounded-3xl p-5 shadow-card">

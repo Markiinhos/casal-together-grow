@@ -20,8 +20,9 @@ import {
 } from "lucide-react";
 import {
   fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, getHomeMonthlySummary,
-  formatBRL, hideOrShow, monthLabel, monthRange,
+  formatBRL, hideOrShow, monthLabel, monthRange, useSpendingPower,
 } from "@/lib/finance";
+import { SpendingPowerCard } from "@/components/SpendingPowerCard";
 import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
 import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
@@ -51,6 +52,8 @@ function FinancasCentral() {
 
   const opts = { space, userId: user?.id ?? "", coupleId };
   const monthKey = `${ref.getFullYear()}-${ref.getMonth()}`;
+
+  const spendingPower = useSpendingPower(ref, opts, !!user);
 
   const monthlySummary = useQuery({
     queryKey: ["home-monthly-summary", monthKey, space, coupleId, user?.id],
@@ -122,6 +125,7 @@ function FinancasCentral() {
   useEffect(() => {
     if (!user) return;
     const invalidateAllFinance = () => {
+      qc.invalidateQueries({ queryKey: ["spending-power"] });
       qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
       qc.invalidateQueries({ queryKey: ["financial-actuals"] });
       qc.invalidateQueries({ queryKey: ["financial-forecast"] });
@@ -154,6 +158,9 @@ function FinancasCentral() {
       .on("postgres_changes", { event: "*", schema: "public", table: "variable_expenses" }, invalidateAllFinance)
       .on("postgres_changes", { event: "*", schema: "public", table: "credit_cards" }, invalidateAllFinance)
       .on("postgres_changes", { event: "*", schema: "public", table: "card_invoices" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "monthly_financial_plans" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, invalidateAllFinance)
+      .on("postgres_changes", { event: "*", schema: "public", table: "goal_contributions" }, invalidateAllFinance)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [user, qc]);
@@ -234,6 +241,15 @@ function FinancasCentral() {
             {hidden ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
           </button>
         </div>
+
+        {/* ETAPA 4: Indicador Financeiro Dinâmico "Quanto podemos gastar?" */}
+        <ErrorBoundary>
+          <SpendingPowerCard
+            data={spendingPower.data}
+            isLoading={spendingPower.isLoading}
+            isPrivate={space === "private"}
+          />
+        </ErrorBoundary>
 
         {/* Card principal */}
         <ErrorBoundary>

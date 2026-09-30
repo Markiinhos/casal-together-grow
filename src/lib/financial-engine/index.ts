@@ -12,6 +12,7 @@ export * from "./forecast";
 export * from "./commitments";
 export * from "./patrimony";
 export * from "./snapshot";
+export * from "./spending-power";
 
 /**
  * Hook do React Query para o Snapshot Financeiro Unificado.
