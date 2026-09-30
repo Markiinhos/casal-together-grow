@@ -13,6 +13,7 @@ import {
   toISODateOnly,
   calculateDeadlineFromPeriod,
   addGoalContribution,
+  createGoalWithFallback,
   formatDateBR,
   diffDays,
 } from "@/lib/financial-goals";
@@ -114,28 +115,19 @@ export function GoalFormDialog({ open, onOpenChange, onSuccess }: GoalFormDialog
 
       const coupleId = visibility === "shared" ? profile?.couple_id ?? null : null;
 
-      // 1. Inserir a Meta Financeira
-      const { data: createdGoal, error: goalErr } = await supabase
-        .from("goals")
-        .insert({
-          user_id: user.id,
-          couple_id: coupleId,
-          visibility,
-          name: name.trim(),
-          category,
-          goal_type: "financial",
-          target_amount: targetAmount,
-          current_amount: 0, // Será recalculado pelo trigger ou sync
-          start_date: startDate,
-          deadline: computedDeadline || null,
-          tracking_mode: trackingMode,
-          description: description.trim() || null,
-          status: "active",
-        } as any)
-        .select()
-        .single();
-
-      if (goalErr) throw goalErr;
+      // 1. Inserir a Meta Financeira (com suporte resiliente a fallback de schema)
+      const createdGoal = await createGoalWithFallback({
+        userId: user.id,
+        coupleId,
+        visibility,
+        name: name.trim(),
+        category,
+        targetAmount,
+        startDate,
+        deadline: computedDeadline || null,
+        trackingMode,
+        description: description.trim() || null,
+      });
 
       // 2. Se houver valor inicial guardado, registrar como primeira contribuição
       if (initialAmount > 0 && createdGoal?.id) {

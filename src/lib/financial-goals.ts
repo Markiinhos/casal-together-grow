@@ -132,6 +132,42 @@ export function formatDateBR(dateStr?: string | null): string {
 }
 
 /**
+ * Analisa e extrai metadados da meta (suportando colunas nativas ou fallback em description)
+ */
+export function parseGoalMetadata(goal: any): {
+  category: GoalCategory;
+  startDate: string;
+  trackingMode: string;
+  cleanDescription: string;
+} {
+  let category: GoalCategory = (goal?.category as GoalCategory) || "Reserva";
+  let startDate = goal?.start_date
+    ? String(goal.start_date).slice(0, 10)
+    : goal?.created_at
+    ? String(goal.created_at).slice(0, 10)
+    : toISODateOnly(new Date());
+  let trackingMode = goal?.tracking_mode || "manual";
+  let cleanDescription = goal?.description || "";
+
+  if (goal?.description && typeof goal.description === "string") {
+    const metaMatch = goal.description.match(/^\[META:(.*?)\]\n?(.*)$/s);
+    if (metaMatch) {
+      const metaContent = metaMatch[1];
+      cleanDescription = metaMatch[2] || "";
+      const pairs = metaContent.split("|");
+      for (const pair of pairs) {
+        const [k, v] = pair.split("=");
+        if (k === "category" && v) category = v as GoalCategory;
+        if (k === "start_date" && v) startDate = v;
+        if (k === "tracking_mode" && v) trackingMode = v;
+      }
+    }
+  }
+
+  return { category, startDate, trackingMode, cleanDescription };
+}
+
+/**
  * Motor central de cálculo de progresso, ritmo, faltas e previsão da meta financeira
  */
 export function calculateGoalProgress(
@@ -148,11 +184,8 @@ export function calculateGoalProgress(
   const progressPct = Math.round(rawPct * 10) / 10;
   const displayPct = Math.min(100, progressPct);
 
-  const startDate = goal.start_date
-    ? String(goal.start_date).slice(0, 10)
-    : goal.created_at
-    ? String(goal.created_at).slice(0, 10)
-    : todayStr;
+  const meta = parseGoalMetadata(goal);
+  const startDate = meta.startDate;
 
   const deadline = goal.deadline ? String(goal.deadline).slice(0, 10) : null;
 
@@ -344,6 +377,99 @@ export function buildGoalChartData(
 /**
  * Adiciona aporte à meta e recalcula o total
  */
+export async function createGoalWithFallback({
+  userId,
+  coupleId,
+  visibility,
+  name,
+  category,
+  targetAmount,
+  startDate,
+  deadline,
+  trackingMode,
+  description,
+}: {
+  userId: string;
+  coupleId: string | null;
+  visibility: string;
+  name: string;
+  category: GoalCategory;
+  targetAmount: number;
+  startDate: string;
+  deadline: string | null;
+  trackingMode: string;
+  description?: string | null;
+}) {
+  // 1. Tenta salvar com as novas colunas
+  const fullPayload = {
+    user_id: userId,
+    couple_id: coupleId,
+    visibility,
+    name: name.trim(),
+    category,
+    goal_type: "financial",
+    target_amount: targetAmount,
+    current_amount: 0,
+    start_date: startDate,
+    deadline: deadline || null,
+    tracking_mode: trackingMode,
+    description: description?.trim() || null,
+    status: "active",
+  };
+
+  const firstAttempt = await supabase
+    .from("goals")
+    .insert(fullPayload as any)
+    .select()
+    .single();
+
+  if (!firstAttempt.error) {
+    return firstAttempt.data;
+  }
+
+  // Se o erro indicar que a coluna não existe no schema cache do Supabase
+  const isColumnError =
+    firstAttempt.error.message.includes("column") ||
+    firstAttempt.error.message.includes("schema cache");
+
+  if (!isColumnError) {
+    throw firstAttempt.error;
+  }
+
+  // 2. Fallback resiliente: empacota metadados na description
+  const metaPrefix = `[META:category=${category}|start_date=${startDate}|tracking_mode=${trackingMode}]`;
+  const packedDescription = description?.trim()
+    ? `${metaPrefix}\n${description.trim()}`
+    : metaPrefix;
+
+  const fallbackPayload = {
+    user_id: userId,
+    couple_id: coupleId,
+    visibility,
+    name: name.trim(),
+    target_amount: targetAmount,
+    current_amount: 0,
+    deadline: deadline || null,
+    description: packedDescription,
+    status: "active",
+  };
+
+  const fallbackAttempt = await supabase
+    .from("goals")
+    .insert(fallbackPayload as any)
+    .select()
+    .single();
+
+  if (fallbackAttempt.error) {
+    throw fallbackAttempt.error;
+  }
+
+  return fallbackAttempt.data;
+}
+
+/**
+ * Adiciona aporte à meta e recalcula o total
+ */
 export async function addGoalContribution({
   goalId,
   userId,
@@ -361,13 +487,38 @@ export async function addGoalContribution({
   sourceType?: string;
   sourceId?: string | null;
 }) {
-  const { error: insErr } = await supabase.from("goal_contributions").insert({
+  let insErr: any = null;
+
+  // Tenta inserir com source_type e source_id se suportado
+  const fullPayload = {
     goal_id: goalId,
     user_id: userId,
     amount,
     date,
     note: note || null,
-  } as any);
+    source_type: sourceType,
+    source_id: sourceId,
+  };
+
+  const firstRes = await supabase.from("goal_contributions").insert(fullPayload as any);
+  if (firstRes.error) {
+    if (
+      firstRes.error.message.includes("column") ||
+      firstRes.error.message.includes("schema cache")
+    ) {
+      // Fallback sem source_type/source_id
+      const fallbackRes = await supabase.from("goal_contributions").insert({
+        goal_id: goalId,
+        user_id: userId,
+        amount,
+        date,
+        note: note || null,
+      } as any);
+      insErr = fallbackRes.error;
+    } else {
+      insErr = firstRes.error;
+    }
+  }
 
   if (insErr) throw insErr;
 
@@ -411,9 +562,11 @@ export async function editGoalContribution({
 export async function deleteGoalContribution({
   contributionId,
   goalId,
+  amount,
 }: {
   contributionId: string;
   goalId: string;
+  amount?: number;
 }) {
   const { error: delErr } = await supabase
     .from("goal_contributions")
@@ -448,19 +601,41 @@ export async function syncGoalCurrentAmount(goalId: string): Promise<number> {
   const target = Number(goal?.target_amount || 0);
   const isNowCompleted = total >= target && target > 0;
 
-  await supabase
+  const fullUpdate = {
+    current_amount: total,
+    status: isNowCompleted
+      ? "completed"
+      : goal?.status === "completed"
+      ? "active"
+      : goal?.status || "active",
+    completed_at: isNowCompleted ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const updateRes = await supabase
     .from("goals")
-    .update({
-      current_amount: total,
-      status: isNowCompleted
-        ? "completed"
-        : goal?.status === "completed"
-        ? "active"
-        : goal?.status || "active",
-      completed_at: isNowCompleted ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    } as any)
+    .update(fullUpdate as any)
     .eq("id", goalId);
+
+  if (
+    updateRes.error &&
+    (updateRes.error.message.includes("column") ||
+      updateRes.error.message.includes("schema cache"))
+  ) {
+    // Fallback sem completed_at
+    await supabase
+      .from("goals")
+      .update({
+        current_amount: total,
+        status: isNowCompleted
+          ? "completed"
+          : goal?.status === "completed"
+          ? "active"
+          : goal?.status || "active",
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", goalId);
+  }
 
   return total;
 }
@@ -488,16 +663,35 @@ export async function updateGoalDeadline(
  */
 export async function toggleGoalPause(goalId: string, currentStatus: string) {
   const nextStatus = currentStatus === "paused" ? "active" : "paused";
-  const { error } = await supabase
+  const fullUpdate = {
+    status: nextStatus,
+    paused_at: nextStatus === "paused" ? new Date().toISOString() : null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const res = await supabase
     .from("goals")
-    .update({
-      status: nextStatus,
-      paused_at: nextStatus === "paused" ? new Date().toISOString() : null,
-      updated_at: new Date().toISOString(),
-    } as any)
+    .update(fullUpdate as any)
     .eq("id", goalId);
 
-  if (error) throw error;
+  if (
+    res.error &&
+    (res.error.message.includes("column") ||
+      res.error.message.includes("schema cache"))
+  ) {
+    // Fallback sem paused_at
+    const fbRes = await supabase
+      .from("goals")
+      .update({
+        status: nextStatus,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", goalId);
+    if (fbRes.error) throw fbRes.error;
+    return;
+  }
+
+  if (res.error) throw res.error;
 }
 
 /**
@@ -508,3 +702,4 @@ export async function deleteGoal(goalId: string) {
   const { error } = await supabase.from("goals").delete().eq("id", goalId);
   if (error) throw error;
 }
+

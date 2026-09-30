@@ -13,6 +13,7 @@ import { formatBRL } from "@/lib/finance";
 import {
   GoalContributionItem,
   calculateGoalProgress,
+  parseGoalMetadata,
   buildGoalChartData,
   formatDateBR,
   deleteGoalContribution,
@@ -121,10 +122,11 @@ export function GoalDetailSheet({
 
   if (!goal) return null;
 
+  const meta = parseGoalMetadata(goal);
   const pacing = calculateGoalProgress(goal);
   const chartData = buildGoalChartData(goal, contributions, pacing);
 
-  const CategoryIcon = CATEGORY_ICONS[goal.category] || Target;
+  const CategoryIcon = CATEGORY_ICONS[meta.category] || Target;
 
   // Participação por pessoa no casal
   const isShared = goal.visibility === "shared";
@@ -201,7 +203,7 @@ export function GoalDetailSheet({
                     </SheetTitle>
                   </div>
                   <SheetDescription className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
-                    <span>{goal.category || "Meta"}</span>
+                    <span>{meta.category || "Meta"}</span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
                       {isShared ? (
@@ -215,6 +217,11 @@ export function GoalDetailSheet({
                       )}
                     </span>
                   </SheetDescription>
+                  {meta.cleanDescription && (
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {meta.cleanDescription}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

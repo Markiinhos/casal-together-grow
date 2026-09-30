@@ -11,6 +11,7 @@ import {
 import { formatBRL } from "@/lib/finance";
 import {
   calculateGoalProgress,
+  parseGoalMetadata,
   formatDateBR,
   toggleGoalPause,
   deleteGoal,
@@ -62,8 +63,9 @@ export function GoalCard({
   onExtendDeadline,
   onUpdate,
 }: GoalCardProps) {
+  const meta = parseGoalMetadata(goal);
   const pacing = calculateGoalProgress(goal);
-  const CategoryIcon = CATEGORY_ICONS[goal.category] || Target;
+  const CategoryIcon = CATEGORY_ICONS[meta.category] || Target;
   const isShared = goal.visibility === "shared";
 
   async function handleTogglePause() {
@@ -106,7 +108,7 @@ export function GoalCard({
           </div>
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-            <span>{goal.category || "Geral"}</span>
+            <span>{meta.category || "Geral"}</span>
             <span>•</span>
             <span className="flex items-center gap-1">
               {isShared ? (
