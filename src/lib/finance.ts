@@ -156,4 +156,6 @@ export function parseCurrencyInput(value: string | number | null | undefined): n
 
 export { getHomeMonthlySummary, type HomeMonthlySummary, type MonthlySummaryBreakdown } from "./monthly-summary";
 export * from "./financial-engine";
+export * from "./financial-calendar";
+
 

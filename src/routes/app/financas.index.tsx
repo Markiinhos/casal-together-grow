@@ -16,7 +16,7 @@ import { type CardAggregate, OPEN_STATUSES } from "@/lib/card-aggregate";
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Wallet, CreditCard,
   TrendingUp, TrendingDown, Plus, ChartLine, Sparkles, PieChart,
-  Target, LayoutDashboard, CalendarCheck, Landmark,
+  Target, LayoutDashboard, CalendarCheck, CalendarDays, Landmark,
 } from "lucide-react";
 import {
   fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, getHomeMonthlySummary,
@@ -263,13 +263,22 @@ function FinancasCentral() {
               )}
               <p className="text-xs text-muted-foreground mt-1">Saldo em contas</p>
             </div>
-            <Link
-              to="/app/financas/fechamento"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-accent text-foreground transition-colors border shadow-xs"
-            >
-              <CalendarCheck className="size-3.5 text-primary" />
-              <span>Fechamento</span>
-            </Link>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <Link
+                to="/app/financas/calendario"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-primary/10 hover:bg-primary/20 text-primary transition-colors border border-primary/20 shadow-xs"
+              >
+                <CalendarDays className="size-3.5" />
+                <span>Calendário</span>
+              </Link>
+              <Link
+                to="/app/financas/fechamento"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-accent text-foreground transition-colors border shadow-xs"
+              >
+                <CalendarCheck className="size-3.5 text-primary" />
+                <span>Fechamento</span>
+              </Link>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2 mt-4">
             <div className="rounded-2xl bg-success/10 p-3">
@@ -368,7 +377,8 @@ function FinancasCentral() {
         </ErrorBoundary>
 
         {/* Atalhos */}
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+          <ShortcutTile to="/app/financas/calendario" icon={CalendarDays} label="Calendário" />
           <ShortcutTile to="/app/financas/patrimonio" icon={Landmark} label="Patrimônio" />
           <ShortcutTile to="/app/financas/fechamento" icon={CalendarCheck} label="Fechamento" />
           <ShortcutTile to="/app/financas/estrutura" icon={LayoutDashboard} label="Estrutura" />
