@@ -288,9 +288,14 @@ function HomePage() {
         <Card className="rounded-3xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">{isPrivate ? "Minhas finanças do mês" : "Resumo do mês"}</h3>
-            <Link to="/app/financas" className="text-xs text-primary font-medium">
-              Ver tudo
-            </Link>
+            <div className="flex items-center gap-2.5">
+              <Link to="/app/financas/fechamento" className="text-xs text-muted-foreground hover:text-foreground font-medium">
+                Fechamento
+              </Link>
+              <Link to="/app/financas" className="text-xs text-primary font-medium">
+                Ver tudo
+              </Link>
+            </div>
           </div>
           {isTxLoading ? (
             <div className="space-y-3">

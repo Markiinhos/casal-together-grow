@@ -16,7 +16,7 @@ import { type CardAggregate, OPEN_STATUSES } from "@/lib/card-aggregate";
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Wallet, CreditCard,
   TrendingUp, TrendingDown, Plus, ChartLine, Sparkles, PieChart,
-  Target, LayoutDashboard,
+  Target, LayoutDashboard, CalendarCheck,
 } from "lucide-react";
 import {
   fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, getHomeMonthlySummary,
@@ -238,12 +238,23 @@ function FinancasCentral() {
         {/* Card principal */}
         <ErrorBoundary>
         <Card className="rounded-3xl p-5 shadow-card">
-          {monthlySummary.isPending && accountsTotal.isPending ? (
-            <Skeleton className="h-9 w-40 rounded-xl" />
-          ) : (
-            <div className="text-3xl font-bold">{hideOrShow(displayAccounts, hidden)}</div>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">Saldo em contas</p>
+          <div className="flex items-center justify-between">
+            <div>
+              {monthlySummary.isPending && accountsTotal.isPending ? (
+                <Skeleton className="h-9 w-40 rounded-xl" />
+              ) : (
+                <div className="text-3xl font-bold">{hideOrShow(displayAccounts, hidden)}</div>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">Saldo em contas</p>
+            </div>
+            <Link
+              to="/app/financas/fechamento"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-muted hover:bg-accent text-foreground transition-colors border shadow-xs"
+            >
+              <CalendarCheck className="size-3.5 text-primary" />
+              <span>Fechamento</span>
+            </Link>
+          </div>
           <div className="grid grid-cols-3 gap-2 mt-4">
             <div className="rounded-2xl bg-success/10 p-3">
               <div className="flex items-center gap-1.5 text-success mb-1">
@@ -341,7 +352,8 @@ function FinancasCentral() {
         </ErrorBoundary>
 
         {/* Atalhos */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+          <ShortcutTile to="/app/financas/fechamento" icon={CalendarCheck} label="Fechamento" />
           <ShortcutTile to="/app/financas/estrutura" icon={LayoutDashboard} label="Estrutura" />
           <ShortcutTile to="/app/financas/planejamento" icon={Target} label="Planejamento" />
           <ShortcutTile to="/app/financas/projecao" icon={ChartLine} label="Projeção" />
