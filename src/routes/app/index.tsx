@@ -33,7 +33,7 @@ import {
   Droplet,
   RefreshCw,
   Wallet,
-
+  Receipt,
 } from "lucide-react";
 import { VoiceAssistantButton } from "@/components/VoiceAssistant/VoiceAssistantButton";
 import { VoiceAssistantSheet } from "@/components/VoiceAssistant/VoiceAssistantSheet";
@@ -318,7 +318,14 @@ function HomePage() {
         <Card className="rounded-3xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">{isPrivate ? "Minhas finanças do mês" : "Resumo do mês"}</h3>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
+              <Link
+                to="/app/financas/recibos"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 transition-colors border border-amber-500/30 shadow-xs"
+              >
+                <Receipt className="size-3" />
+                <span>Ler Recibo</span>
+              </Link>
               <Link to="/app/financas/fechamento" className="text-xs text-muted-foreground hover:text-foreground font-medium">
                 Fechamento
               </Link>

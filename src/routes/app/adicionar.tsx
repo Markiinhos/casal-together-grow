@@ -14,7 +14,7 @@ import { getLocalISODate } from "@/lib/date-utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AppHeader } from "@/components/AppHeader";
-import { Sparkles, Wallet, Calendar, Target, ListChecks, Loader2, Receipt } from "lucide-react";
+import { Sparkles, Wallet, Calendar, Target, ListChecks, Loader2, Receipt, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { CategoryIcon } from "@/lib/category-icons";
 
@@ -32,6 +32,30 @@ function AddPage() {
       <AppHeader title="Adicionar" subtitle="Registre algo novo" />
       <div className="px-4 py-4 space-y-4">
         <div className="flex justify-center"><SpaceToggle /></div>
+
+        {/* Banner destacado para Recibo / Nota com IA */}
+        <Link
+          to="/app/financas/recibos"
+          className="flex items-center justify-between p-3.5 rounded-3xl bg-gradient-to-r from-amber-500/15 via-primary/10 to-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 shadow-xs transition-all active:scale-[0.99] group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-2xl bg-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Receipt className="size-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-xs text-foreground">Fotografar Recibo ou Nota com IA</span>
+                <span className="text-[9px] font-bold bg-amber-500 text-white rounded-full px-1.5 py-0.5">NOVO</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Extrai estabelecimento, valor e categoria automaticamente</p>
+            </div>
+          </div>
+          <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+            <span>Abrir</span>
+            <ChevronRight className="size-4" />
+          </div>
+        </Link>
+
         <div className="grid grid-cols-3 gap-2">
           {[
             { k: "ai", label: "IA", icon: Sparkles },

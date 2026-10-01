@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, ArrowRightLeft, Plus, Target, MoreHorizontal, TrendingUp, TrendingDown, CreditCard, ArrowLeftRight, Mic } from "lucide-react";
+import { Home, ArrowRightLeft, Plus, Target, MoreHorizontal, TrendingUp, TrendingDown, CreditCard, ArrowLeftRight, Mic, Receipt } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
@@ -66,7 +66,7 @@ export function BottomNav() {
                     <DrawerHeader>
                       <DrawerTitle>Ações Rápidas</DrawerTitle>
                     </DrawerHeader>
-                    <div className="p-4 grid grid-cols-4 gap-4 pb-12">
+                    <div className="p-4 grid grid-cols-3 sm:grid-cols-6 gap-4 pb-12">
                       <Link 
                         to="/app/adicionar" 
                         onClick={() => setOpen(false)}
@@ -87,6 +87,18 @@ export function BottomNav() {
                           <TrendingDown className="size-6" />
                         </div>
                         <span className="text-[11px] font-medium text-center">Despesa</span>
+                      </Link>
+
+                      <Link 
+                        to="/app/financas/recibos" 
+                        onClick={() => setOpen(false)}
+                        className="flex flex-col items-center gap-2"
+                      >
+                        <div className="size-12 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center relative">
+                          <Receipt className="size-6" />
+                          <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-primary text-primary-foreground rounded-full px-1 shadow-xs">IA</span>
+                        </div>
+                        <span className="text-[11px] font-medium text-center">Ler Recibo</span>
                       </Link>
 
                       <Link 
