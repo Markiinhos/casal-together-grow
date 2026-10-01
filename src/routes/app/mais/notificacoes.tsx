@@ -5,8 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
-import { ArrowLeft, Bell, CheckCheck, Trash2 } from "lucide-react";
+import { ArrowLeft, Bell, CheckCheck, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/mais/notificacoes")({
@@ -95,8 +96,15 @@ function NotifPage() {
                   <div className="flex items-start gap-2">
                     {!n.read && <span className="mt-1.5 size-2 rounded-full bg-primary shrink-0" />}
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{n.title}</div>
-                      {n.body && <div className="text-xs text-muted-foreground line-clamp-2">{n.body}</div>}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-medium text-sm">{n.title}</span>
+                        {n.type === "smart_alert" && (
+                          <Badge variant="outline" className="text-[9px] py-0 px-1.5 bg-primary/10 text-primary border-primary/30 flex items-center gap-1">
+                            <Sparkles className="size-2.5" /> Alerta Inteligente
+                          </Badge>
+                        )}
+                      </div>
+                      {n.body && <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{n.body}</div>}
                       <div className="text-[10px] text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString("pt-BR")}</div>
                     </div>
                   </div>

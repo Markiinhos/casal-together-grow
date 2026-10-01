@@ -19,6 +19,8 @@ import { FinanceInsights } from "@/components/FinanceInsights";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { buildSummary, fetchSubscriptions, monthlyEquivalent } from "@/lib/subscriptions";
 import { calculateGoalProgress } from "@/lib/financial-goals";
+import { useSmartAlerts } from "@/lib/smart-alerts";
+import { SmartAlertsBanner } from "@/components/SmartAlertsBanner";
 import {
   TrendingUp,
   TrendingDown,
@@ -65,6 +67,8 @@ function HomePage() {
     queryFn: () => getHomeMonthlySummary(ref, opts),
     enabled: !!user,
   });
+
+  const { data: smartAlerts = [], isLoading: isAlertsLoading } = useSmartAlerts(opts, ref);
 
   /** Contas bancárias do espaço atual + últimas movimentações vinculadas a elas. */
   const { data: accountsData, isLoading: isAccountsLoading } = useQuery({
@@ -298,6 +302,9 @@ function HomePage() {
             </div>
           </Card>
         )}
+
+        {/* Alertas Financeiros Inteligentes */}
+        <SmartAlertsBanner alerts={smartAlerts} isLoading={isAlertsLoading} />
 
         <ErrorBoundary>
           <SpendingPowerCard

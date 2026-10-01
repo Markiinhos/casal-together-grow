@@ -16,13 +16,22 @@ import { type CardAggregate, OPEN_STATUSES } from "@/lib/card-aggregate";
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Wallet, CreditCard,
   TrendingUp, TrendingDown, Plus, ChartLine, Sparkles, PieChart,
+<<<<<<< HEAD
   Target, LayoutDashboard, CalendarCheck, CalendarDays, Landmark,
+=======
+  Target, LayoutDashboard, CalendarCheck, Landmark, Repeat,
+>>>>>>> 177280e (feat(recorrencias-alertas): implementar Central de Recorrencias e Alertas Financeiros Inteligentes)
 } from "lucide-react";
 import {
   fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, getHomeMonthlySummary,
   formatBRL, hideOrShow, monthLabel, monthRange, useSpendingPower,
 } from "@/lib/finance";
+<<<<<<< HEAD
 import { SpendingPowerCard } from "@/components/SpendingPowerCard";
+=======
+import { useSmartAlerts } from "@/lib/smart-alerts";
+import { SmartAlertsBanner } from "@/components/SmartAlertsBanner";
+>>>>>>> 177280e (feat(recorrencias-alertas): implementar Central de Recorrencias e Alertas Financeiros Inteligentes)
 import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
 import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
@@ -60,6 +69,8 @@ function FinancasCentral() {
     queryFn: () => getHomeMonthlySummary(ref, opts),
     enabled: !!user,
   });
+
+  const { data: smartAlerts = [], isLoading: isLoadingAlerts } = useSmartAlerts(opts, ref);
 
   const accountsTotal = useQuery({
     queryKey: ["fin-accounts-total", monthKey, space, coupleId, user?.id],
@@ -242,6 +253,7 @@ function FinancasCentral() {
           </button>
         </div>
 
+<<<<<<< HEAD
         {/* ETAPA 4: Indicador Financeiro Dinâmico "Quanto podemos gastar?" */}
         <ErrorBoundary>
           <SpendingPowerCard
@@ -250,6 +262,10 @@ function FinancasCentral() {
             isPrivate={space === "private"}
           />
         </ErrorBoundary>
+=======
+        {/* Alertas Financeiros Inteligentes */}
+        <SmartAlertsBanner alerts={smartAlerts} isLoading={isLoadingAlerts} />
+>>>>>>> 177280e (feat(recorrencias-alertas): implementar Central de Recorrencias e Alertas Financeiros Inteligentes)
 
         {/* Card principal */}
         <ErrorBoundary>
@@ -377,7 +393,8 @@ function FinancasCentral() {
         </ErrorBoundary>
 
         {/* Atalhos */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-9 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-10 gap-2">
+          <ShortcutTile to="/app/financas/recorrencias" icon={Repeat} label="Recorrências" />
           <ShortcutTile to="/app/financas/calendario" icon={CalendarDays} label="Calendário" />
           <ShortcutTile to="/app/financas/patrimonio" icon={Landmark} label="Patrimônio" />
           <ShortcutTile to="/app/financas/fechamento" icon={CalendarCheck} label="Fechamento" />
