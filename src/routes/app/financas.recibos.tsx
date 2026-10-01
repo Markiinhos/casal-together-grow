@@ -33,10 +33,26 @@ import {
   Wallet,
   CheckCircle2,
   Image as ImageIcon,
+  Key,
+  ExternalLink,
 } from "lucide-react";
-import { processReceiptDocument, type ExtractedReceiptData, formatCurrencyBRL } from "@/lib/ocr";
+import {
+  processReceiptDocument,
+  type ExtractedReceiptData,
+  formatCurrencyBRL,
+  getStoredGeminiKey,
+  setStoredGeminiKey,
+} from "@/lib/ocr";
 import { formatDateOnly, getLocalISODate } from "@/lib/date-utils";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/app/financas/recibos")({
   head: () => ({
@@ -68,6 +84,22 @@ function ReceiptsOcrPage() {
   const [extractedData, setExtractedData] = useState<ExtractedReceiptData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Estados para chave de API do Gemini
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState(() => getStoredGeminiKey());
+  const [activeGeminiKey, setActiveGeminiKey] = useState(() => getStoredGeminiKey());
+
+  function handleSaveApiKey() {
+    setStoredGeminiKey(apiKeyInput);
+    setActiveGeminiKey(apiKeyInput.trim());
+    setApiKeyDialogOpen(false);
+    if (apiKeyInput.trim()) {
+      toast.success("Chave do Google Gemini salva com sucesso! Visão de IA ativada.");
+    } else {
+      toast.info("Chave removida. Usando provedor padrão do sistema.");
+    }
+  }
 
   // Campos de edição
   const [editMerchant, setEditMerchant] = useState("");
@@ -208,7 +240,10 @@ function ReceiptsOcrPage() {
       toast.success("Documento lido com sucesso! Revise os dados abaixo.");
     } catch (err: any) {
       console.error("Erro ao ler documento:", err);
-      toast.error("Não foi possível ler todos os dados. Preencha os campos para salvar.");
+      toast.error(
+        err.message ||
+          "Não foi possível ler o documento com IA. Você pode configurar uma chave gratuita do Gemini no topo da tela ou preencher os campos manualmente."
+      );
     } finally {
       setIsProcessing(false);
       setProcessingStatus("");
@@ -299,15 +334,32 @@ function ReceiptsOcrPage() {
       />
 
       <div className="px-4 py-4 space-y-5 pb-24 max-w-2xl mx-auto">
-        {/* Toggle de Espaço e Atalho de Retorno */}
-        <div className="flex items-center justify-between">
+        {/* Toggle de Espaço, Atalho de Retorno e Configuração de IA */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <Button asChild variant="ghost" size="sm" className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground">
             <Link to="/app/financas">
               <ArrowLeft className="size-4" />
               <span>Voltar ao Financeiro</span>
             </Link>
           </Button>
-          <SpaceToggle />
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setApiKeyInput(getStoredGeminiKey());
+                setApiKeyDialogOpen(true);
+              }}
+              className="gap-1.5 h-8 text-xs rounded-full border-border/80 shadow-xs"
+            >
+              <Key className="size-3.5 text-primary" />
+              <span>{activeGeminiKey ? "Chave IA Ativa" : "Configurar IA"}</span>
+              <span className={`size-2 rounded-full ${activeGeminiKey ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+            </Button>
+            <SpaceToggle />
+          </div>
         </div>
 
         {/* Inputs de arquivo ocultos acionados pelos botões da interface */}
@@ -500,15 +552,22 @@ function ReceiptsOcrPage() {
             */}
             {!isEditing ? (
               <Card className="rounded-3xl p-6 shadow-card border-primary/30 bg-card space-y-5">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">
                     <Sparkles className="size-3.5" />
                     <span>Encontrei:</span>
                   </div>
 
-                  <Badge variant="outline" className="text-[11px] font-normal">
-                    {editPaymentMethod}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {extractedData.sourceEngine && (
+                      <Badge variant="secondary" className="text-[10px] font-normal bg-primary/10 text-primary border-primary/20">
+                        {extractedData.sourceEngine}
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-[11px] font-normal">
+                      {editPaymentMethod}
+                    </Badge>
+                  </div>
                 </div>
 
                 {/* Bloco de dados destacados */}
@@ -797,6 +856,83 @@ function ReceiptsOcrPage() {
             <li>Para boletos e notas fiscais eletrônicas, envie o arquivo PDF direto.</li>
           </ul>
         </div>
+
+        {/* Modal de Configuração de Chave de IA */}
+        <Dialog open={apiKeyDialogOpen} onOpenChange={setApiKeyDialogOpen}>
+          <DialogContent className="max-w-md rounded-3xl p-6">
+            <DialogHeader>
+              <div className="size-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+                <Key className="size-5" />
+              </div>
+              <DialogTitle className="text-base font-bold">Chave de IA (Visão Computacional)</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                Para ter leitura 100% precisa e instantânea de comprovantes e fotos, você pode usar uma chave gratuita do <strong>Google Gemini (1.5 Flash Vision)</strong>.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2 text-xs">
+              <div className="rounded-2xl bg-muted/50 p-3.5 border border-border/60 space-y-2">
+                <div className="font-semibold text-foreground flex items-center gap-1.5">
+                  <Sparkles className="size-3.5 text-amber-500" />
+                  <span>Como obter gratuitamente (1 minuto):</span>
+                </div>
+                <ol className="list-decimal pl-4 space-y-1 text-muted-foreground">
+                  <li>Acesse o Google AI Studio com sua conta Google.</li>
+                  <li>Clique em <strong>Get API key</strong> e crie uma nova chave.</li>
+                  <li>Cole a chave no campo abaixo. É 100% gratuito (1.500 requisições/dia).</li>
+                </ol>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-primary font-semibold hover:underline pt-1"
+                >
+                  <span>Abrir Google AI Studio</span>
+                  <ExternalLink className="size-3" />
+                </a>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="gemini-key" className="text-xs font-medium">Chave de API do Gemini</Label>
+                <Input
+                  id="gemini-key"
+                  type="password"
+                  placeholder="AIzaSy..."
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  className="rounded-xl h-10 font-mono text-xs"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  A chave fica armazenada com segurança apenas no seu navegador.
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter className="flex gap-2 sm:gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setApiKeyInput("");
+                  setStoredGeminiKey("");
+                  setActiveGeminiKey("");
+                  setApiKeyDialogOpen(false);
+                  toast.info("Chave removida.");
+                }}
+                className="rounded-xl h-10 text-xs"
+              >
+                Limpar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveApiKey}
+                className="flex-1 rounded-xl h-10 text-xs font-semibold bg-primary text-primary-foreground"
+              >
+                Salvar Chave
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ErrorBoundary>
   );
