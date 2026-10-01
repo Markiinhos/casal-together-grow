@@ -2,65 +2,121 @@ import { useState, useEffect, useRef } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mic, Send, X, Loader2, Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Mic,
+  Send,
+  X,
+  Loader2,
+  Check,
+  Sparkles,
+  TrendingDown,
+  Target,
+  Calendar,
+  CreditCard,
+  ShoppingCart,
+  ShieldCheck,
+  ArrowRight,
+  RotateCcw,
+  AlertTriangle,
+} from "lucide-react";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
-import { parseVoiceCommandFn } from "@/lib/voice.functions";
-import { executeVoiceCommand, logVoiceCommand, VoiceIntent } from "@/lib/voice-executor";
+import {
+  parseCopilotCommand,
+  resolveCopilotQuery,
+  prepareCopilotActionPreview,
+  executeCopilotAction,
+  type ParsedCopilotCommand,
+  type CopilotQueryResult,
+  type ActionPreview,
+} from "@/lib/ai-copilot";
+import { logVoiceCommand } from "@/lib/voice-executor";
+import { getStoredGeminiKey } from "@/lib/ocr";
 import { useAuth } from "@/lib/auth";
 import { useProfile } from "@/lib/hooks";
 import { useSpace } from "@/lib/space";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 
-type VoiceState = "idle" | "listening" | "processing" | "confirming" | "success" | "error";
+type CopilotState =
+  | "idle"
+  | "listening"
+  | "processing"
+  | "query_answer"
+  | "action_preview"
+  | "success"
+  | "error";
 
 interface VoiceAssistantSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+const QUICK_PROMPTS = [
+  { icon: TrendingDown, text: "Quanto gastamos este mês?", category: "Gastos" },
+  { icon: Sparkles, text: "Quanto ainda podemos gastar?", category: "Orçamento" },
+  { icon: Target, text: "Quanto falta para a meta?", category: "Metas" },
+  { icon: Calendar, text: "Quanto temos para pagar até sexta?", category: "Contas" },
+  { icon: CreditCard, text: "Qual cartão tem mais limite?", category: "Cartões" },
+  { icon: TrendingDown, text: "Adicionar R$ 80 de combustível", category: "Ação" },
+  { icon: ShoppingCart, text: "Adicionar pão e leite na lista", category: "Ação" },
+  { icon: Target, text: "Adicionar R$ 300 à meta da viagem", category: "Ação" },
+];
+
 export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetProps) {
-  const [state, setState] = useState<VoiceState>("idle");
+  const [state, setState] = useState<CopilotState>("idle");
   const [manualText, setManualText] = useState("");
-  const [parsedIntent, setParsedIntent] = useState<VoiceIntent | null>(null);
-  const [executionResult, setExecutionResult] = useState<any>(null);
+  const [activePromptText, setActivePromptText] = useState("");
+  const [parsedCommand, setParsedCommand] = useState<ParsedCopilotCommand | null>(null);
+  const [queryResult, setQueryResult] = useState<CopilotQueryResult | null>(null);
+  const [actionPreview, setActionPreview] = useState<ActionPreview | null>(null);
+  const [successMessage, setSuccessMessage] = useState("");
   const [lastError, setLastError] = useState<string | null>(null);
-  const [isEditingTranscript, setIsEditingTranscript] = useState(false);
-  
+  const [isExecuting, setIsExecuting] = useState(false);
+
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const { space } = useSpace();
   const qc = useQueryClient();
-  const parseVoiceCommand = useServerFn(parseVoiceCommandFn);
   const coupleId = profile?.couple_id ?? null;
+  const hasGeminiKey = Boolean(getStoredGeminiKey());
 
-  const { isListening, transcript, error: speechError, startListening, stopListening, reset, isSupported } = useSpeechRecognition();
+  const {
+    isListening,
+    transcript,
+    error: speechError,
+    startListening,
+    stopListening,
+    reset,
+    isSupported,
+  } = useSpeechRecognition();
 
-  // Handle Sheet Close
+  // Reset state when opening or closing
   const handleClose = () => {
     stopListening();
     reset();
     setState("idle");
     setManualText("");
-    setIsEditingTranscript(false);
+    setActivePromptText("");
+    setParsedCommand(null);
+    setQueryResult(null);
+    setActionPreview(null);
+    setLastError(null);
     onOpenChange(false);
   };
 
-  // Auto-start listening on open if supported
-  useEffect(() => {
-    if (open) {
-      if (isSupported) {
-        startListening();
-        setState("listening");
-      } else {
-        setState("idle");
-      }
-    } else {
-      reset();
-      setState("idle");
-    }
-  }, [open, isSupported, startListening, reset]);
+  const handleResetToIdle = () => {
+    stopListening();
+    reset();
+    setState("idle");
+    setManualText("");
+    setActivePromptText("");
+    setParsedCommand(null);
+    setQueryResult(null);
+    setActionPreview(null);
+    setLastError(null);
+  };
 
   // Handle Speech Error
   useEffect(() => {
@@ -70,242 +126,550 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
     }
   }, [speechError]);
 
-  // Auto-stop after silence or explicit click
+  // Handle speech end
   const handleStopListening = () => {
     stopListening();
     if (transcript.trim()) {
       setManualText(transcript);
-      processTranscript(transcript);
+      processInput(transcript);
     } else {
       setState("idle");
     }
   };
 
-  const processTranscript = async (textToProcess: string) => {
-    if (!textToProcess.trim()) return;
-    setState("processing");
-    
-    try {
-      // 1. Send to Gemini
-      const parsed = await parseVoiceCommand({ data: { transcript: textToProcess } });
-      setParsedIntent(parsed);
+  // Process text or speech through Copilot
+  const processInput = async (inputText: string) => {
+    const textToProcess = inputText.trim();
+    if (!textToProcess) return;
 
-      // 2. Execute Action (Check duplicates/conflicts)
-      const result = await executeVoiceCommand(parsed, user!.id, coupleId, space);
-      
-      if (result.needsConfirmation) {
-        setExecutionResult(result);
-        setState("confirming");
-        await logVoiceCommand(user!.id, coupleId, space, textToProcess, parsed, "processing");
-      } else if (result.success) {
-        setExecutionResult(result);
-        setState("success");
-        await logVoiceCommand(user!.id, coupleId, space, textToProcess, parsed, "executed");
-        qc.invalidateQueries({ queryKey: ["shopping"] });
-      } else {
-        throw new Error(result.message);
+    setActivePromptText(textToProcess);
+    setState("processing");
+    setLastError(null);
+
+    const filterOpts = {
+      space,
+      userId: user!.id,
+      coupleId,
+    };
+
+    try {
+      // 1. Interpretar com IA (whitelist rígida)
+      const parsed = await parseCopilotCommand(textToProcess);
+      setParsedCommand(parsed);
+
+      if (parsed.intent === "unknown") {
+        setQueryResult({
+          text: parsed.reply_summary || "Não compreendi o comando. Tente perguntar sobre seus gastos, contas, metas ou limites de cartão.",
+          intent: "unknown",
+        });
+        setState("query_answer");
+        return;
       }
 
+      // 2. Se for consulta (perguntas sobre gastos, orçamento, metas, contas, cartões)
+      if (parsed.intent.startsWith("query_")) {
+        const queryRes = await resolveCopilotQuery(parsed, filterOpts);
+        setQueryResult(queryRes);
+        setState("query_answer");
+        await logVoiceCommand(user!.id, coupleId, space, textToProcess, parsed as any, "executed");
+        return;
+      }
+
+      // 3. Se for ação (Adicionar despesa, aporte em meta, lista de compras)
+      // FLUXO OBRIGATÓRIO: Interpretar -> Mostrar Prévia -> Confirmar -> Executar
+      if (parsed.intent.startsWith("action_")) {
+        const preview = await prepareCopilotActionPreview(parsed, filterOpts);
+        setActionPreview(preview);
+        setState("action_preview");
+        await logVoiceCommand(user!.id, coupleId, space, textToProcess, parsed as any, "processing");
+        return;
+      }
+
+      throw new Error("Intenção não suportada pelo Copiloto.");
     } catch (e: any) {
-      setLastError(e.message || "Erro desconhecido ao processar comando.");
+      console.error("Erro no processamento do Copiloto:", e);
+      setLastError(e.message || "Erro desconhecido ao processar sua solicitação.");
       setState("error");
-      await logVoiceCommand(user!.id, coupleId, space, textToProcess, null, "failed", e.message);
+      if (user?.id) {
+        await logVoiceCommand(user.id, coupleId, space, textToProcess, null, "failed", e.message);
+      }
     }
   };
 
-  const handleConfirmConflicts = async () => {
-    setState("processing");
+  // Confirmar e Executar a Ação Financeira
+  const handleConfirmAction = async () => {
+    if (!actionPreview) return;
+
     try {
-      // If user confirms, we insert everything (or update).
-      // For MVP, we'll just insert the 'toInsert' list and ignore conflicts (or we could update conflicts).
-      // The user prompt said: "O sistema pode mostrar: Leite já está na lista. Deseja atualizar a quantidade para 3?"
-      // To keep it simple, if they confirm, we'll insert the new items and update the conflicts.
-      // This logic should ideally be in voice-executor.ts. Let's just assume we call a backend function or Supabase.
-      // Doing simple insert of conflict items:
-      const itemsToInsert = [
-        ...(executionResult?.conflictData?.toInsert || []),
-        ...(executionResult?.conflictData?.conflicts?.map((c: any) => ({
-          name: c.newItem.name,
-          category: "mercado",
-          quantity: c.newQuantityStr,
-          user_id: user!.id,
-          couple_id: space === "shared" ? coupleId : null,
-          visibility: space,
-          source_type: "voice_assistant"
-        })) || [])
-      ];
-
-      if (itemsToInsert.length > 0) {
-        const mod = await import("@/integrations/supabase/client");
-        const { error } = await mod.supabase
-          .from("shopping_items").insert(itemsToInsert as never);
-
-        if (error) throw error;
-      }
-
+      setIsExecuting(true);
+      const res = await executeCopilotAction(actionPreview);
+      setSuccessMessage(res.message);
       setState("success");
-      qc.invalidateQueries({ queryKey: ["shopping"] });
-      await logVoiceCommand(user!.id, coupleId, space, manualText, parsedIntent, "executed");
 
+      // Invalida caches centrais de acordo com a ação
+      if (actionPreview.type === "expense") {
+        qc.invalidateQueries({ queryKey: ["home-monthly-summary"] });
+        qc.invalidateQueries({ queryKey: ["fin-expenses"] });
+        qc.invalidateQueries({ queryKey: ["fin-accounts-total"] });
+        qc.invalidateQueries({ queryKey: ["recent-txs"] });
+        qc.invalidateQueries({ queryKey: ["spending-power"] });
+        qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
+        qc.invalidateQueries({ queryKey: ["financial-actuals"] });
+      } else if (actionPreview.type === "goal_contribution") {
+        qc.invalidateQueries({ queryKey: ["goals"] });
+        qc.invalidateQueries({ queryKey: ["spending-power"] });
+        qc.invalidateQueries({ queryKey: ["financial-snapshot"] });
+      } else if (actionPreview.type === "shopping_items") {
+        qc.invalidateQueries({ queryKey: ["shopping"] });
+        qc.invalidateQueries({ queryKey: ["shopping-items"] });
+      }
+
+      toast.success("Ação confirmada e executada!");
+      if (user?.id) {
+        await logVoiceCommand(
+          user.id,
+          coupleId,
+          space,
+          activePromptText,
+          parsedCommand as any,
+          "executed"
+        );
+      }
     } catch (e: any) {
-      setLastError("Erro ao confirmar itens. Tente novamente.");
+      console.error("Erro ao executar ação confirmada:", e);
+      setLastError(e.message || "Não foi possível concluir a ação.");
       setState("error");
+    } finally {
+      setIsExecuting(false);
     }
   };
 
+  // Render do conteúdo dinâmico
   const renderContent = () => {
+    // 1. OUVINDO FALA
     if (state === "listening") {
       return (
-        <div className="flex flex-col items-center justify-center py-12 space-y-6">
+        <div className="flex flex-col items-center justify-center py-10 px-4 space-y-6">
           <div className="relative">
-            <div className="absolute inset-0 bg-coral/20 rounded-full animate-ping"></div>
-            <div className="size-20 bg-coral text-white rounded-full flex items-center justify-center relative z-10 shadow-lg">
+            <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
+            <div className="size-20 bg-primary text-primary-foreground rounded-full flex items-center justify-center relative z-10 shadow-lg">
               <Mic className="size-10" />
             </div>
           </div>
-          <p className="text-lg font-medium animate-pulse">Ouvindo...</p>
-          <p className="text-center text-muted-foreground italic px-4 min-h-[48px]">
-            {transcript || "Fale seu comando..."}
-          </p>
-          <Button variant="outline" onClick={handleStopListening}>Concluir fala</Button>
-        </div>
-      );
-    }
-
-    if (state === "processing") {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <Loader2 className="size-12 animate-spin text-coral" />
-          <p className="font-medium text-lg">Processando...</p>
-          <p className="text-sm text-muted-foreground max-w-[280px] text-center">
-            "{manualText}"
-          </p>
-        </div>
-      );
-    }
-
-    if (state === "confirming") {
-      const conflicts = executionResult?.conflictData?.conflicts || [];
-      const toInsert = executionResult?.conflictData?.toInsert || [];
-      
-      return (
-        <div className="flex flex-col px-4 py-6 space-y-4 max-h-[60vh] overflow-y-auto">
-          <div className="bg-muted p-3 rounded-lg border text-sm">
-            <p className="font-medium mb-1">Entendi:</p>
-            <p className="italic text-muted-foreground">"{manualText}"</p>
+          <div className="text-center space-y-1">
+            <p className="text-base font-semibold text-foreground animate-pulse">Ouvindo você...</p>
+            <p className="text-xs text-muted-foreground">Fale claramente sua pergunta ou ação financeira</p>
           </div>
-          
-          <h3 className="font-medium text-lg">Confirmar ação</h3>
-          
-          {toInsert.length > 0 && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Vou adicionar:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                {toInsert.map((item: any, i: number) => (
-                  <li key={i} className="text-sm font-medium">
-                    {item.name} {item.quantity ? `(${item.quantity})` : ""}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {conflicts.length > 0 && (
-            <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
-              <p className="text-sm font-medium text-warning-foreground mb-2 flex items-center gap-1">
-                Atenção! Itens já na lista:
-              </p>
-              <ul className="list-disc pl-5 space-y-1">
-                {conflicts.map((c: any, i: number) => (
-                  <li key={i} className="text-sm text-warning-foreground">
-                    {c.existing.name} (Adicionando mais {c.newQuantityStr || "1"})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="flex gap-2 pt-4">
-            <Button variant="outline" className="flex-1" onClick={handleClose}>Cancelar</Button>
-            <Button className="flex-1 gradient-coral text-white" onClick={handleConfirmConflicts}>
-              Confirmar
-            </Button>
+          <div className="w-full max-w-sm min-h-[56px] p-3 rounded-2xl bg-muted/60 border border-border/60 text-center text-sm font-medium text-foreground italic flex items-center justify-center">
+            {transcript || "Fale agora: 'Quanto gastamos este mês?' ou 'Adicionar R$ 80 de combustível'"}
           </div>
-        </div>
-      );
-    }
-
-    if (state === "success") {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <div className="size-16 bg-success/20 text-success rounded-full flex items-center justify-center">
-            <Check className="size-8" />
-          </div>
-          <p className="font-medium text-lg">Ação concluída!</p>
-          <p className="text-sm text-muted-foreground text-center px-6">
-            {executionResult?.message || "Comando executado com sucesso."}
-          </p>
-          <Button variant="outline" className="mt-4" onClick={handleClose}>Fechar</Button>
-        </div>
-      );
-    }
-
-    if (state === "error") {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <div className="size-16 bg-destructive/20 text-destructive rounded-full flex items-center justify-center">
-            <X className="size-8" />
-          </div>
-          <p className="font-medium text-lg">Oops!</p>
-          <p className="text-sm text-muted-foreground text-center px-6">
-            {lastError}
-          </p>
-          <div className="flex gap-2 mt-4">
-            <Button variant="outline" onClick={handleClose}>Cancelar</Button>
-            <Button onClick={() => { setState("idle"); startListening(); }}>Tentar Novamente</Button>
-          </div>
-        </div>
-      );
-    }
-
-    // IDLE state (manual typing or start listening again)
-    return (
-      <div className="flex flex-col px-4 py-6 space-y-6">
-        <div className="flex items-center gap-2">
-          <Input 
-            value={manualText} 
-            onChange={(e) => setManualText(e.target.value)}
-            placeholder="Digite ou fale seu comando..."
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') processTranscript(manualText);
-            }}
-            autoFocus={!isSupported}
-          />
-          <Button size="icon" className="shrink-0 gradient-coral text-white" onClick={() => processTranscript(manualText)} disabled={!manualText.trim()}>
-            <Send className="size-4" />
+          <Button variant="outline" className="rounded-full h-10 px-6 text-xs font-semibold" onClick={handleStopListening}>
+            Concluir Fala
           </Button>
         </div>
-        
-        {isSupported && (
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-sm text-muted-foreground">Ou use a voz</p>
-            <Button size="icon" variant="outline" className="size-16 rounded-full" onClick={() => { startListening(); setState("listening"); }}>
-              <Mic className="size-8 text-coral" />
+      );
+    }
+
+    // 2. PROCESSANDO COM IA
+    if (state === "processing") {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 px-4 space-y-4">
+          <div className="size-14 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+            <Loader2 className="size-8 animate-spin" />
+          </div>
+          <div className="text-center space-y-1">
+            <p className="font-semibold text-base text-foreground">Interpretando com IA...</p>
+            <p className="text-xs text-muted-foreground">Consultando motor financeiro central</p>
+          </div>
+          <p className="text-xs text-muted-foreground italic max-w-xs text-center px-4 py-2 bg-muted/40 rounded-xl border border-border/40">
+            "{activePromptText}"
+          </p>
+        </div>
+      );
+    }
+
+    // 3. PRÉVIA DE AÇÃO FINANCEIRA (INTERPRETAR -> PRÉVIA -> CONFIRMAR)
+    if (state === "action_preview" && actionPreview) {
+      const { details } = actionPreview;
+
+      return (
+        <div className="flex flex-col px-4 py-4 space-y-4 max-h-[75vh] overflow-y-auto">
+          {/* Card de Segurança e Confirmação */}
+          <div className="rounded-2xl border-2 border-primary/30 bg-primary/5 p-4 space-y-3.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <Badge className="bg-primary/20 text-primary border-primary/30 text-xs px-2.5 py-0.5 font-semibold">
+                {actionPreview.badgeLabel}
+              </Badge>
+              <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+                <ShieldCheck className="size-3.5 text-primary" />
+                <span>Confirmação Necessária</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="font-bold text-lg text-foreground">{actionPreview.title}</h3>
+              <p className="text-xs text-muted-foreground">{actionPreview.summary}</p>
+            </div>
+
+            {/* Detalhes de Despesa */}
+            {actionPreview.type === "expense" && (
+              <div className="rounded-xl bg-card border border-border/80 p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                  <span className="text-xs text-muted-foreground">Valor a lançar:</span>
+                  <span className="text-xl font-bold text-destructive">{details.amountFormatted}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Descrição:</span>
+                    <span className="font-semibold text-foreground">{details.description}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Categoria:</span>
+                    <span className="font-semibold text-foreground">{details.categoryName}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Data:</span>
+                    <span className="font-medium text-foreground">{details.dateFormatted}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Espaço:</span>
+                    <span className="font-medium text-foreground">{details.spaceLabel}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Detalhes de Aporte em Meta */}
+            {actionPreview.type === "goal_contribution" && (
+              <div className="rounded-xl bg-card border border-border/80 p-3.5 space-y-3">
+                <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                  <span className="text-xs text-muted-foreground">Valor do Aporte:</span>
+                  <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                    +{details.amountFormatted}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-semibold text-foreground">{details.goalName}</span>
+                    <span className="text-muted-foreground">
+                      Novo progresso: <strong className="text-foreground">{details.newProgressPct}%</strong>
+                    </span>
+                  </div>
+                  <Progress value={details.newProgressPct || 0} className="h-2" />
+                  <div className="flex justify-between text-[11px] text-muted-foreground pt-0.5">
+                    <span>Atual: {details.currentAmountFormatted}</span>
+                    <span>Alvo: {details.targetAmountFormatted}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Detalhes de Compras */}
+            {actionPreview.type === "shopping_items" && (
+              <div className="rounded-xl bg-card border border-border/80 p-3 space-y-2">
+                <span className="text-xs text-muted-foreground block">Itens para adicionar:</span>
+                <ul className="space-y-1 pl-1">
+                  {details.items?.map((item, idx) => (
+                    <li key={idx} className="text-xs font-semibold text-foreground flex items-center gap-2">
+                      <span className="size-1.5 rounded-full bg-primary" />
+                      <span>{item.name}</span>
+                      {item.quantity ? <span className="text-muted-foreground font-normal">({item.quantity} {item.unit || ""})</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Botões de Ação */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              className="flex-1 rounded-xl h-11 text-xs font-medium"
+              onClick={handleResetToIdle}
+              disabled={isExecuting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="flex-1 rounded-xl h-11 text-xs font-semibold bg-primary text-primary-foreground gap-1.5 shadow-sm"
+              onClick={handleConfirmAction}
+              disabled={isExecuting}
+            >
+              {isExecuting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  <span>Salvando...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="size-4" />
+                  <span>Confirmar e Salvar</span>
+                </>
+              )}
             </Button>
           </div>
+        </div>
+      );
+    }
+
+    // 4. RESPOSTA DE CONSULTA FINANCEIRA (CONSUMINDO MOTOR CENTRAL)
+    if (state === "query_answer" && queryResult) {
+      const card = queryResult.cardData;
+
+      return (
+        <div className="flex flex-col px-4 py-4 space-y-4 max-h-[75vh] overflow-y-auto">
+          {/* Fala original */}
+          <div className="text-xs text-muted-foreground italic px-3 py-1.5 rounded-lg bg-muted/40 border border-border/40">
+            "{activePromptText}"
+          </div>
+
+          {/* Resposta conversacional acolhedora */}
+          <div className="rounded-2xl bg-card border border-border p-4 space-y-3 shadow-xs">
+            <div className="flex items-center gap-2 text-primary font-semibold text-xs">
+              <Sparkles className="size-4" />
+              <span>Resposta do Copiloto</span>
+            </div>
+            <p className="text-sm text-foreground leading-relaxed">
+              {queryResult.text}
+            </p>
+          </div>
+
+          {/* Card de Métricas do Motor Financeiro Central */}
+          {card && (
+            <div className="rounded-2xl border border-border bg-gradient-to-br from-card to-muted/30 p-4 space-y-3.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground">{card.title}</span>
+                {card.badge && (
+                  <Badge variant={card.badge.variant as any} className="text-[11px] font-semibold">
+                    {card.badge.label}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="space-y-0.5">
+                <div className="text-2xl font-black text-foreground">{card.primaryMetric}</div>
+                {card.secondaryMetric && (
+                  <div className="text-xs text-muted-foreground font-medium">{card.secondaryMetric}</div>
+                )}
+              </div>
+
+              {card.progressPct !== undefined && (
+                <div className="space-y-1">
+                  <Progress value={card.progressPct} className="h-2" />
+                </div>
+              )}
+
+              {card.itemsList && card.itemsList.length > 0 && (
+                <div className="pt-2 border-t border-border/60 space-y-1.5">
+                  {card.itemsList.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs py-0.5">
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <div className="text-right">
+                        <span className="font-semibold text-foreground">{item.value}</span>
+                        {item.extra && <span className="block text-[10px] text-muted-foreground">{item.extra}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Botão de continuação */}
+          <Button
+            variant="outline"
+            className="w-full rounded-xl h-10 text-xs font-semibold gap-1.5 mt-2"
+            onClick={handleResetToIdle}
+          >
+            <RotateCcw className="size-3.5" />
+            <span>Fazer outra pergunta ou ação</span>
+          </Button>
+        </div>
+      );
+    }
+
+    // 5. SUCESSO DE EXECUÇÃO
+    if (state === "success") {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 px-4 space-y-4">
+          <div className="size-16 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center shadow-xs">
+            <Check className="size-8" />
+          </div>
+          <div className="text-center space-y-1">
+            <p className="font-bold text-lg text-foreground">Ação Realizada com Sucesso!</p>
+            <p className="text-xs text-muted-foreground max-w-xs text-center">
+              {successMessage || "Dados gravados e consolidados no motor financeiro."}
+            </p>
+          </div>
+          <div className="flex gap-2 pt-2 w-full max-w-xs">
+            <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs" onClick={handleResetToIdle}>
+              Novo Comando
+            </Button>
+            <Button className="flex-1 rounded-xl h-10 text-xs font-semibold bg-primary text-primary-foreground" onClick={handleClose}>
+              Concluir
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // 6. ERRO
+    if (state === "error") {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 px-4 space-y-4">
+          <div className="size-14 bg-destructive/10 text-destructive rounded-full flex items-center justify-center">
+            <AlertTriangle className="size-7" />
+          </div>
+          <div className="text-center space-y-1">
+            <p className="font-bold text-base text-foreground">Não foi possível processar</p>
+            <p className="text-xs text-muted-foreground max-w-xs text-center px-2">
+              {lastError || "Ocorreu uma instabilidade na conexão com o Copiloto."}
+            </p>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="rounded-xl h-10 text-xs px-4" onClick={handleResetToIdle}>
+              Voltar
+            </Button>
+            <Button
+              className="rounded-xl h-10 text-xs px-4 bg-primary text-primary-foreground font-semibold"
+              onClick={() => {
+                if (activePromptText) {
+                  processInput(activePromptText);
+                } else {
+                  handleResetToIdle();
+                }
+              }}
+            >
+              Tentar Novamente
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // 7. ESTADO IDLE (MENU PRINCIPAL COM ATALHOS E ENTRADA DE VOZ / TEXTO)
+    return (
+      <div className="flex flex-col px-4 py-4 space-y-5 max-h-[80vh] overflow-y-auto">
+        {/* Sugestões Rápidas Obrigatórias da Etapa 13 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Sparkles className="size-3.5 text-primary" />
+              <span>Perguntas e Ações Rápidas</span>
+            </span>
+            <span className="text-[11px] text-muted-foreground">Toque para executar</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {QUICK_PROMPTS.map((prompt, idx) => {
+              const Icon = prompt.icon;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setManualText(prompt.text);
+                    processInput(prompt.text);
+                  }}
+                  className="flex items-center justify-between text-left p-2.5 rounded-xl border border-border/70 bg-card hover:bg-muted/50 hover:border-primary/50 transition-all text-xs font-medium text-foreground group active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-2 truncate pr-2">
+                    <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      <Icon className="size-3.5" />
+                    </div>
+                    <span className="truncate">{prompt.text}</span>
+                  </div>
+                  <ChevronRight className="size-3.5 text-muted-foreground/60 shrink-0 group-hover:text-primary transition-colors" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Microfone Central para Comando de Voz */}
+        {isSupported && (
+          <div className="flex flex-col items-center justify-center py-2 space-y-2">
+            <button
+              type="button"
+              onClick={() => {
+                startListening();
+                setState("listening");
+              }}
+              className="size-16 rounded-full bg-primary text-primary-foreground shadow-md hover:scale-105 active:scale-95 transition-all flex items-center justify-center relative group"
+            >
+              <Mic className="size-8" />
+              <span className="absolute -bottom-5 text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
+                Toque para falar
+              </span>
+            </button>
+          </div>
         )}
+
+        {/* Campo de Texto para Digitação com Envio Imediato */}
+        <div className="pt-3">
+          <div className="flex items-center gap-2">
+            <Input
+              value={manualText}
+              onChange={(e) => setManualText(e.target.value)}
+              placeholder="Digite sua dúvida ou comando financeiro..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && manualText.trim()) {
+                  processInput(manualText);
+                }
+              }}
+              className="rounded-xl h-11 text-xs"
+            />
+            <Button
+              size="icon"
+              className="shrink-0 size-11 rounded-xl bg-primary text-primary-foreground shadow-xs"
+              onClick={() => processInput(manualText)}
+              disabled={!manualText.trim()}
+            >
+              <Send className="size-4" />
+            </Button>
+          </div>
+        </div>
       </div>
     );
   };
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="outline-none">
-        <DrawerHeader className="text-left border-b border-border/50 pb-2">
-          <DrawerTitle className="text-lg">Assistente</DrawerTitle>
+      <DrawerContent className="outline-none max-w-lg mx-auto">
+        <DrawerHeader className="text-left border-b border-border/50 pb-2.5 px-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <Sparkles className="size-4.5" />
+              </div>
+              <div>
+                <DrawerTitle className="text-sm font-bold text-foreground">
+                  Copiloto Financeiro com IA
+                </DrawerTitle>
+                <p className="text-[11px] text-muted-foreground">
+                  Perguntas e ações integradas ao motor financeiro
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-6">
+                {space === "shared" ? "Espaço Casal" : "Espaço Meu"}
+              </Badge>
+              {hasGeminiKey && (
+                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" title="IA Própria Ativa" />
+              )}
+            </div>
+          </div>
         </DrawerHeader>
+
         {renderContent()}
       </DrawerContent>
     </Drawer>
   );
+}
+
+function ChevronRight(props: any) {
+  return <ArrowRight {...props} />;
 }
