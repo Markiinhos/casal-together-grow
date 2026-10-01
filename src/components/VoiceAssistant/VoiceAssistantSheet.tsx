@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ import {
   ArrowRight,
   RotateCcw,
   AlertTriangle,
+  HelpCircle,
 } from "lucide-react";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import {
@@ -74,6 +76,7 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
   const [successMessage, setSuccessMessage] = useState("");
   const [lastError, setLastError] = useState<string | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [micHelpOpen, setMicHelpOpen] = useState(false);
 
   const { user } = useAuth();
   const { data: profile } = useProfile();
@@ -118,13 +121,18 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
     setLastError(null);
   };
 
-  // Handle Speech Error
+  // Handle Speech Error: não bloqueia a tela inteira, apenas avisa e volta para idle
   useEffect(() => {
     if (speechError) {
-      setState("error");
-      setLastError(speechError);
+      if (state === "listening") {
+        setState("idle");
+      }
+      toast.error(speechError, {
+        description: "Você pode tocar nos atalhos rápidos ou digitar sua pergunta abaixo.",
+        duration: 5000,
+      });
     }
-  }, [speechError]);
+  }, [speechError, state]);
 
   // Handle speech end
   const handleStopListening = () => {
@@ -588,26 +596,33 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
         </div>
 
         {/* Microfone Central para Comando de Voz */}
-        {isSupported && (
-          <div className="flex flex-col items-center justify-center py-2 space-y-2">
-            <button
-              type="button"
-              onClick={() => {
-                startListening();
-                setState("listening");
-              }}
-              className="size-16 rounded-full bg-primary text-primary-foreground shadow-md hover:scale-105 active:scale-95 transition-all flex items-center justify-center relative group"
-            >
-              <Mic className="size-8" />
-              <span className="absolute -bottom-5 text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
-                Toque para falar
-              </span>
-            </button>
-          </div>
-        )}
+        <div className="flex flex-col items-center justify-center py-2 space-y-2">
+          <button
+            type="button"
+            onClick={async () => {
+              setState("listening");
+              await startListening();
+            }}
+            className="size-16 rounded-full bg-primary text-primary-foreground shadow-md hover:scale-105 active:scale-95 transition-all flex items-center justify-center relative group"
+          >
+            <Mic className="size-8" />
+            <span className="absolute -bottom-5 text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
+              Toque para falar
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMicHelpOpen(true)}
+            className="pt-6 text-[11px] text-muted-foreground/80 hover:text-foreground underline flex items-center gap-1 transition-colors"
+          >
+            <HelpCircle className="size-3" />
+            <span>Como liberar o microfone no celular?</span>
+          </button>
+        </div>
 
         {/* Campo de Texto para Digitação com Envio Imediato */}
-        <div className="pt-3">
+        <div className="pt-2">
           <div className="flex items-center gap-2">
             <Input
               value={manualText}
@@ -635,38 +650,89 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="outline-none max-w-lg mx-auto">
-        <DrawerHeader className="text-left border-b border-border/50 pb-2.5 px-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <Sparkles className="size-4.5" />
+    <>
+      <Drawer open={open} onOpenChange={onOpenChange}>
+        <DrawerContent className="outline-none max-w-lg mx-auto">
+          <DrawerHeader className="text-left border-b border-border/50 pb-2.5 px-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <Sparkles className="size-4.5" />
+                </div>
+                <div>
+                  <DrawerTitle className="text-sm font-bold text-foreground">
+                    Copiloto Financeiro com IA
+                  </DrawerTitle>
+                  <p className="text-[11px] text-muted-foreground">
+                    Perguntas e ações integradas ao motor financeiro
+                  </p>
+                </div>
               </div>
-              <div>
-                <DrawerTitle className="text-sm font-bold text-foreground">
-                  Copiloto Financeiro com IA
-                </DrawerTitle>
-                <p className="text-[11px] text-muted-foreground">
-                  Perguntas e ações integradas ao motor financeiro
-                </p>
+
+              <div className="flex items-center gap-1.5">
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-6">
+                  {space === "shared" ? "Espaço Casal" : "Espaço Meu"}
+                </Badge>
+                {hasGeminiKey && (
+                  <span className="size-2 rounded-full bg-emerald-500 animate-pulse" title="IA Própria Ativa" />
+                )}
               </div>
+            </div>
+          </DrawerHeader>
+
+          {renderContent()}
+        </DrawerContent>
+      </Drawer>
+
+      {/* Modal explicativo de como liberar o microfone no celular */}
+      <Dialog open={micHelpOpen} onOpenChange={setMicHelpOpen}>
+        <DialogContent className="max-w-sm rounded-2xl p-5 space-y-3">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Mic className="size-4 text-primary" />
+              Como liberar o microfone no celular
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Como o app é executado no navegador / PWA, a permissão fica dentro do Google Chrome.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2.5 text-xs text-foreground">
+            <div className="p-3 bg-muted/50 rounded-xl space-y-1.5 border border-border/60">
+              <p className="font-semibold text-primary">Método 1: Pelo navegador Chrome</p>
+              <ol className="list-decimal pl-4 space-y-1 text-muted-foreground text-[11px]">
+                <li>Abra o aplicativo no Chrome ou navegador padrão.</li>
+                <li>Toque no ícone de <strong>cadeado (🔒)</strong> ou <strong>três pontinhos (⋮)</strong> ao lado do endereço.</li>
+                <li>Toque em <strong>Permissões</strong> &gt; <strong>Microfone</strong> e escolha <strong>Permitir</strong>.</li>
+              </ol>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              <Badge variant="outline" className="text-[10px] px-2 py-0.5 h-6">
-                {space === "shared" ? "Espaço Casal" : "Espaço Meu"}
-              </Badge>
-              {hasGeminiKey && (
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" title="IA Própria Ativa" />
-              )}
+            <div className="p-3 bg-muted/50 rounded-xl space-y-1.5 border border-border/60">
+              <p className="font-semibold text-primary">Método 2: Configurações do Android</p>
+              <ol className="list-decimal pl-4 space-y-1 text-muted-foreground text-[11px]">
+                <li>Vá nas <strong>Configurações do Android</strong> &gt; <strong>Aplicativos</strong>.</li>
+                <li>Procure por <strong>Chrome</strong> (onde o app roda).</li>
+                <li>Toque em <strong>Permissões</strong> &gt; <strong>Microfone</strong> &gt; <strong>Permitir durante o uso do app</strong>.</li>
+              </ol>
             </div>
+
+            <p className="text-[11px] text-muted-foreground italic bg-primary/5 p-2.5 rounded-lg border border-primary/20">
+              💡 Você também pode usar todas as funções do Copiloto digitando na caixinha ou tocando nos botões de atalho rápidos!
+            </p>
           </div>
-        </DrawerHeader>
 
-        {renderContent()}
-      </DrawerContent>
-    </Drawer>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setMicHelpOpen(false)}
+              className="w-full rounded-xl h-10 text-xs font-semibold bg-primary text-primary-foreground"
+            >
+              Entendi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

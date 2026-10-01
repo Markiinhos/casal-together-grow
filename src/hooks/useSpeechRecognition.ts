@@ -70,18 +70,38 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
     };
   }, [isSupported]);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     if (!isSupported) {
-      setError("O reconhecimento de voz não está disponível neste dispositivo. Digite o comando.");
+      setError("O reconhecimento de voz não está disponível neste navegador. Você pode digitar abaixo.");
       return;
     }
     setError(null);
     setTranscript("");
+
+    // 1. Tenta solicitar a permissão nativa de microfone do navegador/Android se necessário
+    if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Fecha o stream imediatamente para liberar a captura para o SpeechRecognition
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (permErr: any) {
+        console.warn("Aviso na solicitação de microfone via getUserMedia:", permErr);
+        if (permErr?.name === "NotAllowedError" || permErr?.name === "PermissionDeniedError") {
+          setError(
+            "Permissão de microfone não autorizada. No navegador, toque no ícone do cadeado (🔒) ou nas configurações do Chrome para permitir."
+          );
+          return;
+        }
+      }
+    }
+
+    // 2. Inicia o SpeechRecognition
     try {
       recognitionRef.current?.start();
     } catch (e: any) {
       if (e.name !== 'InvalidStateError') {
-        setError("Não foi possível iniciar o microfone.");
+        console.warn("SpeechRecognition start error:", e);
+        setError("Não foi possível iniciar o microfone. Tente digitar seu pedido.");
       }
     }
   }, [isSupported]);
