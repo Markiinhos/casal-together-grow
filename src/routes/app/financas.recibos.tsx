@@ -36,12 +36,19 @@ import {
 } from "lucide-react";
 import { processReceiptDocument, type ExtractedReceiptData, formatCurrencyBRL } from "@/lib/ocr";
 import { formatDateOnly, getLocalISODate } from "@/lib/date-utils";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export const Route = createFileRoute("/app/financas/recibos")({
+  head: () => ({
+    meta: [
+      { title: "Leitor de Recibos com IA — CASAL" },
+      { name: "description", content: "Fotografe ou envie recibos, cupons e boletos com leitura automática por IA." },
+    ],
+  }),
   component: ReceiptsOcrPage,
 });
 
-export default function ReceiptsOcrPage() {
+function ReceiptsOcrPage() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
   const coupleId = profile?.couple_id ?? null;
@@ -285,7 +292,7 @@ export default function ReceiptsOcrPage() {
   }, [editCategoryId, categories, extractedData]);
 
   return (
-    <>
+    <ErrorBoundary>
       <AppHeader
         title="Leitor de Recibos com IA"
         subtitle="Fotografe ou envie recibos, notas e boletos"
@@ -651,7 +658,7 @@ export default function ReceiptsOcrPage() {
                       <span>Forma de Pagamento</span>
                     </Label>
                     <Select
-                      value={editPaymentMethod}
+                      value={editPaymentMethod || "Cartão de Crédito"}
                       onValueChange={(val) => setEditPaymentMethod(val)}
                     >
                       <SelectTrigger className="rounded-xl h-10">
@@ -675,14 +682,14 @@ export default function ReceiptsOcrPage() {
                       <span>Categoria</span>
                     </Label>
                     <Select
-                      value={editCategoryId}
+                      value={editCategoryId || undefined}
                       onValueChange={(val) => setEditCategoryId(val)}
                     >
                       <SelectTrigger className="rounded-xl h-10">
                         <SelectValue placeholder="Selecione a categoria" />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((cat) => (
+                        {categories.filter((cat) => Boolean(cat?.id)).map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
                             {cat.name}
                           </SelectItem>
@@ -699,14 +706,14 @@ export default function ReceiptsOcrPage() {
                         <span>Cartão de Crédito</span>
                       </Label>
                       <Select
-                        value={editCreditCardId}
+                        value={editCreditCardId || undefined}
                         onValueChange={(val) => setEditCreditCardId(val)}
                       >
                         <SelectTrigger className="rounded-xl h-10">
                           <SelectValue placeholder="Selecione o cartão" />
                         </SelectTrigger>
                         <SelectContent>
-                          {creditCards.map((card) => (
+                          {creditCards.filter((card) => Boolean(card?.id)).map((card) => (
                             <SelectItem key={card.id} value={card.id}>
                               {card.name}
                             </SelectItem>
@@ -721,14 +728,14 @@ export default function ReceiptsOcrPage() {
                         <span>Conta Bancária</span>
                       </Label>
                       <Select
-                        value={editAccountId}
+                        value={editAccountId || undefined}
                         onValueChange={(val) => setEditAccountId(val)}
                       >
                         <SelectTrigger className="rounded-xl h-10">
                           <SelectValue placeholder="Selecione a conta" />
                         </SelectTrigger>
                         <SelectContent>
-                          {bankAccounts.map((acc) => (
+                          {bankAccounts.filter((acc) => Boolean(acc?.id)).map((acc) => (
                             <SelectItem key={acc.id} value={acc.id}>
                               {acc.name}
                             </SelectItem>
@@ -791,6 +798,6 @@ export default function ReceiptsOcrPage() {
           </ul>
         </div>
       </div>
-    </>
+    </ErrorBoundary>
   );
 }

@@ -1,4 +1,4 @@
-import { parseReceiptDocumentFn, OCRDocumentResult } from "./ocr.functions";
+import type { OCRDocumentResult } from "./ocr.functions";
 import { formatDateOnly, getLocalISODate, toDatabaseDate } from "./date-utils";
 
 export interface ExtractedReceiptData {
@@ -127,6 +127,7 @@ export async function processReceiptDocument(file: File): Promise<ExtractedRecei
 
     let parsedResult: OCRDocumentResult;
     try {
+      const { parseReceiptDocumentFn } = await import("./ocr.functions");
       parsedResult = await parseReceiptDocumentFn({
         data: {
           base64Data,
