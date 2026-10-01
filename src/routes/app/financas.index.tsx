@@ -16,22 +16,15 @@ import { type CardAggregate, OPEN_STATUSES } from "@/lib/card-aggregate";
 import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Wallet, CreditCard,
   TrendingUp, TrendingDown, Plus, ChartLine, Sparkles, PieChart,
-<<<<<<< HEAD
-  Target, LayoutDashboard, CalendarCheck, CalendarDays, Landmark,
-=======
-  Target, LayoutDashboard, CalendarCheck, Landmark, Repeat,
->>>>>>> 177280e (feat(recorrencias-alertas): implementar Central de Recorrencias e Alertas Financeiros Inteligentes)
+  Target, LayoutDashboard, CalendarCheck, CalendarDays, Landmark, Repeat,
 } from "lucide-react";
 import {
   fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, getHomeMonthlySummary,
   formatBRL, hideOrShow, monthLabel, monthRange, useSpendingPower,
 } from "@/lib/finance";
-<<<<<<< HEAD
 import { SpendingPowerCard } from "@/components/SpendingPowerCard";
-=======
 import { useSmartAlerts } from "@/lib/smart-alerts";
 import { SmartAlertsBanner } from "@/components/SmartAlertsBanner";
->>>>>>> 177280e (feat(recorrencias-alertas): implementar Central de Recorrencias e Alertas Financeiros Inteligentes)
 import { TransactionEditDrawer } from "@/components/TransactionEditDrawer";
 import { InvoicePaymentDetailsDrawer } from "@/components/InvoicePaymentDetailsDrawer";
 import { CardPurchaseEditDrawer } from "@/components/CardPurchaseEditDrawer";
@@ -253,7 +246,9 @@ function FinancasCentral() {
           </button>
         </div>
 
-<<<<<<< HEAD
+        {/* Alertas Financeiros Inteligentes */}
+        <SmartAlertsBanner alerts={smartAlerts} isLoading={isLoadingAlerts} />
+
         {/* ETAPA 4: Indicador Financeiro Dinâmico "Quanto podemos gastar?" */}
         <ErrorBoundary>
           <SpendingPowerCard
@@ -262,10 +257,6 @@ function FinancasCentral() {
             isPrivate={space === "private"}
           />
         </ErrorBoundary>
-=======
-        {/* Alertas Financeiros Inteligentes */}
-        <SmartAlertsBanner alerts={smartAlerts} isLoading={isLoadingAlerts} />
->>>>>>> 177280e (feat(recorrencias-alertas): implementar Central de Recorrencias e Alertas Financeiros Inteligentes)
 
         {/* Card principal */}
         <ErrorBoundary>
