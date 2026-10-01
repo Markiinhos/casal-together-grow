@@ -45,6 +45,7 @@ import { Route as AppMaisConfiguracoesRouteImport } from './routes/app/mais/conf
 import { Route as AppFinancasSimularRouteImport } from './routes/app/financas.simular'
 import { Route as AppFinancasSimulacoesRouteImport } from './routes/app/financas.simulacoes'
 import { Route as AppFinancasRecorrenciasRouteImport } from './routes/app/financas.recorrencias'
+import { Route as AppFinancasRecibosRouteImport } from './routes/app/financas.recibos'
 import { Route as AppFinancasProjecaoRouteImport } from './routes/app/financas.projecao'
 import { Route as AppFinancasPatrimonioRouteImport } from './routes/app/financas.patrimonio'
 import { Route as AppFinancasFechamentoRouteImport } from './routes/app/financas.fechamento'
@@ -250,6 +251,11 @@ const AppFinancasRecorrenciasRoute = AppFinancasRecorrenciasRouteImport.update({
   path: '/financas/recorrencias',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppFinancasRecibosRoute = AppFinancasRecibosRouteImport.update({
+  id: '/financas/recibos',
+  path: '/financas/recibos',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppFinancasProjecaoRoute = AppFinancasProjecaoRouteImport.update({
   id: '/financas/projecao',
   path: '/financas/projecao',
@@ -419,6 +425,7 @@ export interface FileRoutesByFullPath {
   '/app/financas/fechamento': typeof AppFinancasFechamentoRoute
   '/app/financas/patrimonio': typeof AppFinancasPatrimonioRoute
   '/app/financas/projecao': typeof AppFinancasProjecaoRoute
+  '/app/financas/recibos': typeof AppFinancasRecibosRoute
   '/app/financas/recorrencias': typeof AppFinancasRecorrenciasRoute
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
@@ -475,6 +482,7 @@ export interface FileRoutesByTo {
   '/app/financas/fechamento': typeof AppFinancasFechamentoRoute
   '/app/financas/patrimonio': typeof AppFinancasPatrimonioRoute
   '/app/financas/projecao': typeof AppFinancasProjecaoRoute
+  '/app/financas/recibos': typeof AppFinancasRecibosRoute
   '/app/financas/recorrencias': typeof AppFinancasRecorrenciasRoute
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
@@ -538,6 +546,7 @@ export interface FileRoutesById {
   '/app/financas/fechamento': typeof AppFinancasFechamentoRoute
   '/app/financas/patrimonio': typeof AppFinancasPatrimonioRoute
   '/app/financas/projecao': typeof AppFinancasProjecaoRoute
+  '/app/financas/recibos': typeof AppFinancasRecibosRoute
   '/app/financas/recorrencias': typeof AppFinancasRecorrenciasRoute
   '/app/financas/simulacoes': typeof AppFinancasSimulacoesRoute
   '/app/financas/simular': typeof AppFinancasSimularRoute
@@ -602,6 +611,7 @@ export interface FileRouteTypes {
     | '/app/financas/fechamento'
     | '/app/financas/patrimonio'
     | '/app/financas/projecao'
+    | '/app/financas/recibos'
     | '/app/financas/recorrencias'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
@@ -658,6 +668,7 @@ export interface FileRouteTypes {
     | '/app/financas/fechamento'
     | '/app/financas/patrimonio'
     | '/app/financas/projecao'
+    | '/app/financas/recibos'
     | '/app/financas/recorrencias'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
@@ -720,6 +731,7 @@ export interface FileRouteTypes {
     | '/app/financas/fechamento'
     | '/app/financas/patrimonio'
     | '/app/financas/projecao'
+    | '/app/financas/recibos'
     | '/app/financas/recorrencias'
     | '/app/financas/simulacoes'
     | '/app/financas/simular'
@@ -1007,6 +1019,13 @@ declare module '@tanstack/react-router' {
       path: '/financas/recorrencias'
       fullPath: '/app/financas/recorrencias'
       preLoaderRoute: typeof AppFinancasRecorrenciasRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/financas/recibos': {
+      id: '/app/financas/recibos'
+      path: '/financas/recibos'
+      fullPath: '/app/financas/recibos'
+      preLoaderRoute: typeof AppFinancasRecibosRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/financas/projecao': {
@@ -1301,6 +1320,7 @@ interface AppRouteRouteChildren {
   AppFinancasFechamentoRoute: typeof AppFinancasFechamentoRoute
   AppFinancasPatrimonioRoute: typeof AppFinancasPatrimonioRoute
   AppFinancasProjecaoRoute: typeof AppFinancasProjecaoRoute
+  AppFinancasRecibosRoute: typeof AppFinancasRecibosRoute
   AppFinancasRecorrenciasRoute: typeof AppFinancasRecorrenciasRoute
   AppFinancasSimulacoesRoute: typeof AppFinancasSimulacoesRoute
   AppFinancasSimularRoute: typeof AppFinancasSimularRoute
@@ -1343,6 +1363,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppFinancasFechamentoRoute: AppFinancasFechamentoRoute,
   AppFinancasPatrimonioRoute: AppFinancasPatrimonioRoute,
   AppFinancasProjecaoRoute: AppFinancasProjecaoRoute,
+  AppFinancasRecibosRoute: AppFinancasRecibosRoute,
   AppFinancasRecorrenciasRoute: AppFinancasRecorrenciasRoute,
   AppFinancasSimulacoesRoute: AppFinancasSimulacoesRoute,
   AppFinancasSimularRoute: AppFinancasSimularRoute,

@@ -14,7 +14,7 @@ import { getLocalISODate } from "@/lib/date-utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AppHeader } from "@/components/AppHeader";
-import { Sparkles, Wallet, Calendar, Target, ListChecks, Loader2 } from "lucide-react";
+import { Sparkles, Wallet, Calendar, Target, ListChecks, Loader2, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { CategoryIcon } from "@/lib/category-icons";
 
@@ -58,14 +58,29 @@ function AddPage() {
         </div>
 
         {mode === "expense" && (
-          <div className="rounded-2xl bg-primary/5 border border-primary/20 p-3 flex items-center justify-between gap-2">
-            <div className="text-xs">
-              <p className="font-semibold">Não sabe se cabe no orçamento?</p>
-              <p className="text-muted-foreground">Simule antes de adicionar como despesa.</p>
+          <div className="space-y-2">
+            <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center justify-between gap-2">
+              <div className="text-xs">
+                <p className="font-semibold text-amber-700 dark:text-amber-400">Tem um cupom, recibo ou boleto?</p>
+                <p className="text-muted-foreground">Fotografe ou envie o PDF para preencher com IA.</p>
+              </div>
+              <Button asChild size="sm" className="bg-amber-600 hover:bg-amber-700 text-white shrink-0">
+                <Link to="/app/financas/recibos">
+                  <Receipt className="size-4 mr-1.5" />
+                  Escanear
+                </Link>
+              </Button>
             </div>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/app/financas/simular" search={(prev: any) => prev}><Sparkles className="size-4 mr-1" />Simular</Link>
-            </Button>
+
+            <div className="rounded-2xl bg-primary/5 border border-primary/20 p-3 flex items-center justify-between gap-2">
+              <div className="text-xs">
+                <p className="font-semibold">Não sabe se cabe no orçamento?</p>
+                <p className="text-muted-foreground">Simule antes de adicionar como despesa.</p>
+              </div>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/app/financas/simular" search={(prev: any) => prev}><Sparkles className="size-4 mr-1" />Simular</Link>
+              </Button>
+            </div>
           </div>
         )}
         {mode === "ai" && <AIForm />}
@@ -179,6 +194,15 @@ function AIForm() {
           </div>
         </div>
       )}
+      <div className="pt-2 border-t border-border/50 flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">Tem foto de cupom, recibo ou boleto?</span>
+        <Button asChild size="sm" variant="ghost" className="gap-1.5 h-8 text-xs text-primary font-medium hover:text-primary">
+          <Link to="/app/financas/recibos">
+            <Receipt className="size-3.5" />
+            <span>Usar Leitor de Recibos</span>
+          </Link>
+        </Button>
+      </div>
     </Card>
   );
 }

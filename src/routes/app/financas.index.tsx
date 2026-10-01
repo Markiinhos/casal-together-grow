@@ -17,7 +17,7 @@ import {
   ChevronLeft, ChevronRight, Eye, EyeOff, Wallet, CreditCard,
   TrendingUp, TrendingDown, Plus, ChartLine, Sparkles, PieChart,
   Target, LayoutDashboard, CalendarCheck, CalendarDays, Landmark, Repeat,
-  ArrowLeftRight,
+  ArrowLeftRight, Receipt,
 } from "lucide-react";
 import {
   fetchAccountsTotal, getCategoryExpenses, fetchMonthIncome, getHomeMonthlySummary,
@@ -385,7 +385,8 @@ function FinancasCentral() {
         </ErrorBoundary>
 
         {/* Atalhos */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2">
+          <ShortcutTile to="/app/financas/recibos" icon={Receipt} label="Ler Recibo" />
           <ShortcutTile to="/app/financas/recorrencias" icon={Repeat} label="Recorrências" />
           <ShortcutTile to="/app/financas/comparacao" icon={ArrowLeftRight} label="Comparação" />
           <ShortcutTile to="/app/financas/calendario" icon={CalendarDays} label="Calendário" />
