@@ -64,6 +64,7 @@ import {
   ShieldCheck,
   Clock,
   PiggyBank,
+  ArrowLeftRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -263,9 +264,17 @@ function MonthlyClosingPage() {
             </button>
           </div>
 
-          <Badge variant={space === "shared" ? "secondary" : "outline"} className="text-xs">
-            {space === "shared" ? "Espaço do Casal" : "Meu Espaço"}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Link to={"/app/financas/comparacao" as any}>
+              <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs gap-1 shadow-none">
+                <ArrowLeftRight className="size-3.5 text-primary" />
+                <span>Comparar</span>
+              </Button>
+            </Link>
+            <Badge variant={space === "shared" ? "secondary" : "outline"} className="text-xs">
+              {space === "shared" ? "Espaço do Casal" : "Meu Espaço"}
+            </Badge>
+          </div>
         </div>
 
         {activeTab === "snapshot" && (

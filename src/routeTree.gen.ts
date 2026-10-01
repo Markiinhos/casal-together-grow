@@ -51,6 +51,7 @@ import { Route as AppFinancasFechamentoRouteImport } from './routes/app/financas
 import { Route as AppFinancasFaturasRouteImport } from './routes/app/financas.faturas'
 import { Route as AppFinancasEstruturaRouteImport } from './routes/app/financas.estrutura'
 import { Route as AppFinancasContasRouteImport } from './routes/app/financas.contas'
+import { Route as AppFinancasComparacaoRouteImport } from './routes/app/financas.comparacao'
 import { Route as AppFinancasCalendarioRouteImport } from './routes/app/financas.calendario'
 import { Route as AppCasaComprasRouteImport } from './routes/app/casa/compras'
 import { Route as AppFinancasPlanejamentoIndexRouteImport } from './routes/app/financas.planejamento.index'
@@ -279,6 +280,11 @@ const AppFinancasContasRoute = AppFinancasContasRouteImport.update({
   path: '/financas/contas',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppFinancasComparacaoRoute = AppFinancasComparacaoRouteImport.update({
+  id: '/financas/comparacao',
+  path: '/financas/comparacao',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppFinancasCalendarioRoute = AppFinancasCalendarioRouteImport.update({
   id: '/financas/calendario',
   path: '/financas/calendario',
@@ -406,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/calendario': typeof AppFinancasCalendarioRoute
+  '/app/financas/comparacao': typeof AppFinancasComparacaoRoute
   '/app/financas/contas': typeof AppFinancasContasRoute
   '/app/financas/estrutura': typeof AppFinancasEstruturaRouteWithChildren
   '/app/financas/faturas': typeof AppFinancasFaturasRoute
@@ -462,6 +469,7 @@ export interface FileRoutesByTo {
   '/convite/$code': typeof ConviteCodeRoute
   '/app': typeof AppIndexRoute
   '/app/financas/calendario': typeof AppFinancasCalendarioRoute
+  '/app/financas/comparacao': typeof AppFinancasComparacaoRoute
   '/app/financas/contas': typeof AppFinancasContasRoute
   '/app/financas/faturas': typeof AppFinancasFaturasRoute
   '/app/financas/fechamento': typeof AppFinancasFechamentoRoute
@@ -523,6 +531,7 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/app/casa/compras': typeof AppCasaComprasRouteWithChildren
   '/app/financas/calendario': typeof AppFinancasCalendarioRoute
+  '/app/financas/comparacao': typeof AppFinancasComparacaoRoute
   '/app/financas/contas': typeof AppFinancasContasRoute
   '/app/financas/estrutura': typeof AppFinancasEstruturaRouteWithChildren
   '/app/financas/faturas': typeof AppFinancasFaturasRoute
@@ -586,6 +595,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/casa/compras'
     | '/app/financas/calendario'
+    | '/app/financas/comparacao'
     | '/app/financas/contas'
     | '/app/financas/estrutura'
     | '/app/financas/faturas'
@@ -642,6 +652,7 @@ export interface FileRouteTypes {
     | '/convite/$code'
     | '/app'
     | '/app/financas/calendario'
+    | '/app/financas/comparacao'
     | '/app/financas/contas'
     | '/app/financas/faturas'
     | '/app/financas/fechamento'
@@ -702,6 +713,7 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/casa/compras'
     | '/app/financas/calendario'
+    | '/app/financas/comparacao'
     | '/app/financas/contas'
     | '/app/financas/estrutura'
     | '/app/financas/faturas'
@@ -1039,6 +1051,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinancasContasRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/financas/comparacao': {
+      id: '/app/financas/comparacao'
+      path: '/financas/comparacao'
+      fullPath: '/app/financas/comparacao'
+      preLoaderRoute: typeof AppFinancasComparacaoRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/financas/calendario': {
       id: '/app/financas/calendario'
       path: '/financas/calendario'
@@ -1275,6 +1294,7 @@ interface AppRouteRouteChildren {
   AppTarefasRoute: typeof AppTarefasRoute
   AppIndexRoute: typeof AppIndexRoute
   AppFinancasCalendarioRoute: typeof AppFinancasCalendarioRoute
+  AppFinancasComparacaoRoute: typeof AppFinancasComparacaoRoute
   AppFinancasContasRoute: typeof AppFinancasContasRoute
   AppFinancasEstruturaRoute: typeof AppFinancasEstruturaRouteWithChildren
   AppFinancasFaturasRoute: typeof AppFinancasFaturasRoute
@@ -1316,6 +1336,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppTarefasRoute: AppTarefasRoute,
   AppIndexRoute: AppIndexRoute,
   AppFinancasCalendarioRoute: AppFinancasCalendarioRoute,
+  AppFinancasComparacaoRoute: AppFinancasComparacaoRoute,
   AppFinancasContasRoute: AppFinancasContasRoute,
   AppFinancasEstruturaRoute: AppFinancasEstruturaRouteWithChildren,
   AppFinancasFaturasRoute: AppFinancasFaturasRoute,

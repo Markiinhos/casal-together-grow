@@ -141,10 +141,9 @@ export async function getFinancialCalendar(
     (async () => {
       let q = supabase
         .from("transactions")
-        .select("id, amount, description, type, date, is_card_payment, credit_card_id, status")
+        .select("id, amount, description, type, date, is_card_payment, credit_card_id")
         .gte("date", start)
-        .lte("date", end)
-        .neq("status", "cancelled");
+        .lte("date", end);
       q = applySpaceFilter(q, opts);
       const { data } = await q;
       return (data ?? []) as any[];
