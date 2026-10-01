@@ -90,14 +90,34 @@ function ReceiptsOcrPage() {
   const [apiKeyInput, setApiKeyInput] = useState(() => getStoredGeminiKey());
   const [activeGeminiKey, setActiveGeminiKey] = useState(() => getStoredGeminiKey());
 
-  function handleSaveApiKey() {
-    setStoredGeminiKey(apiKeyInput);
-    setActiveGeminiKey(apiKeyInput.trim());
-    setApiKeyDialogOpen(false);
-    if (apiKeyInput.trim()) {
-      toast.success("Chave do Google Gemini salva com sucesso! Visão de IA ativada.");
-    } else {
+  const [isValidatingKey, setIsValidatingKey] = useState(false);
+
+  async function handleSaveApiKey() {
+    const trimmed = apiKeyInput.trim();
+    if (!trimmed) {
+      setStoredGeminiKey("");
+      setActiveGeminiKey("");
+      setApiKeyDialogOpen(false);
       toast.info("Chave removida. Usando provedor padrão do sistema.");
+      return;
+    }
+
+    try {
+      setIsValidatingKey(true);
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${trimmed}`);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        const errMsg = errJson?.error?.message || `Status ${res.status}`;
+        throw new Error(errMsg);
+      }
+      setStoredGeminiKey(trimmed);
+      setActiveGeminiKey(trimmed);
+      setApiKeyDialogOpen(false);
+      toast.success("Chave do Google Gemini validada com sucesso! Visão de IA ativada.");
+    } catch (err: any) {
+      toast.error(`Chave inválida: ${err.message || "Não foi possível validar com o Google"}`);
+    } finally {
+      setIsValidatingKey(false);
     }
   }
 
@@ -926,9 +946,10 @@ function ReceiptsOcrPage() {
               <Button
                 type="button"
                 onClick={handleSaveApiKey}
+                disabled={isValidatingKey}
                 className="flex-1 rounded-xl h-10 text-xs font-semibold bg-primary text-primary-foreground"
               >
-                Salvar Chave
+                {isValidatingKey ? "Validando chave..." : "Salvar Chave"}
               </Button>
             </DialogFooter>
           </DialogContent>

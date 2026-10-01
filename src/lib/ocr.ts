@@ -183,73 +183,212 @@ export function formatCurrencyBRL(value: number): string {
 }
 
 /**
+ * Descobre modelos disponíveis no Google AI Studio para a chave informada
+ */
+async function getGeminiCandidateModels(apiKey: string): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const modelsList: Array<{ name: string; supportedGenerationMethods?: string[] }> =
+        data.models || [];
+      const supported = modelsList
+        .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
+        .map((m) => m.name.replace(/^models\//, ""));
+
+      if (supported.length > 0) {
+        const preferredPriority = [
+          "gemini-1.5-flash",
+          "gemini-1.5-flash-001",
+          "gemini-1.5-flash-002",
+          "gemini-1.5-flash-8b",
+          "gemini-2.0-flash",
+          "gemini-2.0-flash-exp",
+          "gemini-2.5-flash",
+          "gemini-1.5-pro",
+          "gemini-1.5-pro-001",
+          "gemini-1.5-pro-002",
+        ];
+
+        const sorted: string[] = [];
+        for (const p of preferredPriority) {
+          if (supported.includes(p)) sorted.push(p);
+        }
+        for (const m of supported) {
+          if (!sorted.includes(m)) sorted.push(m);
+        }
+        return sorted;
+      }
+    } else {
+      const errJson = await res.json().catch(() => null);
+      const errMsg = errJson?.error?.message || `Status ${res.status}`;
+      if (errMsg.includes("API key not valid") || errMsg.includes("API_KEY_INVALID")) {
+        throw new Error(
+          "Chave do Google Gemini inválida. Por favor, revise a chave inserida no botão 'Configurar IA'."
+        );
+      }
+    }
+  } catch (err: any) {
+    if (err.message?.includes("Chave do Google Gemini inválida")) {
+      throw err;
+    }
+    console.warn("Aviso ao listar modelos dinamicamente:", err);
+  }
+
+  // Fallback padrão se não conseguir listar
+  return [
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-001",
+    "gemini-1.5-flash-002",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+  ];
+}
+
+/**
  * Chama o Google Gemini Vision direto via API Key (mais rápido e 100% gratuito)
  */
 async function callGeminiVisionDirect(
   apiKey: string,
   base64Data: string,
   mimeType: string
-): Promise<OCRDocumentResult> {
+): Promise<{ result: OCRDocumentResult; modelName: string }> {
   const cleanKey = apiKey.trim();
   const cleanBase64 = base64Data.replace(/^data:.+?;base64,/, "").trim();
   const cleanMimeType = mimeType || "image/jpeg";
 
-  const models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"];
-  let lastErr: Error | null = null;
+  const candidateModels = await getGeminiCandidateModels(cleanKey);
+  const errors: string[] = [];
 
-  for (const model of models) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
+  for (const model of candidateModels) {
+    // Tenta primeiro com inline_data (REST canônico v1beta) e depois inlineData
+    const payloadVariants = [
+      {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: OCR_SYSTEM_PROMPT },
               {
-                parts: [
-                  { text: OCR_SYSTEM_PROMPT },
-                  {
-                    inlineData: {
-                      mimeType: cleanMimeType,
-                      data: cleanBase64,
-                    },
-                  },
-                ],
+                inline_data: {
+                  mime_type: cleanMimeType,
+                  data: cleanBase64,
+                },
               },
             ],
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.1,
-            },
-          }),
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.1,
+        },
+      },
+      {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: OCR_SYSTEM_PROMPT },
+              {
+                inlineData: {
+                  mimeType: cleanMimeType,
+                  data: cleanBase64,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          temperature: 0.1,
+        },
+      },
+      {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: OCR_SYSTEM_PROMPT },
+              {
+                inline_data: {
+                  mime_type: cleanMimeType,
+                  data: cleanBase64,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.1,
+        },
+      },
+    ];
+
+    for (const bodyPayload of payloadVariants) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(bodyPayload),
+          }
+        );
+
+        if (!res.ok) {
+          const errJson = await res.json().catch(() => null);
+          const errMsg = errJson?.error?.message || `Status ${res.status}`;
+
+          if (errMsg.includes("API key not valid") || errMsg.includes("API_KEY_INVALID")) {
+            throw new Error(
+              "Chave do Google Gemini inválida. Por favor, revise a chave inserida no botão 'Configurar IA'."
+            );
+          }
+
+          if (
+            errMsg.includes("Unknown name") ||
+            errMsg.includes("Cannot find field") ||
+            errMsg.includes("responseMimeType")
+          ) {
+            continue;
+          }
+
+          throw new Error(`Google Gemini (${model}): ${errMsg}`);
         }
-      );
 
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => null);
-        const errMsg = errJson?.error?.message || `Status ${res.status}`;
-        throw new Error(`Google Gemini (${model}): ${errMsg}`);
-      }
+        const json = await res.json();
+        const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawText) {
+          throw new Error(`Gemini (${model}) não retornou conteúdo textual.`);
+        }
 
-      const json = await res.json();
-      const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!rawText) {
-        throw new Error(`Gemini (${model}) não retornou conteúdo.`);
-      }
-
-      const clean = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-      return JSON.parse(clean);
-    } catch (err: any) {
-      console.warn(`Erro no modelo ${model}:`, err);
-      lastErr = err;
-      if (err.message?.includes("API key not valid") || err.message?.includes("API_KEY_INVALID")) {
-        throw new Error("Chave do Google Gemini inválida. Por favor, revise a chave inserida no botão 'Configurar IA'.");
+        const clean = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+        const parsed = JSON.parse(clean);
+        return { result: parsed, modelName: model };
+      } catch (err: any) {
+        if (err.message?.includes("Chave do Google Gemini inválida")) {
+          throw err;
+        }
+        if (
+          err.message?.includes("Unknown name") ||
+          err.message?.includes("Cannot find field") ||
+          err.message?.includes("responseMimeType")
+        ) {
+          continue;
+        }
+        errors.push(`${model}: ${err.message || String(err)}`);
+        break;
       }
     }
   }
 
-  throw lastErr || new Error("Falha ao comunicar com o Google Gemini.");
+  throw new Error(
+    errors.length > 0
+      ? errors.slice(0, 2).join(" | ")
+      : "Falha ao comunicar com os modelos disponíveis do Google Gemini."
+  );
 }
 
 /**
@@ -295,8 +434,9 @@ export async function processReceiptDocument(file: File): Promise<ExtractedRecei
   const geminiKey = getStoredGeminiKey();
   if (geminiKey) {
     try {
-      parsedResult = await callGeminiVisionDirect(geminiKey, base64Data, mimeType);
-      sourceEngine = "Google Gemini 1.5 Flash (Chave Própria)";
+      const { result, modelName } = await callGeminiVisionDirect(geminiKey, base64Data, mimeType);
+      parsedResult = result;
+      sourceEngine = `Google Gemini (${modelName})`;
     } catch (err: any) {
       console.error("Falha no Gemini direto:", err);
       throw err;
