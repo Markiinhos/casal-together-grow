@@ -45,7 +45,7 @@ Regras obrigatórias:
 `;
 
 export const parseReceiptDocumentFn = createServerFn({ method: "POST" })
-  .validator((data: OCRDocumentInput) => data)
+  .inputValidator((data: OCRDocumentInput) => data)
   .handler(async ({ data }) => {
     const apiKey =
       process.env.VITE_GEMINI_API_KEY ||

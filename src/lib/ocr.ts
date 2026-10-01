@@ -190,46 +190,66 @@ async function callGeminiVisionDirect(
   base64Data: string,
   mimeType: string
 ): Promise<OCRDocumentResult> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: OCR_SYSTEM_PROMPT },
+  const cleanKey = apiKey.trim();
+  const cleanBase64 = base64Data.replace(/^data:.+?;base64,/, "").trim();
+  const cleanMimeType = mimeType || "image/jpeg";
+
+  const models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"];
+  let lastErr: Error | null = null;
+
+  for (const model of models) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cleanKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
               {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Data,
-                },
+                parts: [
+                  { text: OCR_SYSTEM_PROMPT },
+                  {
+                    inlineData: {
+                      mimeType: cleanMimeType,
+                      data: cleanBase64,
+                    },
+                  },
+                ],
               },
             ],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-          temperature: 0.1,
-        },
-      }),
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.1,
+            },
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        const errMsg = errJson?.error?.message || `Status ${res.status}`;
+        throw new Error(`Google Gemini (${model}): ${errMsg}`);
+      }
+
+      const json = await res.json();
+      const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) {
+        throw new Error(`Gemini (${model}) não retornou conteúdo.`);
+      }
+
+      const clean = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      return JSON.parse(clean);
+    } catch (err: any) {
+      console.warn(`Erro no modelo ${model}:`, err);
+      lastErr = err;
+      if (err.message?.includes("API key not valid") || err.message?.includes("API_KEY_INVALID")) {
+        throw new Error("Chave do Google Gemini inválida. Por favor, revise a chave inserida no botão 'Configurar IA'.");
+      }
     }
-  );
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Erro Gemini (${res.status}): ${errText}`);
   }
 
-  const json = await res.json();
-  const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!rawText) {
-    throw new Error("Gemini não retornou dados.");
-  }
-
-  const clean = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-  return JSON.parse(clean);
+  throw lastErr || new Error("Falha ao comunicar com o Google Gemini.");
 }
 
 /**
@@ -278,8 +298,8 @@ export async function processReceiptDocument(file: File): Promise<ExtractedRecei
       parsedResult = await callGeminiVisionDirect(geminiKey, base64Data, mimeType);
       sourceEngine = "Google Gemini 1.5 Flash (Chave Própria)";
     } catch (err: any) {
-      console.warn("Falha no Gemini direto:", err);
-      lastError = err;
+      console.error("Falha no Gemini direto:", err);
+      throw err;
     }
   }
 
