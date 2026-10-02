@@ -1136,6 +1136,8 @@ export type Database = {
           goal_id: string
           id: string
           note: string | null
+          source_id: string | null
+          source_type: string
           user_id: string
         }
         Insert: {
@@ -1145,6 +1147,8 @@ export type Database = {
           goal_id: string
           id?: string
           note?: string | null
+          source_id?: string | null
+          source_type?: string
           user_id: string
         }
         Update: {
@@ -1154,6 +1158,8 @@ export type Database = {
           goal_id?: string
           id?: string
           note?: string | null
+          source_id?: string | null
+          source_type?: string
           user_id?: string
         }
         Relationships: [
@@ -1175,46 +1181,64 @@ export type Database = {
       }
       goals: {
         Row: {
+          category: string | null
+          completed_at: string | null
           couple_id: string | null
           created_at: string
           current_amount: number
           deadline: string | null
           description: string | null
+          goal_type: string
           id: string
           image_url: string | null
           name: string
+          paused_at: string | null
+          start_date: string
           status: string
           target_amount: number
+          tracking_mode: string
           updated_at: string
           user_id: string
           visibility: string
         }
         Insert: {
+          category?: string | null
+          completed_at?: string | null
           couple_id?: string | null
           created_at?: string
           current_amount?: number
           deadline?: string | null
           description?: string | null
+          goal_type?: string
           id?: string
           image_url?: string | null
           name: string
+          paused_at?: string | null
+          start_date?: string
           status?: string
           target_amount?: number
+          tracking_mode?: string
           updated_at?: string
           user_id: string
           visibility?: string
         }
         Update: {
+          category?: string | null
+          completed_at?: string | null
           couple_id?: string | null
           created_at?: string
           current_amount?: number
           deadline?: string | null
           description?: string | null
+          goal_type?: string
           id?: string
           image_url?: string | null
           name?: string
+          paused_at?: string | null
+          start_date?: string
           status?: string
           target_amount?: number
+          tracking_mode?: string
           updated_at?: string
           user_id?: string
           visibility?: string
@@ -2110,6 +2134,104 @@ export type Database = {
           },
         ]
       }
+      monthly_closings: {
+        Row: {
+          breakdown: Json
+          closed_at: string
+          closed_by: string | null
+          couple_id: string | null
+          created_at: string
+          id: string
+          monthly_balance: number
+          notes: string | null
+          reference_month: string
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          savings_rate: number
+          snapshot_data: Json
+          status: string
+          total_expenses: number
+          total_income: number
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          breakdown?: Json
+          closed_at?: string
+          closed_by?: string | null
+          couple_id?: string | null
+          created_at?: string
+          id?: string
+          monthly_balance?: number
+          notes?: string | null
+          reference_month: string
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          savings_rate?: number
+          snapshot_data?: Json
+          status?: string
+          total_expenses?: number
+          total_income?: number
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          breakdown?: Json
+          closed_at?: string
+          closed_by?: string | null
+          couple_id?: string | null
+          created_at?: string
+          id?: string
+          monthly_balance?: number
+          notes?: string | null
+          reference_month?: string
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          savings_rate?: number
+          snapshot_data?: Json
+          status?: string
+          total_expenses?: number
+          total_income?: number
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_closings_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_closings_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_closings_reopened_by_fkey"
+            columns: ["reopened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_closings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       monthly_financial_plans: {
         Row: {
           couple_id: string | null
@@ -2251,6 +2373,79 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      patrimony_assets: {
+        Row: {
+          acquisition_date: string | null
+          acquisition_value: number | null
+          category: string
+          couple_id: string | null
+          created_at: string
+          estimated_value: number
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          responsible_user_id: string | null
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          acquisition_date?: string | null
+          acquisition_value?: number | null
+          category?: string
+          couple_id?: string | null
+          created_at?: string
+          estimated_value?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          responsible_user_id?: string | null
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          acquisition_date?: string | null
+          acquisition_value?: number | null
+          category?: string
+          couple_id?: string | null
+          created_at?: string
+          estimated_value?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          responsible_user_id?: string | null
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patrimony_assets_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patrimony_assets_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patrimony_assets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       period_goals: {
         Row: {
@@ -3059,6 +3254,90 @@ export type Database = {
           },
         ]
       }
+      variable_expenses: {
+        Row: {
+          category_id: string | null
+          couple_id: string | null
+          created_at: string
+          created_by: string | null
+          estimated_amount: number
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          subcategory_id: string | null
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          category_id?: string | null
+          couple_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimated_amount?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          subcategory_id?: string | null
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          category_id?: string | null
+          couple_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          estimated_amount?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          subcategory_id?: string | null
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variable_expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_expenses_couple_id_fkey"
+            columns: ["couple_id"]
+            isOneToOne: false
+            referencedRelation: "couples"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_expenses_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_expenses_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_expenses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       water_intake: {
         Row: {
           couple_id: string | null
@@ -3188,90 +3467,6 @@ export type Database = {
             columns: ["couple_id"]
             isOneToOne: false
             referencedRelation: "couples"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      variable_expenses: {
-        Row: {
-          category_id: string | null
-          couple_id: string | null
-          created_at: string
-          created_by: string | null
-          estimated_amount: number
-          id: string
-          is_active: boolean
-          name: string
-          notes: string | null
-          subcategory_id: string | null
-          updated_at: string
-          user_id: string
-          visibility: string
-        }
-        Insert: {
-          category_id?: string | null
-          couple_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          estimated_amount?: number
-          id?: string
-          is_active?: boolean
-          name: string
-          notes?: string | null
-          subcategory_id?: string | null
-          updated_at?: string
-          user_id: string
-          visibility?: string
-        }
-        Update: {
-          category_id?: string | null
-          couple_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          estimated_amount?: number
-          id?: string
-          is_active?: boolean
-          name?: string
-          notes?: string | null
-          subcategory_id?: string | null
-          updated_at?: string
-          user_id?: string
-          visibility?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "variable_expenses_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "variable_expenses_couple_id_fkey"
-            columns: ["couple_id"]
-            isOneToOne: false
-            referencedRelation: "couples"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "variable_expenses_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "variable_expenses_subcategory_id_fkey"
-            columns: ["subcategory_id"]
-            isOneToOne: false
-            referencedRelation: "categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "variable_expenses_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -3549,14 +3744,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      audit_and_cleanup_card_orphans: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      delete_card_purchase_completely: {
-        Args: { p_purchase_id: string; p_force?: boolean }
-        Returns: Json
       }
       undo_card_invoice_payment: {
         Args: { _invoice_id: string; _payment_transaction_id?: string }
