@@ -89,11 +89,21 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
     isListening,
     transcript,
     error: speechError,
+    microphoneState,
+    isNative,
+    isAvailable,
     startListening,
     stopListening,
     reset,
-    isSupported,
+    checkPermissionState,
   } = useSpeechRecognition();
+
+  // Re-verifica o estado das permissões sempre que a sheet for aberta
+  useEffect(() => {
+    if (open) {
+      checkPermissionState();
+    }
+  }, [open, checkPermissionState]);
 
   // Reset state when opening or closing
   const handleClose = () => {
@@ -134,7 +144,19 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
     }
   }, [speechError, state]);
 
-  // Handle speech end
+  // Se o reconhecimento parar automaticamente (fim de fala / silêncio detectado pelo sistema nativo)
+  useEffect(() => {
+    if (state === "listening" && !isListening) {
+      if (transcript.trim()) {
+        setManualText(transcript);
+        processInput(transcript);
+      } else {
+        setState("idle");
+      }
+    }
+  }, [isListening, state, transcript]);
+
+  // Handle speech end manual (botão Concluir Fala)
   const handleStopListening = () => {
     stopListening();
     if (transcript.trim()) {
@@ -595,11 +617,42 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
           </div>
         </div>
 
+        {/* Aviso de microfone negado nas permissões do Android */}
+        {microphoneState === "denied" && (
+          <div
+            role="button"
+            onClick={() => setMicHelpOpen(true)}
+            className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between cursor-pointer hover:bg-amber-500/15 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>Microfone desativado nas permissões do celular. Toque para ver como liberar.</span>
+            </div>
+            <ChevronRight className="size-3.5 shrink-0" />
+          </div>
+        )}
+
+        {/* Aviso de indisponibilidade de voz no dispositivo */}
+        {microphoneState === "unavailable" && (
+          <div className="p-3 rounded-xl bg-muted/60 border border-border/60 text-muted-foreground text-xs flex items-center gap-2">
+            <HelpCircle className="size-4 shrink-0 text-muted-foreground" />
+            <span>O reconhecimento de voz não está disponível neste dispositivo. Você pode digitar sua pergunta abaixo.</span>
+          </div>
+        )}
+
         {/* Microfone Central para Comando de Voz */}
         <div className="flex flex-col items-center justify-center py-2 space-y-2">
           <button
             type="button"
             onClick={async () => {
+              if (microphoneState === "unavailable") {
+                toast.info("O reconhecimento de voz não está disponível neste dispositivo. Você pode digitar sua pergunta abaixo.");
+                return;
+              }
+              if (microphoneState === "denied") {
+                setMicHelpOpen(true);
+                return;
+              }
               setState("listening");
               await startListening();
             }}
@@ -693,31 +746,36 @@ export function VoiceAssistantSheet({ open, onOpenChange }: VoiceAssistantSheetP
               Como liberar o microfone no celular
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Como o app é executado no navegador / PWA, a permissão fica dentro do Google Chrome.
+              {isNative
+                ? "Configuração de permissão para o aplicativo instalado no Android (APK)."
+                : "Configuração de permissão para o navegador Web / PWA."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2.5 text-xs text-foreground">
-            <div className="p-3 bg-muted/50 rounded-xl space-y-1.5 border border-border/60">
-              <p className="font-semibold text-primary">Método 1: Pelo navegador Chrome</p>
-              <ol className="list-decimal pl-4 space-y-1 text-muted-foreground text-[11px]">
-                <li>Abra o aplicativo no Chrome ou navegador padrão.</li>
-                <li>Toque no ícone de <strong>cadeado (🔒)</strong> ou <strong>três pontinhos (⋮)</strong> ao lado do endereço.</li>
-                <li>Toque em <strong>Permissões</strong> &gt; <strong>Microfone</strong> e escolha <strong>Permitir</strong>.</li>
-              </ol>
-            </div>
-
-            <div className="p-3 bg-muted/50 rounded-xl space-y-1.5 border border-border/60">
-              <p className="font-semibold text-primary">Método 2: Configurações do Android</p>
-              <ol className="list-decimal pl-4 space-y-1 text-muted-foreground text-[11px]">
-                <li>Vá nas <strong>Configurações do Android</strong> &gt; <strong>Aplicativos</strong>.</li>
-                <li>Procure por <strong>Chrome</strong> (onde o app roda).</li>
-                <li>Toque em <strong>Permissões</strong> &gt; <strong>Microfone</strong> &gt; <strong>Permitir durante o uso do app</strong>.</li>
-              </ol>
-            </div>
+            {isNative ? (
+              <div className="p-3 bg-muted/50 rounded-xl space-y-1.5 border border-border/60">
+                <p className="font-semibold text-primary">No Aplicativo Casal (Android)</p>
+                <ol className="list-decimal pl-4 space-y-1 text-muted-foreground text-[11px]">
+                  <li>Abra as <strong>Configurações do Android</strong> &gt; <strong>Apps</strong> (ou Aplicativos).</li>
+                  <li>Localize e selecione o aplicativo <strong>Casal</strong>.</li>
+                  <li>Toque em <strong>Permissões</strong> &gt; <strong>Microfone</strong>.</li>
+                  <li>Escolha <strong>Permitir durante o uso do app</strong>.</li>
+                  <li>Ao voltar para o app, a permissão será atualizada imediatamente sem precisar reiniciar!</li>
+                </ol>
+              </div>
+            ) : (
+              <div className="p-3 bg-muted/50 rounded-xl space-y-1.5 border border-border/60">
+                <p className="font-semibold text-primary">Pelo navegador Chrome</p>
+                <ol className="list-decimal pl-4 space-y-1 text-muted-foreground text-[11px]">
+                  <li>Toque no ícone de <strong>cadeado (🔒)</strong> ou <strong>três pontinhos (⋮)</strong> ao lado do endereço.</li>
+                  <li>Toque em <strong>Permissões</strong> &gt; <strong>Microfone</strong> e escolha <strong>Permitir</strong>.</li>
+                </ol>
+              </div>
+            )}
 
             <p className="text-[11px] text-muted-foreground italic bg-primary/5 p-2.5 rounded-lg border border-primary/20">
-              💡 Você também pode usar todas as funções do Copiloto digitando na caixinha ou tocando nos botões de atalho rápidos!
+              💡 Você pode usar todas as funções do Copiloto digitando na caixinha ou tocando nos botões de atalho rápidos!
             </p>
           </div>
 
