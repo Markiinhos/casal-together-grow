@@ -87,8 +87,11 @@ export function useSpeechRecognition(): UseSpeechRecognitionReturn {
       } catch (permErr: any) {
         console.warn("Aviso na solicitação de microfone via getUserMedia:", permErr);
         if (permErr?.name === "NotAllowedError" || permErr?.name === "PermissionDeniedError") {
+          const isNativeApp = !!(window as any).Capacitor?.isNativePlatform?.();
           setError(
-            "Permissão de microfone não autorizada. No navegador, toque no ícone do cadeado (🔒) ou nas configurações do Chrome para permitir."
+            isNativeApp
+              ? "Microfone bloqueado. Abra Configurações do celular > Apps > Casal > Permissões > Microfone e escolha Permitir."
+              : "Permissão de microfone não autorizada. Toque no ícone do cadeado (🔒) ao lado do endereço e permita o microfone."
           );
           return;
         }
