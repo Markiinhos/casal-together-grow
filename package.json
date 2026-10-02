@@ -8,8 +8,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
-    "cap:add:android": "cap add android",
-    "cap:sync:android": "cap sync android",
+    "cap:add:android": "cap add android && node scripts/android-permissions.mjs",
+    "cap:sync:android": "cap sync android && node scripts/android-permissions.mjs",
     "cap:open:android": "cap open android",
     "lint": "eslint .",
     "format": "prettier --write ."
