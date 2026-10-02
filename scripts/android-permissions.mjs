@@ -10,9 +10,11 @@ if (!existsSync(path)) {
 
 let xml = readFileSync(path, "utf8");
 const perms = [
+  "android.permission.INTERNET",
   "android.permission.RECORD_AUDIO",
   "android.permission.MODIFY_AUDIO_SETTINGS",
-  "android.permission.INTERNET",
+  "android.permission.CAMERA",
+  "android.permission.READ_MEDIA_IMAGES",
 ];
 let added = 0;
 for (const p of perms) {
